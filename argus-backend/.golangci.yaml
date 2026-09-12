@@ -1,0 +1,65 @@
+version: "2"
+severity:
+  default: error
+  rules:
+    - linters:
+        - dupl
+        - unused
+        - nlreturn
+        - decorder
+        - dupword
+        - gochecknoglobals
+        - ineffassign
+        - intrange
+        - misspell
+        - modernize
+        - prealloc
+      severity: warn
+linters:
+  default: standard
+  enable:
+    - contextcheck
+    - copyloopvar
+    - decorder
+    - dogsled
+    - dupl
+    - dupword
+    - errname
+    - exhaustive
+    - forcetypeassert
+    - gochecknoglobals
+    - gochecknoinits
+    - godot
+    - gosec
+    - govet
+    - iface
+    - ineffassign
+    - intrange
+    - iotamixing
+    - loggercheck
+    - misspell
+    - modernize
+    - musttag
+    - nestif
+    - nilnesserr
+    - nilnil
+    - nlreturn
+    - noinlineerr
+    - prealloc
+    - unqueryvet
+    - unused
+    - whitespace
+    - wastedassign
+  exclusions:
+    rules:
+      - path: '(.+)_test\.go'
+        linters:
+          - funlen
+          - goconst
+          - dupl
+      - linters:
+          - gochecknoglobals
+        text: Err\w+
+      - linters:
+          - unused
+        text: mustEmbedUnimplemented\w+

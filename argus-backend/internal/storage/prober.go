@@ -8,6 +8,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -32,6 +33,53 @@ func (pr *ProbeRepository) SaveProbe(ctx context.Context, probe *entity.Probe) (
 	}
 
 	return &saved, nil
+}
+
+func (pr *ProbeRepository) SaveProbes(ctx context.Context, probes []*entity.Probe) ([]*entity.Probe, error) {
+	const op = "Storage.ProbeRepository.SaveProbes"
+
+	if len(probes) == 0 {
+		return nil, nil
+	}
+
+	now := time.Now()
+
+	batch := &pgx.Batch{}
+
+	for _, probe := range probes {
+		query, args, err := sq.
+			Insert("probes").
+			Columns("target_id", "success", "latency", "created_at").
+			Values(probe.TargetID, probe.Success, probe.Latency, now).
+			Suffix("RETURNING id, target_id, success, latency, created_at").
+			PlaceholderFormat(sq.Dollar).
+			ToSql()
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+
+		batch.Queue(query, args...)
+	}
+
+	results := pr.db.SendBatch(ctx, batch)
+	defer func() {
+		_ = results.Close()
+	}()
+
+	saved := make([]*entity.Probe, 0, len(probes))
+
+	for range probes {
+		var s entity.Probe
+
+		err := results.QueryRow().Scan(&s.ID, &s.TargetID, &s.Success, &s.Latency, &s.CreatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+
+		saved = append(saved, &s)
+	}
+
+	return saved, nil
 }
 
 func (pr *ProbeRepository) DeleteProbe(ctx context.Context, id int) (int, error) {

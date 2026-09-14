@@ -13,7 +13,7 @@ const (
 )
 
 type Severity int
-type EventType int
+type EventType string
 
 const (
 	SeverityCritical Severity = iota
@@ -24,11 +24,11 @@ const (
 )
 
 const (
-	ContainerStart EventType = iota
-	ContainerStop
-	ContainerRestart
-	ContainerDie
-	ContainerKill
+	ContainerDie     EventType = "die"
+	ContainerOOM     EventType = "oom"
+	ContainerKill    EventType = "kill"
+	ContainerRestart EventType = "restart"
+	ContainerDestroy EventType = "destroy"
 )
 
 func (s Severity) Valid() bool {
@@ -42,7 +42,7 @@ func (s Severity) Valid() bool {
 
 func (e EventType) Valid() bool {
 	switch e {
-	case ContainerStart, ContainerStop, ContainerRestart, ContainerDie, ContainerKill:
+	case ContainerDie, ContainerOOM, ContainerKill, ContainerRestart, ContainerDestroy:
 		return true
 	default:
 		return false
@@ -50,44 +50,44 @@ func (e EventType) Valid() bool {
 }
 
 type Target struct {
-	ID         uuid.UUID
-	Source     string
-	Name       string
-	Status     string
-	TargetType string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID         uuid.UUID `json:"id"`
+	Source     string    `json:"source"`
+	Name       string    `json:"name"`
+	Status     string    `json:"status"`
+	TargetType string    `json:"target_type"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 type ContainerEvent struct {
-	ID        int
-	TargetID  uuid.UUID
-	Event     EventType
-	Details   string
-	CreatedAt time.Time
+	ID        int       `json:"id"`
+	TargetID  uuid.UUID `json:"target_id"`
+	Event     EventType `json:"event"`
+	Details   string    `json:"details"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type LogMatch struct {
-	ID        int
-	TargetID  uuid.UUID
-	Severity  Severity
-	Message   string
-	CreatedAt time.Time
+	ID        int       `json:"id"`
+	TargetID  uuid.UUID `json:"target_id"`
+	Severity  Severity  `json:"severity"`
+	Message   string    `json:"message"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Probe struct {
-	ID        int
-	TargetID  uuid.UUID
-	Success   bool
-	Latency   int32
-	CreatedAt time.Time
+	ID        int       `json:"id"`
+	TargetID  uuid.UUID `json:"target_id"`
+	Success   bool      `json:"success"`
+	Latency   int64     `json:"latency"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Alert struct {
-	ID        int
-	TargetID  uuid.UUID
-	Severity  Severity
-	Details   string
-	Notified  bool
-	CreatedAt time.Time
+	ID        int       `json:"id"`
+	TargetID  uuid.UUID `json:"target_id"`
+	Severity  Severity  `json:"severity"`
+	Details   string    `json:"details"`
+	Notified  bool      `json:"notified"`
+	CreatedAt time.Time `json:"created_at"`
 }

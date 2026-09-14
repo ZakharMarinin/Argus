@@ -10,9 +10,10 @@ import (
 )
 
 type Config struct {
-	Env    string `yaml:"env"`
-	Server Server `yaml:"server"`
-	Postgres string `yaml:"postgres"`
+	Env           string        `yaml:"env"`
+	Server        Server        `yaml:"http_server"`
+	Postgres      string        `yaml:"postgres"`
+	Prober Prober `yaml:"prober"`
 }
 
 type Server struct {
@@ -23,22 +24,27 @@ type Server struct {
 	Retry        int           `yaml:"retry"`
 }
 
+type Prober struct {
+	ProbeInterval time.Duration `yaml:"probe_interval"`
+	ProbeTimeout  time.Duration `yaml:"probe_timeout"`
+}
+
 func MustParseConfig() *Config {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatalf("cannot load .env file: %v", err)
+		log.Printf("no .env file found, relying on environment variables: %v", err)
 	}
 
 	cfgPath := os.Getenv("CONFIG_PATH")
 
 	cfg := Config{}
 
-	err = cleanenv.ReadConfig(cfgPath, cfg)
+	err = cleanenv.ReadConfig(cfgPath, &cfg)
 	if err != nil {
 		log.Fatalf("cannot read config: %v", err)
 	}
 
-	cfg.Postgres = os.Getenv("POSTGRES_ADDR")
+	cfg.Postgres = os.Getenv("POSTGRES_URL")
 
 	return &cfg
 }

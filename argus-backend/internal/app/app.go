@@ -3,6 +3,7 @@ package app
 import (
 	"argus-collector/internal/config"
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -15,6 +16,7 @@ type App struct {
 	server *http.Server
 	di     *Container
 	wg     *sync.WaitGroup
+	cancel context.CancelFunc
 }
 
 func NewApp(cfg *config.Config, log *slog.Logger) *App {
@@ -34,7 +36,13 @@ func (a *App) MustRun(ctx context.Context) {
 }
 
 func (a *App) run(ctx context.Context) error {
-	a.initDeps(ctx)
+	workerCtx, cancel := context.WithCancel(ctx)
+	a.cancel = cancel
+
+	err := a.initDeps(ctx)
+	if err != nil {
+		return err
+	}
 
 	a.server = &http.Server{
 		Addr:         a.cfg.Server.Addr,
@@ -53,11 +61,38 @@ func (a *App) run(ctx context.Context) error {
 		}
 	})
 
+	proberSvc, err := a.di.Prober(ctx)
+	if err != nil {
+		return fmt.Errorf("init prober: %w", err)
+	}
+
+	a.wg.Go(func() {
+		a.log.Info("Run: prober started")
+
+		proberSvc.RunProber(workerCtx)
+	})
+
+	watcherSvc, err := a.di.Watcher(ctx)
+	if err != nil {
+		a.log.Error("watcher not started, Docker client unavailable", "error", err)
+	} else {
+		a.wg.Go(func() {
+			a.log.Info("Run: watcher started")
+
+			watcherSvc.RunWatcher(workerCtx)
+		})
+	}
+
 	return nil
 }
 
-func (a *App) initDeps(ctx context.Context) {
-	a.di.Handler(ctx)
+func (a *App) initDeps(ctx context.Context) error {
+	_, err := a.di.Handler(ctx)
+	if err != nil {
+		return fmt.Errorf("init dependencies: %w", err)
+	}
+
+	return nil
 }
 
 func (a *App) Stop(ctx context.Context) {
@@ -71,9 +106,11 @@ func (a *App) Stop(ctx context.Context) {
 		a.log.Error("cannot close server", "error", err)
 	}
 
-	a.di.db.Close()
+	a.cancel()
 
 	a.wg.Wait()
+
+	a.di.db.Close()
 
 	a.log.Info("Shutdown completed gracefully")
 }

@@ -1,0 +1,50 @@
+services:
+  argus-postgres:
+    image: postgres:16-alpine
+    container_name: argus-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - argus_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  migrate:
+    image: golang:1.27-alpine
+    container_name: migrator
+    working_dir: /app
+    volumes:
+      - .:/app:z
+    environment:
+      GOOSE_DRIVER: ${GOOSE_DRIVER}
+      GOOSE_DBSTRING: ${GOOSE_DBSTRING}
+      GOOSE_MIGRATION_DIR: ${GOOSE_MIGRATION_DIR}
+    depends_on:
+      argus-postgres:
+        condition: service_healthy
+    command: >
+      sh -c "go install github.com/pressly/goose/v3/cmd/goose@v3.24.1 && goose up"
+
+  argus:
+    build: .
+    env_file: .env
+    container_name: argus-coolector
+    ports:
+      - "8099:8099"
+    security_opt:
+      - "label=disable"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  argus_postgres_data:

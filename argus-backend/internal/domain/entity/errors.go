@@ -8,6 +8,7 @@ var (
 
 	ErrContainerEventNotFound      = errors.New("container event not found")
 	ErrContainerEventAlreadyExists = errors.New("container event already exists")
+	ErrNoEvent                     = errors.New("no event")
 
 	ErrLogMatchNotFound = errors.New("log match not found")
 

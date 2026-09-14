@@ -1,0 +1,9 @@
+env: "local"
+http_server:
+  addr: 0.0.0.0:8099
+  read_timeout: 4s
+  write_timeout: 4s
+  idle_timeout: 60s
+prober:
+  probe_timeout: 5s
+  probe_interval: 60s

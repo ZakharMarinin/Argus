@@ -16,6 +16,14 @@ func (uc *UseCase) SaveProbe(ctx context.Context, probe *entity.Probe) (*entity.
 	return saved, wrapErr(op, err)
 }
 
+func (uc *UseCase) SaveProbes(ctx context.Context, probes []*entity.Probe) ([]*entity.Probe, error) {
+	const op = "UseCase.SaveProbes"
+
+	saved, err := uc.db.SaveProbes(ctx, probes)
+
+	return saved, wrapErr(op, err)
+}
+
 func (uc *UseCase) DeleteProbe(ctx context.Context, id int) (int, error) {
 	const op = "UseCase.DeleteProbe"
 

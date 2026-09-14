@@ -8,8 +8,16 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	_ "argus-collector/docs"
 )
 
+//go:generate swag init -g cmd/argus/main.go -d ../../ -o ../../docs
+
+// @title           Argus API
+// @version         1.0
+// @BasePath        /v1/api
+// @description     API для мониторинга контейнеров и HTTP-таргетов.
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

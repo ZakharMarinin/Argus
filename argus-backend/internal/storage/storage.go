@@ -44,6 +44,10 @@ func NewStorage(ctx context.Context, cfg *config.Config) (*Storage, error) {
 }
 
 func (s *Storage) Close() {
+	if s == nil {
+		return
+	}
+
 	s.db.Close()
 }
 

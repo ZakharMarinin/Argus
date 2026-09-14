@@ -21,6 +21,7 @@ type TargetRepository interface {
 
 type ProberRepository interface {
 	SaveProbe(ctx context.Context, probe *entity.Probe) (*entity.Probe, error)
+	SaveProbes(ctx context.Context, probes []*entity.Probe) ([]*entity.Probe, error)
 	DeleteProbe(ctx context.Context, id int) (int, error)
 	DeleteProbesOlderThan(ctx context.Context, before time.Time) error
 	GetProbe(ctx context.Context, id int) (*entity.Probe, error)

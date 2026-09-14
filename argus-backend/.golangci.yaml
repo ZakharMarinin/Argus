@@ -51,6 +51,8 @@ linters:
     - whitespace
     - wastedassign
   exclusions:
+    paths:
+      - docs/
     rules:
       - path: '(.+)_test\.go'
         linters:

@@ -1,0 +1,230 @@
+package watcher
+
+import (
+	"argus-collector/internal/config"
+	"argus-collector/internal/domain/entity"
+	"context"
+	"errors"
+	"log/slog"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/moby/moby/api/types/events"
+	"github.com/moby/moby/client"
+)
+
+const (
+	watcherTargetType = "container"
+	probeTargetType   = "probe"
+
+	labelMonitor  = "argus.monitor"
+	labelProbeURL = "argus.probe.url"
+)
+
+type UseCase interface {
+	GetTargetsByType(ctx context.Context, targetType string) ([]*entity.Target, error)
+	CreateEvent(ctx context.Context, event *entity.ContainerEvent) (*entity.ContainerEvent, error)
+	CreateTarget(ctx context.Context, target *entity.Target) (*entity.Target, error)
+}
+
+type Watcher struct {
+	cfg    *config.Config
+	log    *slog.Logger
+	uc     UseCase
+	client *client.Client
+}
+
+func NewWatcher(cfg *config.Config, log *slog.Logger, uc UseCase) (*Watcher, error) {
+	cli, err := client.New(client.FromEnv)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Watcher{cfg: cfg, log: log, uc: uc, client: cli}, nil
+}
+
+func buildDetails(message events.Message) string {
+	attrs := message.Actor.Attributes
+
+	parts := []string{
+		"name=" + attrs["name"],
+		"image=" + attrs["image"],
+	}
+
+	if message.Action == events.ActionDie {
+		parts = append(parts, "exitCode="+attrs["exitCode"])
+	}
+
+	if message.Action == events.ActionKill {
+		parts = append(parts, "signal="+attrs["signal"])
+	}
+
+	return strings.Join(parts, " ")
+}
+
+func (w *Watcher) createEvent(ctx context.Context, message events.Message) error {
+	var event entity.ContainerEvent
+
+	targets, err := w.uc.GetTargetsByType(ctx, watcherTargetType)
+	if err != nil {
+		return err
+	}
+
+	var target entity.Target
+
+	for _, t := range targets {
+		if t.Source == message.Actor.Attributes["name"] {
+			target = *t
+
+			break
+		}
+	}
+
+	if target.ID == uuid.Nil {
+		return nil
+	}
+
+	event.TargetID = target.ID
+	event.Event = entity.EventType(message.Action)
+	event.Details = buildDetails(message)
+
+	_, err = w.uc.CreateEvent(ctx, &event)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w *Watcher) registerFromLabels(ctx context.Context, name string, labels map[string]string) error {
+	if labels[labelMonitor] != "true" {
+		return nil
+	}
+
+	_, err := w.uc.CreateTarget(ctx, &entity.Target{
+		Source:     name,
+		Name:       name,
+		TargetType: watcherTargetType,
+		Status:     "unknown",
+	})
+	if err != nil && !errors.Is(err, entity.ErrTargetAlreadyExists) {
+		return err
+	}
+
+	probeURL := labels[labelProbeURL]
+	if probeURL == "" {
+		return nil
+	}
+
+	_, err = w.uc.CreateTarget(ctx, &entity.Target{
+		Source:     probeURL,
+		Name:       name,
+		TargetType: probeTargetType,
+		Status:     "unknown",
+	})
+	if err != nil && !errors.Is(err, entity.ErrTargetAlreadyExists) {
+		return err
+	}
+
+	return nil
+}
+
+func (w *Watcher) RegisterContainers(ctx context.Context) error {
+	result, err := w.client.ContainerList(ctx, client.ContainerListOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, c := range result.Items {
+		if len(c.Names) == 0 {
+			continue
+		}
+
+		name := strings.TrimPrefix(c.Names[0], "/")
+
+		regErr := w.registerFromLabels(ctx, name, c.Labels)
+		if regErr != nil {
+			w.log.Error("failed to register container", "name", name, "error", regErr)
+		}
+	}
+
+	return nil
+}
+
+const (
+	minBackoff        = 1 * time.Second
+	maxBackoff        = 60 * time.Second
+	minStableDuration = 10 * time.Second
+)
+
+func (w *Watcher) RunWatcher(ctx context.Context) {
+	const op = "Watcher.RunWatcher"
+
+	log := w.log.With("op", op)
+
+	err := w.RegisterContainers(ctx)
+	if err != nil {
+		log.Error("failed to register existing containers", "error", err)
+	}
+
+	backoff := minBackoff
+	
+	for {
+		timer := time.NewTimer(backoff)
+
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+
+			return
+		case <-timer.C:
+			start := time.Now()
+
+			err := w.startListening(ctx)
+			if err == nil {
+				return
+			}
+
+			log.Error("failed to start stream", "error", err)
+
+			if time.Since(start) >= minStableDuration {
+				backoff = minBackoff
+			} else {
+				backoff = min(2*backoff, maxBackoff)
+			}
+		}
+	}
+}
+
+func (w *Watcher) startListening(ctx context.Context) error {
+	stream := w.client.Events(ctx, client.EventsListOptions{
+		Filters: map[string]map[string]bool{
+			"type":  {"container": true},
+			"event": {"die": true, "oom": true, "kill": true, "restart": true, "destroy": true, "start": true},
+		},
+	})
+
+	for {
+		select {
+		case event := <-stream.Messages:
+			var err error
+
+			if event.Action == events.ActionStart {
+				err = w.registerFromLabels(ctx, event.Actor.Attributes["name"], event.Actor.Attributes)
+			} else {
+				err = w.createEvent(ctx, event)
+			}
+
+			if err != nil {
+				w.log.Error("failed to process event", "error", err)
+			}
+		case err := <-stream.Err:
+			w.log.Error("event stream closed", "error", err)
+
+			return err
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}

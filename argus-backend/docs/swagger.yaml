@@ -1,0 +1,540 @@
+basePath: /v1/api
+definitions:
+  entity.Alert:
+    properties:
+      created_at:
+        type: string
+      details:
+        type: string
+      id:
+        type: integer
+      notified:
+        type: boolean
+      severity:
+        $ref: '#/definitions/entity.Severity'
+      target_id:
+        type: string
+    type: object
+  entity.ContainerEvent:
+    properties:
+      created_at:
+        type: string
+      details:
+        type: string
+      event:
+        $ref: '#/definitions/entity.EventType'
+      id:
+        type: integer
+      target_id:
+        type: string
+    type: object
+  entity.EventType:
+    enum:
+    - die
+    - oom
+    - kill
+    - restart
+    - destroy
+    type: string
+    x-enum-varnames:
+    - ContainerDie
+    - ContainerOOM
+    - ContainerKill
+    - ContainerRestart
+    - ContainerDestroy
+  entity.Probe:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      latency:
+        type: integer
+      success:
+        type: boolean
+      target_id:
+        type: string
+    type: object
+  entity.Severity:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    type: integer
+    x-enum-varnames:
+    - SeverityCritical
+    - SeverityError
+    - SeverityWarning
+    - SeverityInfo
+    - SeverityDebug
+  entity.Target:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      source:
+        type: string
+      status:
+        type: string
+      target_type:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  response.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: API для мониторинга контейнеров и HTTP-таргетов.
+  title: Argus API
+  version: "1.0"
+paths:
+  /alerts:
+    get:
+      description: Возвращает алерты с фильтрацией по важности/отправке либо постранично
+      parameters:
+      - description: Важность
+        in: query
+        name: severity
+        type: integer
+      - description: Отправлен ли алерт
+        in: query
+        name: notified
+        type: boolean
+      - description: Лимит
+        in: query
+        name: limit
+        type: integer
+      - description: Отступ
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/entity.Alert'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Список алертов
+      tags:
+      - alerts
+    post:
+      consumes:
+      - application/json
+      description: Создает новый алерт
+      parameters:
+      - description: Данные алерта
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/entity.Alert'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/entity.Alert'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Создать алерт
+      tags:
+      - alerts
+  /alerts/{id}:
+    delete:
+      description: Удаляет алерт по ID
+      parameters:
+      - description: ID алерта
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Удалить алерт
+      tags:
+      - alerts
+    get:
+      description: Возвращает алерт по ID
+      parameters:
+      - description: ID алерта
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Alert'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Получить алерт
+      tags:
+      - alerts
+  /events:
+    get:
+      description: Возвращает события с фильтрацией по таргету/типу либо постранично
+      parameters:
+      - description: ID таргета
+        in: query
+        name: target_id
+        type: string
+      - description: Тип события
+        in: query
+        name: type
+        type: string
+      - description: Лимит
+        in: query
+        name: limit
+        type: integer
+      - description: Отступ
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/entity.ContainerEvent'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Список событий
+      tags:
+      - events
+  /events/{id}:
+    delete:
+      description: Удаляет событие по ID
+      parameters:
+      - description: ID события
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Удалить событие
+      tags:
+      - events
+    get:
+      description: Возвращает событие по ID
+      parameters:
+      - description: ID события
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.ContainerEvent'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Получить событие
+      tags:
+      - events
+  /probes:
+    get:
+      description: Возвращает пробы с фильтрацией по таргету/результату либо постранично
+      parameters:
+      - description: ID таргета
+        in: query
+        name: target_id
+        type: string
+      - description: Успешность пробы
+        in: query
+        name: success
+        type: boolean
+      - description: Лимит
+        in: query
+        name: limit
+        type: integer
+      - description: Отступ
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/entity.Probe'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Список проб
+      tags:
+      - probes
+  /probes/{id}:
+    delete:
+      description: Удаляет пробу по ID
+      parameters:
+      - description: ID пробы
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Удалить пробу
+      tags:
+      - probes
+    get:
+      description: Возвращает пробу по ID
+      parameters:
+      - description: ID пробы
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Probe'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Получить пробу
+      tags:
+      - probes
+  /targets:
+    get:
+      description: Возвращает таргеты с фильтрацией по типу/статусу либо постранично
+      parameters:
+      - description: Тип таргета
+        in: query
+        name: type
+        type: string
+      - description: Статус таргета
+        in: query
+        name: status
+        type: string
+      - description: Лимит
+        in: query
+        name: limit
+        type: integer
+      - description: Отступ
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/entity.Target'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Список таргетов
+      tags:
+      - targets
+    post:
+      consumes:
+      - application/json
+      description: Регистрирует новый таргет для мониторинга
+      parameters:
+      - description: Данные таргета
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/entity.Target'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/entity.Target'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Создать таргет
+      tags:
+      - targets
+  /targets/{id}:
+    delete:
+      description: Удаляет таргет по ID
+      parameters:
+      - description: ID таргета
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Удалить таргет
+      tags:
+      - targets
+    get:
+      description: Возвращает таргет по ID
+      parameters:
+      - description: ID таргета
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Target'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Получить таргет
+      tags:
+      - targets
+  /targets/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Изменяет статус существующего таргета
+      parameters:
+      - description: ID таргета
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Новый статус
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            status:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Target'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Обновить статус таргета
+      tags:
+      - targets
+swagger: "2.0"

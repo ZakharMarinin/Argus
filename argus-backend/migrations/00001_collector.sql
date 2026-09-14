@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS targets (
 CREATE TABLE IF NOT EXISTS events (
     id SERIAL PRIMARY KEY,
     target_id uuid NOT NULL,
-    event int NOT NULL CHECK (event BETWEEN 0 AND 4),
+    event text NOT NULL,
     details text,
     event_time timestamptz NOT NULL DEFAULT NOW(),
     FOREIGN KEY (target_id) REFERENCES targets(id)
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS probes (
     id SERIAL PRIMARY KEY,
     target_id uuid NOT NULL,
     success boolean NOT NULL DEFAULT FALSE,
-    latency integer NOT NULL,
+    latency BIGINT NOT NULL,
     created_at timestamptz NOT NULL DEFAULT NOW(),
     FOREIGN KEY (target_id) REFERENCES targets(id)
 );

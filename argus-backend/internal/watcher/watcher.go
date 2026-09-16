@@ -5,6 +5,7 @@ import (
 	"argus-collector/internal/domain/entity"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -26,6 +27,8 @@ type UseCase interface {
 	GetTargetsByType(ctx context.Context, targetType string) ([]*entity.Target, error)
 	CreateEvent(ctx context.Context, event *entity.ContainerEvent) (*entity.ContainerEvent, error)
 	CreateTarget(ctx context.Context, target *entity.Target) (*entity.Target, error)
+
+	CreateAlert(ctx context.Context, alert *entity.Alert) (*entity.Alert, error)
 }
 
 type Watcher struct {
@@ -64,7 +67,9 @@ func buildDetails(message events.Message) string {
 }
 
 func (w *Watcher) createEvent(ctx context.Context, message events.Message) error {
-	var event entity.ContainerEvent
+	const op = "Watcher.createEvent"
+
+	log := w.log.With("op", op)
 
 	targets, err := w.uc.GetTargetsByType(ctx, watcherTargetType)
 	if err != nil {
@@ -85,16 +90,78 @@ func (w *Watcher) createEvent(ctx context.Context, message events.Message) error
 		return nil
 	}
 
-	event.TargetID = target.ID
-	event.Event = entity.EventType(message.Action)
-	event.Details = buildDetails(message)
+	eventType := entity.EventType(message.Action)
+	if !eventType.Valid() {
+		log.Error("invalid event type", "action", message.Action)
 
-	_, err = w.uc.CreateEvent(ctx, &event)
+		return nil
+	}
+
+	event := &entity.ContainerEvent{
+		TargetID: target.ID,
+		Event:    eventType,
+		Details:  buildDetails(message),
+	}
+
+	_, err = w.uc.CreateEvent(ctx, event)
 	if err != nil {
 		return err
 	}
 
+	w.createAlert(ctx, event, message.Actor.Attributes)
+
 	return nil
+}
+
+func alertDetails(event entity.EventType, attrs map[string]string) string {
+	image := attrs["image"]
+
+	if event == entity.ContainerOOM {
+		return fmt.Sprintf("Container was killed after running out of memory (image: %s)", image)
+	}
+
+	if event == entity.ContainerDie {
+		return fmt.Sprintf("Container exited unexpectedly with code %s (image: %s)", attrs["exitCode"], image)
+	}
+
+	return fmt.Sprintf("Container reported a %s event (image: %s)", event, image)
+}
+
+func (w *Watcher) createAlert(ctx context.Context, event *entity.ContainerEvent, attrs map[string]string) {
+	const op = "Watcher.createAlert"
+
+	severity, ok := alertForEvent(event.Event, attrs["exitCode"])
+	if !ok {
+		return
+	}
+
+	alert := &entity.Alert{
+		TargetID: event.TargetID,
+		Severity: severity,
+		Details:  alertDetails(event.Event, attrs),
+	}
+
+	_, err := w.uc.CreateAlert(ctx, alert)
+	if err != nil {
+		w.log.With("op", op).Error("failed to create alert", "error", err)
+	}
+}
+
+func alertForEvent(event entity.EventType, exitCode string) (entity.Severity, bool) {
+	switch event {
+	case entity.ContainerOOM:
+		return entity.SeverityCritical, true
+	case entity.ContainerDie:
+		if exitCode == "0" {
+			return entity.SeverityInfo, false
+		}
+
+		return entity.SeverityError, true
+	case entity.ContainerKill, entity.ContainerRestart, entity.ContainerDestroy:
+		return entity.SeverityInfo, false
+	default:
+		return entity.SeverityInfo, false
+	}
 }
 
 func (w *Watcher) registerFromLabels(ctx context.Context, name string, labels map[string]string) error {
@@ -169,7 +236,7 @@ func (w *Watcher) RunWatcher(ctx context.Context) {
 	}
 
 	backoff := minBackoff
-	
+
 	for {
 		timer := time.NewTimer(backoff)
 

@@ -41,6 +41,14 @@ func (uc *UseCase) GetTarget(ctx context.Context, id uuid.UUID) (*entity.Target,
 	return target, wrapErr(op, err)
 }
 
+func (uc *UseCase) GetTargetsByIDs(ctx context.Context, ids []uuid.UUID) ([]*entity.Target, error) {
+	const op = "UseCase.GetTargetsByIDs"
+
+	targets, err := uc.db.GetTargetsByIDs(ctx, ids)
+
+	return targets, wrapErr(op, err)
+}
+
 func (uc *UseCase) GetTargetsByType(ctx context.Context, targetType string) ([]*entity.Target, error) {
 	const op = "UseCase.GetTargetsByType"
 

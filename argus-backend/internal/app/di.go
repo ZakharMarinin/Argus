@@ -1,6 +1,7 @@
 package app
 
 import (
+	"argus-collector/internal/alerter"
 	"argus-collector/internal/config"
 	"argus-collector/internal/prober"
 	"argus-collector/internal/storage"
@@ -21,6 +22,7 @@ type Container struct {
 	router   *chi.Mux
 	prober   *prober.Prober
 	watcher  *watcher.Watcher
+	alerter  *alerter.Alerter
 	handlers *handlers.Handler
 	uc       *usecase.UseCase
 	db       *storage.Storage
@@ -62,6 +64,24 @@ func (c *Container) Watcher(ctx context.Context) (*watcher.Watcher, error) {
 	}
 
 	return c.watcher, nil
+}
+
+func (c *Container) Alerter(ctx context.Context) (*alerter.Alerter, error) {
+	if c.alerter == nil {
+		uc, err := c.UseCase(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		a, err := alerter.NewAlerter(c.cfg, c.log, uc)
+		if err != nil {
+			return nil, err
+		}
+
+		c.alerter = a
+	}
+
+	return c.alerter, nil
 }
 
 func (c *Container) Handler(ctx context.Context) (*handlers.Handler, error) {

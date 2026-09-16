@@ -50,9 +50,6 @@ func NewHandler(log *slog.Logger, uc UseCase) *Handler {
 	return &Handler{log: log, uc: uc}
 }
 
-// parsePagination reads ?limit=&offset= from the request, defaulting limit
-// to defaultLimit when absent or unparsable (an explicit 0 would otherwise
-// translate into a SQL LIMIT 0 and silently return nothing).
 func parsePagination(r *http.Request) (limit uint64, offset int) {
 	limit = parseLimit(r)
 
@@ -67,8 +64,6 @@ func parsePagination(r *http.Request) (limit uint64, offset int) {
 	return limit, offset
 }
 
-// parsePaginationUint64 is parsePagination for the usecase methods whose
-// offset parameter is uint64 rather than int (GetAllTargets).
 func parsePaginationUint64(r *http.Request) (limit, offset uint64) {
 	limit = parseLimit(r)
 

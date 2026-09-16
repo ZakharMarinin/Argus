@@ -66,8 +66,6 @@ func insertReturning(ctx context.Context, db *pgxpool.Pool, table string, column
 	return db.QueryRow(ctx, query, args...).Scan(dest...)
 }
 
-// getByID selects a single row by its primary key and scans it into dest.
-// If no row matches, notFoundErr is returned instead of the raw pgx.ErrNoRows.
 func getByID(ctx context.Context, db *pgxpool.Pool, table string, columns []string, id any, notFoundErr error, dest ...any) error {
 	query, args, err := sq.
 		Select(columns...).

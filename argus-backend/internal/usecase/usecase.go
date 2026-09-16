@@ -14,6 +14,7 @@ type TargetRepository interface {
 	UpdateTargetStatus(ctx context.Context, id uuid.UUID, status string) (*entity.Target, error)
 	DeleteTarget(ctx context.Context, id uuid.UUID) error
 	GetTarget(ctx context.Context, id uuid.UUID) (*entity.Target, error)
+	GetTargetsByIDs(ctx context.Context, ids []uuid.UUID) ([]*entity.Target, error)
 	GetTargetsByType(ctx context.Context, targetType string) ([]*entity.Target, error)
 	GetTargetsByStatus(ctx context.Context, status string) ([]*entity.Target, error)
 	GetAllTargets(ctx context.Context, limit, offset uint64) ([]*entity.Target, error)
@@ -37,6 +38,7 @@ type AlertRepository interface {
 	GetAlertsBySeverity(ctx context.Context, severity entity.Severity) ([]*entity.Alert, error)
 	GetAlertsByNotification(ctx context.Context, flag bool) ([]*entity.Alert, error)
 	GetAllAlerts(ctx context.Context, limit uint64, offset int) ([]*entity.Alert, error)
+	MarkAlertNotified(ctx context.Context, id int) error
 }
 
 //nolint:dupl

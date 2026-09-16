@@ -24,6 +24,7 @@ import (
 // @Success      201  {object} entity.Target
 // @Failure      400  {object} response.ErrorResponse
 // @Router       /targets [post].
+//
 //nolint:dupl
 func (h *Handler) CreateTarget(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)

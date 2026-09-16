@@ -57,6 +57,31 @@ func (ar *AlertRepository) DeleteAlert(ctx context.Context, id int) (int, error)
 	return id, nil
 }
 
+func (ar *AlertRepository) MarkAlertNotified(ctx context.Context, id int) error {
+	const op = "Storage.AlertRepository.MarkAlertNotified"
+
+	query, args, err := sq.
+		Update("alerts").
+		Set("notificated", true).
+		Where(sq.Eq{"id": id}).
+		PlaceholderFormat(sq.Dollar).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	result, err := ar.db.Exec(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("%s: %w", op, entity.ErrAlertNotFound)
+	}
+
+	return nil
+}
+
 func (ar *AlertRepository) GetAlert(ctx context.Context, id int) (*entity.Alert, error) {
 	const op = "Storage.AlertRepository.GetAlert"
 

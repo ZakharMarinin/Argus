@@ -1,0 +1,13 @@
+filename: usecase.go
+packages:
+  argus-collector/internal/usecase:
+    config: 
+      dir: "{{.InterfaceDir}}/mocks"
+
+    interfaces:
+      TargetRepository:
+      ProberRepository:
+      AlertRepository:
+      EventRepository:
+      LogMatchRepository:
+      Storage:

@@ -145,6 +145,28 @@ func (tr *TargetRepository) GetTargetsByType(ctx context.Context, targetType str
 	return targets, nil
 }
 
+func (tr *TargetRepository) GetTargetsByIDs(ctx context.Context, ids []uuid.UUID) ([]*entity.Target, error) {
+	const op = "Storage.TargetRepository.GetTargetsByIDs"
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	query, args, err := tr.getTargetsConstructor().
+		Where(sq.Eq{"id": ids}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	targets, err := tr.getTargetsQuery(ctx, query, args)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return targets, nil
+}
+
 func (tr *TargetRepository) GetTargetsByStatus(ctx context.Context, status string) ([]*entity.Target, error) {
 	const op = "Storage.TargetRepository.GetTargetsByStatus"
 

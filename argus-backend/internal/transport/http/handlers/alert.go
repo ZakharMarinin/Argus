@@ -24,6 +24,7 @@ import (
 // @Success      201  {object} entity.Alert
 // @Failure      400  {object} response.ErrorResponse
 // @Router       /alerts [post].
+//
 //nolint:dupl
 func (h *Handler) CreateAlert(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)

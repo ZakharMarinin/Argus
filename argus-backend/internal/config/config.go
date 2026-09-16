@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
@@ -10,10 +11,11 @@ import (
 )
 
 type Config struct {
-	Env           string        `yaml:"env"`
-	Server        Server        `yaml:"http_server"`
-	Postgres      string        `yaml:"postgres"`
-	Prober Prober `yaml:"prober"`
+	Env      string   `yaml:"env"`
+	Server   Server   `yaml:"http_server"`
+	Postgres string   `yaml:"postgres"`
+	Prober   Prober   `yaml:"prober"`
+	Telegram Telegram `yaml:"telegram"`
 }
 
 type Server struct {
@@ -27,6 +29,12 @@ type Server struct {
 type Prober struct {
 	ProbeInterval time.Duration `yaml:"probe_interval"`
 	ProbeTimeout  time.Duration `yaml:"probe_timeout"`
+}
+
+type Telegram struct {
+	NotifyInterval time.Duration `yaml:"notify_interval"`
+	BotToken       string        `yaml:"-"`
+	ChatID         int64         `yaml:"-"`
 }
 
 func MustParseConfig() *Config {
@@ -45,6 +53,14 @@ func MustParseConfig() *Config {
 	}
 
 	cfg.Postgres = os.Getenv("POSTGRES_URL")
+	cfg.Telegram.BotToken = os.Getenv("BOT_TOKEN")
+
+	if chatID := os.Getenv("CHAT_ID"); chatID != "" {
+		cfg.Telegram.ChatID, err = strconv.ParseInt(chatID, 10, 64)
+		if err != nil {
+			log.Fatalf("cannot parse CHAT_ID: %s", err)
+		}
+	}
 
 	return &cfg
 }

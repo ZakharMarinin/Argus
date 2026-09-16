@@ -7,3 +7,5 @@ http_server:
 prober:
   probe_timeout: 5s
   probe_interval: 60s
+telegram:
+  notify_interval: 5s

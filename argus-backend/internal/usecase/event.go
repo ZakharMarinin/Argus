@@ -16,6 +16,8 @@ func (uc *UseCase) CreateEvent(ctx context.Context, event *entity.ContainerEvent
 		return nil, wrapErr(op, entity.ErrInvalidEventType)
 	}
 
+	event.CreatedAt = time.Now()
+
 	created, err := uc.db.CreateEvent(ctx, event)
 
 	return created, wrapErr(op, err)

@@ -52,6 +52,14 @@ func (uc *UseCase) GetAlertsByNotification(ctx context.Context, flag bool) ([]*e
 	return alerts, wrapErr(op, err)
 }
 
+func (uc *UseCase) MarkAlertNotified(ctx context.Context, id int) error {
+	const op = "UseCase.MarkAlertNotified"
+
+	err := uc.db.MarkAlertNotified(ctx, id)
+
+	return wrapErr(op, err)
+}
+
 func (uc *UseCase) GetAllAlerts(ctx context.Context, limit uint64, offset int) ([]*entity.Alert, error) {
 	const op = "UseCase.GetAllAlerts"
 

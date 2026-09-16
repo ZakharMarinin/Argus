@@ -83,7 +83,36 @@ func (a *App) run(ctx context.Context) error {
 		})
 	}
 
+	a.startAlerter(ctx, workerCtx)
+
 	return nil
+}
+
+func (a *App) startAlerter(ctx, workerCtx context.Context) {
+	if a.cfg.Telegram.BotToken == "" || a.cfg.Telegram.ChatID == 0 {
+		a.log.Info("alerter not started, telegram is not configured")
+
+		return
+	}
+
+	alerter, err := a.di.Alerter(ctx)
+	if err != nil {
+		a.log.Error("alerter not started", "error", err)
+
+		return
+	}
+
+	a.wg.Go(func() {
+		a.log.Info("Run: bot started")
+
+		alerter.StartBot()
+	})
+
+	a.wg.Go(func() {
+		a.log.Info("Run: alerter started")
+
+		alerter.StartAlerter(workerCtx)
+	})
 }
 
 func (a *App) initDeps(ctx context.Context) error {
@@ -107,6 +136,10 @@ func (a *App) Stop(ctx context.Context) {
 	}
 
 	a.cancel()
+
+	if a.di.alerter != nil {
+		a.di.alerter.StopBot()
+	}
 
 	a.wg.Wait()
 

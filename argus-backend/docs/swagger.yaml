@@ -35,6 +35,7 @@ definitions:
     - kill
     - restart
     - destroy
+    - start
     type: string
     x-enum-varnames:
     - ContainerDie
@@ -42,6 +43,20 @@ definitions:
     - ContainerKill
     - ContainerRestart
     - ContainerDestroy
+    - ContainerStart
+  entity.LogMatch:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      message:
+        type: string
+      severity:
+        $ref: '#/definitions/entity.Severity'
+      target_id:
+        type: string
+    type: object
   entity.Probe:
     properties:
       created_at:
@@ -99,8 +114,16 @@ info:
 paths:
   /alerts:
     get:
-      description: Возвращает алерты с фильтрацией по важности/отправке либо постранично
+      description: Возвращает алерты; фильтры сочетаются между собой. Общее число
+        подходящих записей - в заголовке X-Total-Count
       parameters:
+      - collectionFormat: multi
+        description: ID таргета, можно несколько
+        in: query
+        items:
+          type: string
+        name: target_id
+        type: array
       - description: Важность
         in: query
         name: severity
@@ -109,11 +132,26 @@ paths:
         in: query
         name: notified
         type: boolean
+      - description: Не раньше этого момента, RFC 3339
+        in: query
+        name: since
+        type: string
+      - description: Порядок по id
+        enum:
+        - asc
+        - desc
+        in: query
+        name: order
+        type: string
       - description: Лимит
         in: query
         name: limit
         type: integer
-      - description: Отступ
+      - description: Сколько записей пропустить
+        in: query
+        name: skip
+        type: integer
+      - description: Только записи с id больше указанного
         in: query
         name: offset
         type: integer
@@ -122,6 +160,10 @@ paths:
       responses:
         "200":
           description: OK
+          headers:
+            X-Total-Count:
+              description: Число записей под фильтром
+              type: integer
           schema:
             items:
               $ref: '#/definitions/entity.Alert'
@@ -300,6 +342,118 @@ paths:
       summary: Получить событие
       tags:
       - events
+  /log-matches:
+    get:
+      description: Возвращает лог-матчи; фильтры сочетаются между собой. Общее число
+        подходящих записей - в заголовке X-Total-Count
+      parameters:
+      - collectionFormat: multi
+        description: ID таргета, можно несколько
+        in: query
+        items:
+          type: string
+        name: target_id
+        type: array
+      - description: Важность
+        in: query
+        name: severity
+        type: integer
+      - description: Не раньше этого момента, RFC 3339
+        in: query
+        name: since
+        type: string
+      - description: Порядок по id
+        enum:
+        - asc
+        - desc
+        in: query
+        name: order
+        type: string
+      - description: Лимит
+        in: query
+        name: limit
+        type: integer
+      - description: Сколько записей пропустить
+        in: query
+        name: skip
+        type: integer
+      - description: Только записи с id больше указанного
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-Total-Count:
+              description: Число записей под фильтром
+              type: integer
+          schema:
+            items:
+              $ref: '#/definitions/entity.LogMatch'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Список лог-матчей
+      tags:
+      - log-matches
+  /log-matches/{id}:
+    delete:
+      description: Удаляет лог-матч по ID
+      parameters:
+      - description: ID лог-матча
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Удалить лог-матч
+      tags:
+      - log-matches
+    get:
+      description: Возвращает лог-матч по ID
+      parameters:
+      - description: ID лог-матча
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.LogMatch'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Получить лог-матч
+      tags:
+      - log-matches
   /probes:
     get:
       description: Возвращает пробы с фильтрацией по таргету/результату либо постранично

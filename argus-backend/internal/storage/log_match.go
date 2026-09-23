@@ -7,7 +7,7 @@ import (
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -97,95 +97,24 @@ func (lmr *LogMatchRepository) GetLogMatch(ctx context.Context, id int) (*entity
 	return &logMatch, nil
 }
 
-func (lmr *LogMatchRepository) getLogMatchesConstructor() sq.SelectBuilder {
-	builder := sq.
-		Select("id", "target_id", "severity", "message", "created_at").
-		From("log_matches").
-		OrderBy("id ASC").
-		PlaceholderFormat(sq.Dollar)
+func (lmr *LogMatchRepository) FindLogMatches(ctx context.Context, f entity.ListFilter) ([]*entity.LogMatch, int, error) {
+	const op = "Storage.LogMatchRepository.FindLogMatches"
 
-	return builder
-}
+	logMatches, total, err := findPage(ctx, lmr.db,
+		"log_matches",
+		[]string{"id", "target_id", "severity", "message", "created_at"},
+		f,
+		func(rows pgx.Rows) (*entity.LogMatch, error) {
+			var m entity.LogMatch
 
-func (lmr *LogMatchRepository) GetLogMatchesByTarget(ctx context.Context, targetID uuid.UUID) ([]*entity.LogMatch, error) {
-	const op = "Storage.LogMatchRepository.GetLogMatchesByTarget"
+			err := rows.Scan(&m.ID, &m.TargetID, &m.Severity, &m.Message, &m.CreatedAt)
 
-	query, args, err := lmr.getLogMatchesConstructor().
-		Where(sq.Eq{"target_id": targetID}).
-		ToSql()
+			return &m, err
+		},
+	)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	logMatches, err := lmr.getLogMatchesQuery(ctx, query, args)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-
-	return logMatches, nil
-}
-
-func (lmr *LogMatchRepository) GetLogMatchesBySeverity(ctx context.Context, severity entity.Severity) ([]*entity.LogMatch, error) {
-	const op = "Storage.LogMatchRepository.GetLogMatchesBySeverity"
-
-	query, args, err := lmr.getLogMatchesConstructor().
-		Where(sq.Eq{"severity": severity}).
-		ToSql()
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-
-	logMatches, err := lmr.getLogMatchesQuery(ctx, query, args)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-
-	return logMatches, nil
-}
-
-func (lmr *LogMatchRepository) GetAllLogMatches(ctx context.Context, limit uint64, offset int) ([]*entity.LogMatch, error) {
-	const op = "Storage.LogMatchRepository.GetAllLogMatches"
-
-	query, args, err := lmr.getLogMatchesConstructor().
-		Where(sq.Gt{"id": offset}).
-		Limit(limit).
-		ToSql()
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-
-	logMatches, err := lmr.getLogMatchesQuery(ctx, query, args)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-
-	return logMatches, nil
-}
-
-func (lmr *LogMatchRepository) getLogMatchesQuery(ctx context.Context, query string, args []any) ([]*entity.LogMatch, error) {
-	var logMatches []*entity.LogMatch
-
-	rows, err := lmr.db.Query(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var logMatch entity.LogMatch
-
-		err := rows.Scan(&logMatch.ID, &logMatch.TargetID, &logMatch.Severity, &logMatch.Message, &logMatch.CreatedAt)
-		if err != nil {
-			return nil, err
-		}
-
-		logMatches = append(logMatches, &logMatch)
-	}
-
-	err = rows.Err()
-	if err != nil {
-		return nil, err
-	}
-
-	return logMatches, nil
+	return logMatches, total, nil
 }

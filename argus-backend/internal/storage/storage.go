@@ -2,6 +2,7 @@ package storage
 
 import (
 	"argus-collector/internal/config"
+	"argus-collector/internal/domain/entity"
 	"context"
 	"errors"
 	"fmt"
@@ -87,4 +88,90 @@ func getByID(ctx context.Context, db *pgxpool.Pool, table string, columns []stri
 	}
 
 	return nil
+}
+
+func listWhere(b sq.SelectBuilder, f entity.ListFilter) sq.SelectBuilder {
+	if len(f.TargetIDs) > 0 {
+		b = b.Where(sq.Eq{"target_id": f.TargetIDs})
+	}
+
+	if f.Severity != nil {
+		b = b.Where(sq.Eq{"severity": *f.Severity})
+	}
+
+	if f.Notified != nil {
+		b = b.Where(sq.Eq{"notificated": *f.Notified})
+	}
+
+	if f.Since != nil {
+		b = b.Where(sq.GtOrEq{"created_at": *f.Since})
+	}
+
+	if f.After > 0 {
+		b = b.Where(sq.Gt{"id": f.After})
+	}
+
+	return b
+}
+
+func findPage[T any](
+	ctx context.Context,
+	db *pgxpool.Pool,
+	table string,
+	columns []string,
+	f entity.ListFilter,
+	scan func(pgx.Rows) (T, error),
+) ([]T, int, error) {
+	order := "id ASC"
+	if f.Desc {
+		order = "id DESC"
+	}
+
+	query, args, err := listWhere(sq.Select(columns...).From(table), f).
+		OrderBy(order).
+		Limit(f.Limit).
+		Offset(f.Skip).
+		PlaceholderFormat(sq.Dollar).
+		ToSql()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	out := make([]T, 0, f.Limit)
+
+	for rows.Next() {
+		item, err := scan(rows)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		out = append(out, item)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	countQuery, countArgs, err := listWhere(sq.Select("count(*)").From(table), f).
+		PlaceholderFormat(sq.Dollar).
+		ToSql()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var total int
+
+	err = db.QueryRow(ctx, countQuery, countArgs...).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return out, total, nil
 }

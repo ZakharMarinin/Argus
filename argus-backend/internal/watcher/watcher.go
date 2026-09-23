@@ -31,20 +31,20 @@ type UseCase interface {
 	CreateAlert(ctx context.Context, alert *entity.Alert) (*entity.Alert, error)
 }
 
+type DockerClient interface {
+	ContainerList(ctx context.Context, options client.ContainerListOptions) (client.ContainerListResult, error)
+	Events(ctx context.Context, options client.EventsListOptions) client.EventsResult
+}
+
 type Watcher struct {
 	cfg    *config.Config
 	log    *slog.Logger
 	uc     UseCase
-	client *client.Client
+	client DockerClient
 }
 
-func NewWatcher(cfg *config.Config, log *slog.Logger, uc UseCase) (*Watcher, error) {
-	cli, err := client.New(client.FromEnv)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Watcher{cfg: cfg, log: log, uc: uc, client: cli}, nil
+func NewWatcher(cfg *config.Config, log *slog.Logger, uc UseCase, client DockerClient) (*Watcher, error) {
+	return &Watcher{cfg: cfg, log: log, uc: uc, client: client}, nil
 }
 
 func buildDetails(message events.Message) string {
@@ -130,7 +130,7 @@ func alertDetails(event entity.EventType, attrs map[string]string) string {
 func (w *Watcher) createAlert(ctx context.Context, event *entity.ContainerEvent, attrs map[string]string) {
 	const op = "Watcher.createAlert"
 
-	severity, ok := alertForEvent(event.Event, attrs["exitCode"])
+	severity, ok := event.Event.AlertSeverity(attrs["exitCode"])
 	if !ok {
 		return
 	}
@@ -144,23 +144,6 @@ func (w *Watcher) createAlert(ctx context.Context, event *entity.ContainerEvent,
 	_, err := w.uc.CreateAlert(ctx, alert)
 	if err != nil {
 		w.log.With("op", op).Error("failed to create alert", "error", err)
-	}
-}
-
-func alertForEvent(event entity.EventType, exitCode string) (entity.Severity, bool) {
-	switch event {
-	case entity.ContainerOOM:
-		return entity.SeverityCritical, true
-	case entity.ContainerDie:
-		if exitCode == "0" {
-			return entity.SeverityInfo, false
-		}
-
-		return entity.SeverityError, true
-	case entity.ContainerKill, entity.ContainerRestart, entity.ContainerDestroy:
-		return entity.SeverityInfo, false
-	default:
-		return entity.SeverityInfo, false
 	}
 }
 
@@ -275,14 +258,14 @@ func (w *Watcher) startListening(ctx context.Context) error {
 	for {
 		select {
 		case event := <-stream.Messages:
-			var err error
-
 			if event.Action == events.ActionStart {
-				err = w.registerFromLabels(ctx, event.Actor.Attributes["name"], event.Actor.Attributes)
-			} else {
-				err = w.createEvent(ctx, event)
+				regErr := w.registerFromLabels(ctx, event.Actor.Attributes["name"], event.Actor.Attributes)
+				if regErr != nil {
+					w.log.Error("failed to process event", "error", regErr)
+				}
 			}
 
+			err := w.createEvent(ctx, event)
 			if err != nil {
 				w.log.Error("failed to process event", "error", err)
 			}

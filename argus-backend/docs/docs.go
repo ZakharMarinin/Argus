@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/alerts": {
             "get": {
-                "description": "Возвращает алерты с фильтрацией по важности/отправке либо постранично",
+                "description": "Возвращает алерты; фильтры сочетаются между собой. Общее число подходящих записей - в заголовке X-Total-Count",
                 "produces": [
                     "application/json"
                 ],
@@ -26,6 +26,16 @@ const docTemplate = `{
                 ],
                 "summary": "Список алертов",
                 "parameters": [
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "ID таргета, можно несколько",
+                        "name": "target_id",
+                        "in": "query"
+                    },
                     {
                         "type": "integer",
                         "description": "Важность",
@@ -39,6 +49,22 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "Не раньше этого момента, RFC 3339",
+                        "name": "since",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "description": "Порядок по id",
+                        "name": "order",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Лимит",
                         "name": "limit",
@@ -46,7 +72,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Отступ",
+                        "description": "Сколько записей пропустить",
+                        "name": "skip",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Только записи с id больше указанного",
                         "name": "offset",
                         "in": "query"
                     }
@@ -58,6 +90,12 @@ const docTemplate = `{
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/entity.Alert"
+                            }
+                        },
+                        "headers": {
+                            "X-Total-Count": {
+                                "type": "integer",
+                                "description": "Число записей под фильтром"
                             }
                         }
                     },
@@ -299,6 +337,173 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "ID события",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/log-matches": {
+            "get": {
+                "description": "Возвращает лог-матчи; фильтры сочетаются между собой. Общее число подходящих записей - в заголовке X-Total-Count",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "log-matches"
+                ],
+                "summary": "Список лог-матчей",
+                "parameters": [
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "ID таргета, можно несколько",
+                        "name": "target_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Важность",
+                        "name": "severity",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Не раньше этого момента, RFC 3339",
+                        "name": "since",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "description": "Порядок по id",
+                        "name": "order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Лимит",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Сколько записей пропустить",
+                        "name": "skip",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Только записи с id больше указанного",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/entity.LogMatch"
+                            }
+                        },
+                        "headers": {
+                            "X-Total-Count": {
+                                "type": "integer",
+                                "description": "Число записей под фильтром"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/log-matches/{id}": {
+            "get": {
+                "description": "Возвращает лог-матч по ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "log-matches"
+                ],
+                "summary": "Получить лог-матч",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID лог-матча",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/entity.LogMatch"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Удаляет лог-матч по ID",
+                "tags": [
+                    "log-matches"
+                ],
+                "summary": "Удалить лог-матч",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID лог-матча",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -735,15 +940,37 @@ const docTemplate = `{
                 "oom",
                 "kill",
                 "restart",
-                "destroy"
+                "destroy",
+                "start"
             ],
             "x-enum-varnames": [
                 "ContainerDie",
                 "ContainerOOM",
                 "ContainerKill",
                 "ContainerRestart",
-                "ContainerDestroy"
+                "ContainerDestroy",
+                "ContainerStart"
             ]
+        },
+        "entity.LogMatch": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "severity": {
+                    "$ref": "#/definitions/entity.Severity"
+                },
+                "target_id": {
+                    "type": "string"
+                }
+            }
         },
         "entity.Probe": {
             "type": "object",

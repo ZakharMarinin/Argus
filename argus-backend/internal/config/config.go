@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"log"
 	"os"
 	"strconv"
@@ -16,6 +17,17 @@ type Config struct {
 	Postgres string   `yaml:"postgres"`
 	Prober   Prober   `yaml:"prober"`
 	Telegram Telegram `yaml:"telegram"`
+	Matcher  Matcher  `yaml:"matcher"`
+}
+
+type Matcher struct {
+	Rules []Rule `yaml:"rules"`
+}
+
+type Rule struct {
+	Pattern   string `yaml:"pattern"`
+	Severity  string `yaml:"severity"`
+	Container string `yaml:"container"`
 }
 
 type Server struct {
@@ -33,6 +45,7 @@ type Prober struct {
 
 type Telegram struct {
 	NotifyInterval time.Duration `yaml:"notify_interval"`
+	Cooldown       time.Duration `yaml:"cooldown" env-default:"5m"`
 	BotToken       string        `yaml:"-"`
 	ChatID         int64         `yaml:"-"`
 }
@@ -62,5 +75,22 @@ func MustParseConfig() *Config {
 		}
 	}
 
+	err = cfg.ValidateConfig()
+	if err != nil {
+		log.Fatalf("invalid config: %v", err)
+	}
+
 	return &cfg
+}
+
+func (c *Config) ValidateConfig() error {
+	if c.Postgres == "" {
+		return errors.New("no postgress addr")
+	}
+
+	if c.Server.Addr == "" {
+		return errors.New("no http addr")
+	}
+
+	return nil
 }

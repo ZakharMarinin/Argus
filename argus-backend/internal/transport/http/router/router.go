@@ -44,6 +44,15 @@ func Router(log *slog.Logger, r *chi.Mux, h *handlers.Handler) {
 			})
 		})
 
+		r.Route("/log-matches", func(r chi.Router) {
+			r.Get("/", h.GetListLogMatches)
+
+			r.Route("/{id}", func(r chi.Router) {
+				r.Get("/", h.GetLogMatch)
+				r.Delete("/", h.DeleteLogMatch)
+			})
+		})
+
 		r.Route("/alerts", func(r chi.Router) {
 			r.Post("/", h.CreateAlert)
 			r.Get("/", h.GetListAlerts)

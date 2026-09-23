@@ -11,6 +11,31 @@ Two small Go services, one Postgres, and a dashboard that refuses to make number
 
 ![Argus overview black](docs/media/overview.png)
 
+## Contents
+
+- [What it is](#what-it-is)
+- [The rule that shapes everything](#the-rule-that-shapes-everything)
+- [How it works](#how-it-works)
+- [What you get](#what-you-get)
+  - [Outage history with real durations](#outage-history-with-real-durations)
+  - [A per-container page that admits what it doesn't know](#a-per-container-page-that-admits-what-it-doesnt-know)
+  - [Alert history you can actually narrow down](#alert-history-you-can-actually-narrow-down)
+  - [Log lines that match your rules](#log-lines-that-match-your-rules)
+  - [Charts that keep their gaps](#charts-that-keep-their-gaps)
+  - [Host resources in the sidebar](#host-resources-in-the-sidebar)
+  - [A mascot that tells you the mood before you read a number](#a-mascot-that-tells-you-the-mood-before-you-read-a-number)
+  - [Details that matter at 3am](#details-that-matter-at-3am)
+- [Getting started](#getting-started)
+  - [1. Start Argus](#1-start-argus)
+  - [2. Tell Argus what to watch](#2-tell-argus-what-to-watch)
+  - [3. Open the dashboard from another machine](#3-open-the-dashboard-from-another-machine)
+  - [What Argus can touch](#what-argus-can-touch)
+- [Alerts](#alerts)
+- [Configuration](#configuration)
+- [Deliberately not in this version](#deliberately-not-in-this-version)
+- [Under the hood](#under-the-hood)
+- [License](#license)
+
 ## What it is
 
 Argus watches one machine and answers three questions: *is my service responding*, *are my containers staying up*, and *what happened while I wasn't looking*.

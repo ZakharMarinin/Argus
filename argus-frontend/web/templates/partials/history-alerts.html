@@ -1,0 +1,62 @@
+{{define "history-alerts" -}}
+{{/* Фильтры, список и пагинатор - один партиал: после клика перерисовывается
+     и активный чип. Поллинг только на первой странице - на старых строки
+     съезжали бы под курсором. */}}
+<div class="card card--roomy" id="history-alerts"
+     {{if .Pager.Live}}hx-get="/partials/history/alerts{{.Query}}" hx-trigger="every 10s, refreshNow from:body" hx-swap="outerHTML"{{end}}>
+
+  <div class="filters">
+    <div class="filter-group" role="group" aria-label="Filter by type">
+      <span class="filter-group__label">Type</span>
+      {{range .Types}}
+      <a class="chip{{if .Active}} is-active{{end}}" href="/history/alerts{{.Href}}"
+         hx-get="/partials/history/alerts{{.Href}}" hx-target="#history-alerts" hx-swap="outerHTML"
+         hx-push-url="/history/alerts{{.Href}}"
+         {{if .Active}}aria-current="true"{{end}}>{{.Label}}</a>
+      {{end}}
+    </div>
+
+    <div class="filter-group" role="group" aria-label="Filter by severity">
+      <span class="filter-group__label">Severity</span>
+      {{range .Severities}}
+      <a class="chip{{if .Active}} is-active{{end}}" href="/history/alerts{{.Href}}"
+         hx-get="/partials/history/alerts{{.Href}}" hx-target="#history-alerts" hx-swap="outerHTML"
+         hx-push-url="/history/alerts{{.Href}}"
+         {{if .Active}}aria-current="true"{{end}}>{{.Label}}</a>
+      {{end}}
+    </div>
+
+    {{with .Pager.Label}}<p class="filters__count">{{.}}</p>{{end}}
+  </div>
+
+  {{range .Alerts}}
+  <article class="alert-row{{if .Alarm}} alert-row--dark{{end}} {{.Status.Class}}">
+    <img class="alert-row__mood pixel" src="{{.MoodSrc}}" alt="" width="36" height="36">
+    <div class="alert-row__body">
+      <h3 class="alert-row__msg">{{.Message}}</h3>
+      <p class="alert-row__meta">
+        <span class="alert-row__target">{{.Target}}</span>
+        <span aria-hidden="true">·</span>
+        <span>{{.Type}}</span>
+      </p>
+    </div>
+    <span class="pill">{{.Severity}}</span>
+    <div class="alert-row__when">
+      <span class="alert-row__time">{{.Time}}</span>
+      <span class="alert-row__state">{{.State}}</span>
+    </div>
+  </article>
+  {{else}}
+  <div class="empty">
+    <img class="empty__img pixel" src="/static/img/argus-happy.gif" alt="" width="88" height="88">
+    <h3 class="empty__title">No alerts</h3>
+    <p class="empty__note">
+      Either nothing matches the selected filter, or Argus hasn't recorded
+      any alerts yet{{with .Empty}} · history is {{.}}{{end}}.
+    </p>
+  </div>
+  {{end}}
+
+  {{template "pager" .Pager}}
+</div>
+{{- end}}

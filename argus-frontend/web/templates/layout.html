@@ -1,0 +1,91 @@
+{{define "layout" -}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} · Argus</title>
+  <link rel="icon" href="/static/img/argus-logo-128.png">
+
+  {{/* Тему нужно проставить до первой отрисовки, иначе страница мигнёт светлым
+       и только потом станет тёмной. Поэтому скрипт инлайновый и синхронный -
+       единственный такой на странице. Он же разрешает «как в системе» в
+       конкретное значение data-theme, чтобы в CSS палитра описывалась один раз. */}}
+  <script>
+    (function () {
+      var KEY = 'argus:theme';
+      var media = window.matchMedia('(prefers-color-scheme: dark)');
+
+      function stored() {
+        try { return localStorage.getItem(KEY); } catch (e) { return null; }
+      }
+
+      var theme = {
+        mode: stored() || 'auto',
+
+        resolved: function () {
+          if (this.mode === 'auto') return media.matches ? 'dark' : 'light';
+          return this.mode;
+        },
+
+        apply: function () {
+          var root = document.documentElement;
+          root.setAttribute('data-theme', this.resolved());
+          root.setAttribute('data-theme-mode', this.mode);
+          document.dispatchEvent(new CustomEvent('argus:theme', {
+            detail: { mode: this.mode, resolved: this.resolved() }
+          }));
+        },
+
+        set: function (mode) {
+          this.mode = mode;
+          try {
+            if (mode === 'auto') localStorage.removeItem(KEY);
+            else localStorage.setItem(KEY, mode);
+          } catch (e) { /* приватный режим - выбор просто не переживёт перезагрузку */ }
+          this.apply();
+        }
+      };
+
+      media.addEventListener('change', function () {
+        if (theme.mode === 'auto') theme.apply();
+      });
+
+      window.argusTheme = theme;
+      theme.apply();
+    })();
+  </script>
+
+  <link rel="stylesheet" href="{{asset "/static/css/argus.css"}}">
+  {{/* Библиотеки вендорятся статикой: дашборд должен открываться без интернета.
+       Порядок важен - app.js вешает слушатели htmx и alpine:init до старта Alpine. */}}
+  <script src="{{asset "/static/js/htmx.min.js"}}" defer></script>
+  <script src="{{asset "/static/js/chart.min.js"}}" defer></script>
+  <script src="{{asset "/static/js/app.js"}}" defer></script>
+  <script src="{{asset "/static/js/alpine.min.js"}}" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  {{/* На узком экране сайдбар свёрнут; на широком CSS игнорирует атрибут.
+       Без JS атрибута нет вовсе, и сайдбар виден всегда. */}}
+  <div class="app" x-data="{ sidebar: false }">
+    <button type="button" class="sidebar-toggle" @click="sidebar = !sidebar"
+            :aria-expanded="sidebar ? 'true' : 'false'" aria-controls="sidebar">
+      <img class="brand__logo pixel" src="/static/img/argus-logo-128.png" alt="" width="26" height="26">
+      <span class="brand__name">Argus</span>
+      <span class="sidebar-toggle__state" x-text="sidebar ? 'hide' : 'menu'">menu</span>
+    </button>
+
+    {{template "sidebar" .}}
+
+    <main class="main" id="main">
+      {{template "pagehead" .}}
+      {{template "content" .}}
+    </main>
+  </div>
+
+  {{template "new-target" .}}
+</body>
+</html>
+{{- end}}

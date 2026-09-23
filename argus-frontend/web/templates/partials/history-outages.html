@@ -1,0 +1,68 @@
+{{define "history-outages" -}}
+{{/* Интервалы простоя не хранятся - они выведены из проб и событий Docker,
+     поэтому у строки нет ни id, ни ссылки на «карточку инцидента».
+     Опрос реже, чем у остальных партиалов: сборка обходит все цели. */}}
+<section class="card card--roomy" id="history-outages"
+         {{if .Pager.Live}}hx-get="/partials/history/outages{{.Query}}" hx-trigger="every 30s, refreshNow from:body" hx-swap="outerHTML"{{end}}
+         aria-label="Outages in the last 24 hours">
+  {{with .Panel}}
+  <div class="card__head card__head--spaced">
+    <h2 class="card__title">Outages · 24h</h2>
+    {{with .Note}}<p class="card__note">{{.}}</p>{{end}}
+  </div>
+
+  {{with .Stats}}
+  <div class="meta-grid">
+    {{range .}}
+    <div class="meta-tile {{.Status.Class}}">
+      <p class="meta-tile__label">{{.Label}}</p>
+      <p class="meta-tile__value">{{.Value}}</p>
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+
+  {{range .Rows}}
+  <div class="incident-row {{.Status.Class}}">
+    <div class="incident-row__id">
+      <div class="label">
+        <span class="dot" aria-hidden="true"></span>
+        {{if .Href}}
+        <a class="incident-row__name" href="{{.Href}}">{{.Name}}</a>
+        {{else}}
+        <div class="incident-row__name">{{.Name}}</div>
+        {{end}}
+      </div>
+      <div class="incident-row__kind">{{.Kind}}</div>
+    </div>
+
+    <code class="incident-row__cause">{{.Cause}}</code>
+
+    <span class="pill">{{.Label}}</span>
+
+    <div class="incident-row__stats">
+      <div class="stat">
+        <span class="stat__label">Started</span>
+        <span class="stat__value">{{.Started}}</span>
+      </div>
+      <div class="stat">
+        <span class="stat__label">Down for</span>
+        <span class="stat__value">{{.Duration}}</span>
+      </div>
+    </div>
+  </div>
+  {{else}}
+  <div class="empty">
+    <img class="empty__img pixel" src="/static/img/argus-happy.gif" alt="" width="88" height="88">
+    <h3 class="empty__title">No outages in the last 24h</h3>
+    <p class="empty__note">
+      Nothing failed a check and no container died. An empty list here means the
+      records are empty, not that nothing was watched.
+    </p>
+  </div>
+  {{end}}
+  {{end}}
+
+  {{template "pager" .Pager}}
+</section>
+{{- end}}

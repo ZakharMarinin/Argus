@@ -1,0 +1,17 @@
+{{define "content" -}}
+{{with .Content}}
+<div class="stack page-enter">
+
+  <div class="cards-3">
+    {{template "summary" .Health}}
+    {{template "chart-card" .Chart}}
+    {{template "logs-card" .Logs}}
+  </div>
+
+  {{template "targets" .Targets}}
+  {{template "containers" .Containers}}
+  {{template "recent" .Recent}}
+
+</div>
+{{end}}
+{{- end}}

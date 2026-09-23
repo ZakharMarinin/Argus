@@ -1,0 +1,35 @@
+{{define "new-target" -}}
+{{/* Дашборд - чистый читатель argus-backend API и ничего не пишет сам.
+     Контейнеры регистрирует watcher по лейблу; отдельный uptime-таргет без
+     контейнера создаётся через сам API бэкенда - формы под это здесь нет и
+     не появится, пока это не отдельная задача. */}}
+<div class="modal" x-data x-cloak x-show="$store.argus.modal"
+     x-transition.opacity.duration.150ms
+     @keydown.escape.window="$store.argus.modal = false"
+     @click.self="$store.argus.modal = false"
+     role="dialog" aria-modal="true" aria-labelledby="new-target-title">
+  <div class="modal__box">
+    <h2 class="modal__title" id="new-target-title">Add a target</h2>
+    <p class="modal__note">
+      A container registers itself: tag it with the <code>argus.monitor=true</code> label
+      (add <code>argus.probe.url</code> too for an HTTP check) and the watcher picks it up
+      without a restart.
+    </p>
+    <p class="modal__note">
+      A standalone uptime target has no label to hang off — create one against the
+      backend's own API:
+    </p>
+    <pre class="modal__code"><code>curl -X POST http://&lt;your argus-backend&gt;/v1/api/targets \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"my-app","source":"https://myapp.local/health","target_type":"probe"}'</code></pre>
+    <p class="modal__note">
+      Full request/response shapes are in the backend's Swagger UI at
+      <code>/swagger/index.html</code>.
+    </p>
+    <div class="modal__foot">
+      <button type="button" class="btn btn--primary" @click="$store.argus.copySnippet($event)">Copy snippet</button>
+      <button type="button" class="btn btn--ghost" @click="$store.argus.modal = false">Close</button>
+    </div>
+  </div>
+</div>
+{{- end}}

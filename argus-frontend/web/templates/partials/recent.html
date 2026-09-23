@@ -1,0 +1,29 @@
+{{define "recent" -}}
+<section class="card card--roomy" id="recent"
+         hx-get="/partials/recent" hx-trigger="every 30s, refreshNow from:body" hx-swap="outerHTML"
+         aria-label="Recent activity">
+  <div class="card__head card__head--spaced">
+    <h2 class="card__title">Recent activity</h2>
+    <a class="card__link" href="/history/alerts">All history →</a>
+  </div>
+
+  {{range .Rows}}
+  <div class="recent-row {{.Status.Class}}">
+    <span class="dot" aria-hidden="true"></span>
+    <time class="recent-row__time" title="{{.Time}}">{{.Ago}}</time>
+    {{if .Href}}<a class="recent-row__target" href="{{.Href}}">{{.Target}}</a>{{else}}<span class="recent-row__target">{{.Target}}</span>{{end}}
+    <a class="recent-row__kind" href="{{.TabHref}}">{{.Kind}}</a>
+    <span class="recent-row__text">{{.Text}}</span>
+  </div>
+  {{else}}
+  <div class="empty">
+    <img class="empty__img pixel" src="/static/img/argus-happy.gif" alt="" width="88" height="88">
+    <h3 class="empty__title">Nothing happened in the last 24h</h3>
+    <p class="empty__note">
+      No outages, and no warning-or-worse alerts or log matches. Info and debug
+      lines live in History.
+    </p>
+  </div>
+  {{end}}
+</section>
+{{- end}}

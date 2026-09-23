@@ -1,0 +1,47 @@
+{{define "summary" -}}
+<section class="card card--dark {{.MoodStatus.Class}}" id="summary" data-health="{{.Tone}}"
+         hx-get="/partials/summary" hx-trigger="every 10s, refreshNow from:body" hx-swap="outerHTML"
+         aria-label="Overall status">
+  <div class="card__head">
+    <div class="summary-mood">
+      <img class="summary-mood__img pixel" src="{{.Mood.Src}}" alt="" width="48" height="48">
+      <div>
+        <h2 class="card__title">{{.Mood.Title}}</h2>
+        {{if not .Empty}}<p class="summary-mood__reason">{{.Reason}}</p>{{end}}
+      </div>
+    </div>
+    <span class="badge">{{.State}}</span>
+  </div>
+
+  {{if .Empty}}
+  <p class="card__note">
+    argus-backend hasn't recorded a single target yet. As soon as it checks the first
+    target or sees a container, this will fill in on its own.
+  </p>
+  {{else}}
+  <div class="bignums">
+    <p class="bignum">
+      <span class="bignum__value">{{.TargetsUp}}/{{.TargetsTotal}}</span>
+      <span class="bignum__label">uptime targets<br>up</span>
+    </p>
+    <p class="bignum">
+      <span class="bignum__value bignum__value--accent">{{.AlertsDay}}</span>
+      <span class="bignum__label">alerts<br>in 24h</span>
+    </p>
+  </div>
+
+  <div class="healthbar" role="img" aria-label="Target status distribution">
+    {{range .Bar}}<span class="healthbar__seg {{.Status.Class}}" style="{{styleWidth .Percent}}"></span>{{end}}
+  </div>
+
+  <div class="tiles">
+    {{range .Tiles}}
+    <div class="tile {{.Status.Class}}">
+      <span class="tile__value">{{.Value}}</span>
+      <span class="tile__label">{{.Label}}</span>
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+</section>
+{{- end}}

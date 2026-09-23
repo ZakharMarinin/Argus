@@ -1,0 +1,11 @@
+{{define "detail-meta" -}}
+<div class="meta-grid" id="detail-meta"
+     hx-get="{{.URL}}" hx-trigger="every 10s, refreshNow from:body" hx-swap="outerHTML">
+  {{range .Tiles}}
+  <div class="meta-tile {{.Status.Class}}">
+    <p class="meta-tile__label">{{.Label}}</p>
+    <p class="meta-tile__value">{{.Value}}</p>
+  </div>
+  {{end}}
+</div>
+{{- end}}

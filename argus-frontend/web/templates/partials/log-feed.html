@@ -1,0 +1,51 @@
+{{define "log-feed" -}}
+<section class="card card--roomy log-feed" id="log-feed"
+         {{if or (not .Pager) .Pager.Live}}hx-get="{{.URL}}{{.Query}}" hx-trigger="every 10s, refreshNow from:body" hx-swap="outerHTML"{{end}}
+         aria-label="Matched log lines">
+  <div class="filters">
+    <h2 class="card__title">Matched log lines</h2>
+    {{with .Chips}}
+    <div class="filter-group" role="group" aria-label="Filter by severity">
+      {{range .}}
+      <a class="chip{{if .Active}} is-active{{end}}" href="{{$.PageURL}}{{.Href}}"
+         hx-get="{{$.URL}}{{.Href}}" hx-target="#log-feed" hx-swap="outerHTML" hx-push-url="{{$.PageURL}}{{.Href}}"
+         {{if .Active}}aria-current="true"{{end}}>{{.Label}}</a>
+      {{end}}
+    </div>
+    {{end}}
+    {{with .Pager}}{{with .Label}}<p class="filters__count">{{.}}</p>{{end}}{{end}}
+    {{with .AllHref}}<a class="card__link filters__count" href="{{.}}">All logs for this container →</a>{{end}}
+  </div>
+
+  {{if .Rows}}
+  <div class="log-rows">
+    {{range .Rows}}
+    <details class="log-row {{.Status.Class}}" data-row-id="{{.ID}}">
+      <summary class="log-row__head">
+        <span class="dot" aria-hidden="true"></span>
+        <code class="log-row__msg">{{.Message}}</code>
+        {{if $.ShowTarget}}
+        {{if .Href}}<a class="log-row__target" href="{{.Href}}">{{.Target}}</a>{{else}}<span class="log-row__target">{{.Target}}</span>{{end}}
+        {{end}}
+        <span class="pill">{{.Severity}}</span>
+        <time class="log-row__when" title="{{.Time}}">{{.Ago}}</time>
+      </summary>
+      <pre class="log-row__full">{{.Message}}</pre>
+      <p class="log-row__meta">{{.Time}}{{if $.ShowTarget}} · {{.Target}}{{end}}</p>
+    </details>
+    {{end}}
+  </div>
+  {{else}}
+  <div class="empty">
+    <img class="empty__img pixel" src="/static/img/argus-happy.gif" alt="" width="88" height="88">
+    <h3 class="empty__title">No log matches</h3>
+    <p class="empty__note">
+      No log line matched a rule, or none matches the selected filter.
+      An empty list means the records are empty, not that logs were checked.
+    </p>
+  </div>
+  {{end}}
+
+  {{with .Pager}}{{template "pager" .}}{{end}}
+</section>
+{{- end}}

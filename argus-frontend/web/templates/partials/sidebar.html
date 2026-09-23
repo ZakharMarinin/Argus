@@ -1,0 +1,128 @@
+{{define "sidebar" -}}
+<aside class="sidebar" id="sidebar" :data-collapsed="(!sidebar).toString()">
+
+  <div class="brand">
+    <img class="brand__logo pixel" src="/static/img/argus-logo-128.png" alt="" width="30" height="30">
+    <span class="brand__name">Argus</span>
+
+    {{/* Три состояния по кругу: как в системе → светлая → тёмная.
+         Выбор запоминается в localStorage и переживает перезагрузку. */}}
+    <button type="button" class="theme-toggle" x-data="themeToggle"
+            @click="cycle()" :title="title" :aria-label="title">
+      <template x-if="mode === 'auto'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"></circle>
+          <path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none"></path>
+        </svg>
+      </template>
+      <template x-if="mode === 'light'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.5"></circle>
+          <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"></path>
+        </svg>
+      </template>
+      <template x-if="mode === 'dark'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"></path>
+        </svg>
+      </template>
+    </button>
+  </div>
+
+  <nav class="nav" aria-label="Sections">
+    {{range .Nav}}
+    <a class="nav__item{{if eq .Key $.Active}} is-active{{end}}" href="{{.Href}}"
+       {{if eq .Key $.Active}}aria-current="page"{{end}}>
+      <span class="nav__dot" aria-hidden="true"></span>
+      <span class="nav__label">{{.Label}}</span>
+      {{if .Badge}}<span class="nav__badge">{{.Badge}}</span>{{end}}
+    </a>
+    {{end}}
+  </nav>
+
+  {{/* Контейнеров на хосте может быть много, и это единственный список в
+       сайдбаре, который растёт. Сворачивание - на <details>: состояние,
+       клавиатура и aria-expanded достаются от браузера, JS не нужен. */}}
+  {{with .Sidebar.Containers}}
+  <details class="side-group" open data-remember="argus:containers">
+    <summary class="side-group__head">
+      <svg class="side-group__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 6l6 6-6 6"></path>
+      </svg>
+      <span class="side-group__label">Containers</span>
+    </summary>
+
+    <nav class="nav nav--sub" aria-label="Containers">
+      {{range .}}
+      <a class="nav__item{{if eq .Key $.Active}} is-active{{end}}" href="{{.Href}}"
+         {{if eq .Key $.Active}}aria-current="page"{{end}}>
+        <span class="nav__dot" aria-hidden="true"></span>
+        <span class="nav__label">{{.Label}}</span>
+        {{if .Badge}}<span class="nav__badge nav__badge--alert" title="Needs attention">{{.Badge}}</span>{{end}}
+      </a>
+      {{end}}
+    </nav>
+  </details>
+  {{end}}
+
+  {{with .Sidebar.Host}}
+  <div class="side-section">
+    <h2 class="side-label">
+      Host resources
+      {{if not .Available}}
+      <span class="side-label__stub" title="Host metrics are out of scope for the first version — this block is waiting on a host collector">soon</span>
+      {{end}}
+    </h2>
+    {{range .Meters}}
+    <div class="meter {{.Status.Class}}">
+      <div class="meter__head">
+        <span>{{.Label}}</span>
+        <span class="meter__value">{{.Value}}</span>
+      </div>
+      <div class="meter__track" role="img" aria-label="{{.Label}}: {{.Value}}">
+        <div class="meter__fill" style="{{styleWidth .Percent}}"></div>
+      </div>
+    </div>
+    {{else}}
+    <p class="side-note">{{.Note}}</p>
+    {{end}}
+  </div>
+  {{end}}
+
+  <div class="sidebar__spacer"></div>
+
+  {{/* Легенда настроений: что значит каждая гифка. <details>, чтобы
+       состояние, клавиатура и aria достались от браузера. */}}
+  {{with .Sidebar}}
+  <details class="mood-legend" data-remember="argus:legend">
+    <summary class="mood-strip" title="What the moods mean">
+      <img class="mood-strip__img pixel" src="{{.Mood.Src}}" alt="" width="32" height="32">
+      <div>
+        <span class="mood-strip__title">{{.Mood.Title}}</span>
+        <span class="mood-strip__sub">{{.Build}}</span>
+      </div>
+      <svg class="mood-legend__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M6 15l6-6 6 6"></path>
+      </svg>
+    </summary>
+    <ul class="mood-legend__list" aria-label="Mood legend">
+      {{range .Legend}}
+      <li class="mood-legend__item{{if .Active}} is-active{{end}}"{{if .Active}} aria-current="true"{{end}}>
+        <img class="pixel" src="{{.Src}}" alt="" width="32" height="32">
+        <div>
+          <span class="mood-legend__title">{{.Title}}</span>
+          <span class="mood-legend__when">{{.When}}</span>
+        </div>
+      </li>
+      {{end}}
+    </ul>
+  </details>
+  {{end}}
+
+</aside>
+{{- end}}

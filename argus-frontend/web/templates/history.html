@@ -1,0 +1,50 @@
+{{define "content" -}}
+{{with .Content}}
+<div class="stack page-enter">
+
+  <nav class="tabs" aria-label="History sections">
+    {{range .Tabs}}
+    <a class="tab{{if .Active}} is-active{{end}}" href="{{.Href}}"{{if .Active}} aria-current="page"{{end}}>{{.Label}}</a>
+    {{end}}
+  </nav>
+
+  {{if eq .Tab "logs"}}
+  {{/* Выбор контейнера меняет и график, а он живёт вне поллинга, поэтому
+       пункты - обычные ссылки с полным переходом. <details> даёт состояние,
+       клавиатуру и aria; app.js только закрывает меню по клику снаружи. */}}
+  <details class="dropdown" data-dropdown>
+    <summary class="dropdown__button">
+      <span class="dropdown__label">Container</span>
+      <span class="dropdown__value">{{.Container}}</span>
+      <svg class="dropdown__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M6 9l6 6 6-6"></path>
+      </svg>
+    </summary>
+    <ul class="dropdown__menu" aria-label="Filter by container">
+      {{range .Containers}}
+      <li>
+        <a class="dropdown__item{{if .Selected}} is-active{{end}}" href="{{.Href}}"{{if .Selected}} aria-current="true"{{end}}>
+          <span>{{.Label}}</span>
+          {{if .Selected}}
+          <svg class="dropdown__check" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12l5 5 9-10"></path>
+          </svg>
+          {{end}}
+        </a>
+      </li>
+      {{end}}
+    </ul>
+  </details>
+  {{template "chart-card" .Chart}}
+  {{template "log-feed" .Logs}}
+  {{else if eq .Tab "alerts"}}
+  {{template "history-alerts" .Alerts}}
+  {{else}}
+  {{template "history-outages" .Outages}}
+  {{end}}
+
+</div>
+{{end}}
+{{- end}}

@@ -1,0 +1,51 @@
+{{define "targets" -}}
+<section class="card card--roomy" id="targets"
+         hx-get="/partials/targets" hx-trigger="every 10s, refreshNow from:body" hx-swap="outerHTML"
+         aria-label="Uptime targets">
+  <div class="card__head card__head--spaced">
+    <h2 class="card__title">Uptime targets</h2>
+    {{with .Note}}<p class="card__note">{{.}}</p>{{end}}
+  </div>
+
+  {{range .Targets}}
+  <div class="target-row {{.Status.Class}}">
+    <div class="target-row__id">
+        <div class="label">
+            <span class="dot" aria-hidden="true"></span>
+            <div class="target-row__name">{{.Name}}</div>
+        </div>
+        <div class="target-row__url">{{.URL}}</div>
+    </div>
+
+    <span class="pill">{{.Label}}</span>
+
+    <div class="target-row__stats">
+      <div class="stat">
+        <span class="stat__label">Latency</span>
+        <span class="stat__value">{{.Latency}}</span>
+      </div>
+      <div class="stat">
+        <span class="stat__label">24h</span>
+        <span class="stat__value">{{.Uptime}}</span>
+      </div>
+    </div>
+
+    {{/* Полоска — реальные проверки за сутки, не больше 24 последних.
+         Пока проверок нет, её просто не видно. */}}
+    {{if .Strip}}
+    <div class="strip" role="img" aria-label="Recent checks, successful: {{.Uptime}}">
+      {{range .Strip}}<span class="strip__bar {{.Class}}"></span>{{end}}
+    </div>
+    {{end}}
+  </div>
+  {{else}}
+  <div class="empty">
+    <img class="empty__img pixel" src="/static/img/argus-sleeping.gif" alt="" width="88" height="88">
+    <h3 class="empty__title">No uptime targets</h3>
+    <p class="empty__note">
+      Create one against the backend's own API — it will show up here after the first check.
+    </p>
+  </div>
+  {{end}}
+</section>
+{{- end}}

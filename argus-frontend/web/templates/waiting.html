@@ -1,0 +1,19 @@
+{{define "content" -}}
+{{/* web может стартовать раньше, чем argus-backend поднимется, и переживать
+     его рестарт. Страница ждёт и оживает сама.
+
+     Опрашивается /healthz, а не «/»: когда бэкенд возвращается, меняется вся
+     страница целиком - меню, счётчики, всё. Подменять один блок здесь
+     неправильно, поэтому по первому успешному ответу перезагружаемся. */}}
+{{with .Content}}
+<div class="card page-enter"
+     hx-get="/healthz" hx-trigger="every 5s" hx-swap="none"
+     hx-on::after-request="if (event.detail.successful) location.reload()">
+  <div class="empty">
+    <img class="empty__img pixel" src="{{.Mood.Src}}" alt="" width="88" height="88">
+    <h2 class="empty__title">{{.Title}}</h2>
+    <p class="empty__note">{{.Note}}</p>
+  </div>
+</div>
+{{end}}
+{{- end}}

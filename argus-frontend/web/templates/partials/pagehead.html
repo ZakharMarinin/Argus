@@ -1,0 +1,24 @@
+{{define "pagehead" -}}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">{{.Title}}</h1>
+    <p class="page-sub">{{.Sub}} <code class="page-sub__endpoint">hx-get {{.PartialPath}}</code></p>
+  </div>
+
+  <div class="page-head__actions">
+    {{/* Чип показывает возраст данных и одним кликом ставит поллинг на паузу. */}}
+    <button type="button" class="status-chip"
+            :class="{ 'is-paused': $store.argus.paused, 'is-stale': $store.argus.stale }"
+            @click="$store.argus.toggle()"
+            :title="$store.argus.paused ? 'Resume auto-refresh' : 'Pause auto-refresh'">
+      <span class="status-chip__dot" aria-hidden="true"></span>
+      <span x-text="$store.argus.label">updated just now</span>
+    </button>
+
+    <button type="button" class="btn btn--primary" @click="$store.argus.modal = true">
+      <span class="btn__plus" aria-hidden="true">+</span>
+      New target
+    </button>
+  </div>
+</div>
+{{- end}}

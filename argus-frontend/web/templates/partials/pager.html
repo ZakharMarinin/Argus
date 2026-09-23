@@ -1,0 +1,16 @@
+{{define "pager" -}}
+{{if or .HasNewer .HasOlder}}
+<nav class="pager" aria-label="Pages">
+  {{if .HasNewer}}
+  <a class="pager__link" href="{{.PageURL}}{{.Newer}}" hx-get="{{.PartialURL}}{{.Newer}}"
+     hx-target="{{.Target}}" hx-swap="outerHTML" hx-push-url="{{.PageURL}}{{.Newer}}">← Newer</a>
+  {{else}}<span class="pager__link is-disabled" aria-disabled="true">← Newer</span>{{end}}
+  <span class="pager__label">{{.Label}}</span>
+  {{if not .Live}}<span class="pager__paused">auto-refresh paused on older pages</span>{{end}}
+  {{if .HasOlder}}
+  <a class="pager__link" href="{{.PageURL}}{{.Older}}" hx-get="{{.PartialURL}}{{.Older}}"
+     hx-target="{{.Target}}" hx-swap="outerHTML" hx-push-url="{{.PageURL}}{{.Older}}">Older →</a>
+  {{else}}<span class="pager__link is-disabled" aria-disabled="true">Older →</span>{{end}}
+</nav>
+{{end}}
+{{- end}}

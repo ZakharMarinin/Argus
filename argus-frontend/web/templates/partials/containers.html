@@ -1,0 +1,47 @@
+{{define "containers" -}}
+<section id="containers"
+         hx-get="/partials/containers" hx-trigger="every 10s, refreshNow from:body" hx-swap="outerHTML"
+         aria-label="Containers">
+  <div class="card__head card__head--spaced">
+    <h2 class="card__title">Containers</h2>
+    {{with .Note}}<p class="card__note">{{.}}</p>{{end}}
+  </div>
+
+  {{if .Containers}}
+  <div class="containers-grid">
+    {{range .Containers}}
+    <a class="ctn-card{{if .Dark}} ctn-card--dark{{end}}" href="{{.Href}}">
+      <div class="ctn-card__head">
+        <div class="ctn-card__name">{{.Name}}</div>
+      </div>
+
+      <div class="ctn-card__metrics">
+        {{range .Metrics}}
+        <div class="metric">
+          <span class="metric__label">{{.Label}}</span>
+          <span class="metric__value{{with .Status}} {{.Class}}{{end}}">{{.Value}}</span>
+        </div>
+        {{end}}
+      </div>
+
+      <div class="ctn-card__foot">
+        <span class="pill {{.Status.Class}}">{{.Label}}</span>
+        <span class="ctn-card__note">{{.Note}}</span>
+      </div>
+    </a>
+    {{end}}
+  </div>
+  {{else}}
+  <div class="card">
+    <div class="empty">
+      <img class="empty__img pixel" src="/static/img/argus-sleeping.gif" alt="" width="88" height="88">
+      <h3 class="empty__title">No containers being watched</h3>
+      <p class="empty__note">
+        Tag a container with the <code>argus.monitor=true</code> label — the watcher
+        will pick it up without a restart.
+      </p>
+    </div>
+  </div>
+  {{end}}
+</section>
+{{- end}}

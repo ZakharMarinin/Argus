@@ -19,6 +19,8 @@ It is built for the case where Prometheus + Grafana + Alertmanager is three serv
 
 Everything it knows comes from two sources: HTTP health checks it performs itself, and the Docker event stream. Nothing is inferred, sampled, or smoothed.
 
+![A failed health check becomes an outage, a Telegram alert, and a measured recovery](docs/media/incident.svg)
+
 ## The rule that shapes everything
 
 **Only what is actually in the data reaches the screen.** A monitoring tool that shows a plausible number in place of a missing one is worse than a broken one, so Argus doesn't:
@@ -77,19 +79,19 @@ The 24-hour bar shows measured outages. Its background is deliberately neutral, 
 
 Click a container in the sidebar and you land there. Containers that need attention sort above the calm ones.
 
-![Overview to container](docs/media/overview-to-container.gif)
+![Overview to container](docs/media/container.svg)
 
 ### Alert history you can actually narrow down
 
 Filter by target kind and severity. Filters are links, the list swaps in place, and an empty result says "no alerts match this filter" rather than pretending the history is empty.
 
-![Alert filters](docs/media/alert-filters.gif)
+![Alert filters](docs/media/alert-filters.svg)
 
 ### Charts that keep their gaps
 
 Latency p95 and uptime across all probe targets, and Docker event counts per hour for a single container. The charts are the one part of the page htmx never replaces — points arrive as JSON and datasets update in place, so tooltips and animation survive.
 
-![Charts](docs/media/charts.gif)
+![Charts](docs/media/charts.svg)
 
 ### A mascot that tells you the mood before you read a number
 

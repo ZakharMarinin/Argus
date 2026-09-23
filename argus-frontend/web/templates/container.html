@@ -1,0 +1,28 @@
+{{define "content" -}}
+{{with .Content}}
+<div class="stack page-enter">
+
+  <div class="detail-top">
+    <section class="card card--dark detail-hero" aria-label="Why this container needs attention">
+      <img class="detail-hero__img pixel" src="{{.Hero.MoodSrc}}" alt="" width="72" height="72">
+      <div>
+        <span class="badge">{{.Hero.Badge}}</span>
+        <h2 class="detail-hero__title">{{.Hero.Title}}</h2>
+        <code class="detail-hero__rule">{{.Hero.Rule}}</code>
+      </div>
+    </section>
+
+    {{template "detail-meta" .Meta}}
+  </div>
+
+  {{template "chart-card" .Chart}}
+
+  {{template "timeline" .Timeline}}
+
+  {{template "events" .Events}}
+
+  {{template "log-feed" .Logs}}
+
+</div>
+{{end}}
+{{- end}}

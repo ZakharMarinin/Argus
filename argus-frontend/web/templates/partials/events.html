@@ -1,0 +1,26 @@
+{{define "events" -}}
+{{/* Событие хранит не только рестарты, но и die/oom/kill/destroy, поэтому
+     заголовок про события, а не про одни перезапуски. */}}
+<section class="card" id="events"
+         hx-get="{{.URL}}" hx-trigger="every 15s, refreshNow from:body" hx-swap="outerHTML"
+         aria-label="Container events">
+  <h2 class="card__title">Docker events</h2>
+  <div class="events">
+    {{range .Events}}
+    <div class="event {{.Status.Class}}">
+      <span class="dot" aria-hidden="true"></span>
+      <div>
+        <p class="event__reason">{{.Reason}}</p>
+        <span class="event__time">{{.Time}}</span>
+      </div>
+      <code class="event__kind">{{.Kind}}</code>
+    </div>
+    {{else}}
+    <p class="card__note">
+      No events recorded for this container yet — either collector hasn't seen it
+      restart or die, or it just began watching it.
+    </p>
+    {{end}}
+  </div>
+</section>
+{{- end}}

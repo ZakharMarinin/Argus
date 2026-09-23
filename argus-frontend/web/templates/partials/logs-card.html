@@ -1,0 +1,33 @@
+{{define "logs-card" -}}
+<section class="card card--dark logs-card {{.Status.Class}}" id="logs-card"
+         hx-get="/partials/logs" hx-trigger="every 10s, refreshNow from:body" hx-swap="outerHTML"
+         aria-label="Log matches in the last 24 hours">
+  <div class="card__head">
+    <h2 class="card__title"><span class="dot" aria-hidden="true"></span> Logs · 24h</h2>
+    <a class="card__link" href="/history/logs">All logs →</a>
+  </div>
+
+  <div class="logs-card__count">
+    <p class="logs-card__number" data-count="{{.Count}}">{{.Count}}</p>
+    <div>
+      <p class="logs-card__label">matched lines</p>
+      <p class="logs-card__note">{{.Note}}</p>
+    </div>
+  </div>
+
+  <div class="log-bars" role="img" aria-label="Log matches per hour over the last 24 hours">
+    {{range .Bars}}<span class="log-bars__col" title="{{.Title}}">{{range .Segments}}<span class="log-bars__seg {{.Status.Class}}" style="{{.Style}}"></span>{{end}}</span>{{end}}
+  </div>
+
+  {{with .Skew}}<p class="logs-card__skew" role="note">{{.}}</p>{{end}}
+
+  <div class="tiles">
+    {{range .Tiles}}
+    <div class="tile {{.Status.Class}}">
+      <span class="tile__value">{{.Value}}</span>
+      <span class="tile__label">{{.Label}}</span>
+    </div>
+    {{end}}
+  </div>
+</section>
+{{- end}}

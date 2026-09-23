@@ -1,0 +1,50 @@
+{{define "timeline" -}}
+{{/* Полоса рисуется блоками с посчитанными left/width - без Chart.js и без
+     JS, поэтому её можно спокойно подменять вместе с партиалом.
+     Фон полосы - idle: события Docker говорят только о падениях, и
+     промежуток без них не доказывает, что контейнер работал. */}}
+<section class="card" id="timeline"
+         hx-get="{{.URL}}" hx-trigger="every 30s, refreshNow from:body" hx-swap="outerHTML"
+         aria-label="Downtime over the last 24 hours">
+  <div class="card__head card__head--spaced">
+    <h2 class="card__title">{{.Title}}</h2>
+    <p class="card__note">{{.Hint}}</p>
+  </div>
+
+  {{if .Bands}}
+  <div class="timeline" role="img" aria-label="{{.Title}}">
+    {{range .Bands}}
+    <span class="timeline__band {{.Status.Class}}" style="{{.Style}}" title="{{.Title}}"></span>
+    {{end}}
+  </div>
+  <div class="timeline__scale">
+    <span>24h ago</span>
+    <span>now</span>
+  </div>
+  <div class="legend">
+    {{range .Legend}}
+    <span class="legend__item">
+      <span class="legend__swatch legend__swatch--{{.Color}}"></span>{{.Label}}
+    </span>
+    {{end}}
+  </div>
+
+  {{/* Имя контейнера в строках не повторяется - оно в заголовке страницы.
+       Список нужен потому, что короткий простой на суточной полосе занимает
+       доли процента, и цифру оттуда не прочитать. */}}
+  <div class="outages">
+    {{range .Rows}}
+    <div class="outage {{.Status.Class}}">
+      <span class="dot" aria-hidden="true"></span>
+      <code class="outage__cause">{{.Cause}}</code>
+      <span class="outage__time">{{.Started}}</span>
+      <span class="pill">{{.Label}}</span>
+      <span class="outage__duration">{{.Duration}}</span>
+    </div>
+    {{end}}
+  </div>
+  {{else}}
+  <p class="card__note">{{.Note}}</p>
+  {{end}}
+</section>
+{{- end}}

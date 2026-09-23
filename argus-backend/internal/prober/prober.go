@@ -171,7 +171,7 @@ func (p *Prober) transition(result probeResult) (string, *entity.Alert) {
 		case statusUp:
 			return "", nil
 		case statusDown:
-			return statusUp, &entity.Alert{TargetID: id, Severity: entity.SeverityInfo, Details: "Service is back up"}
+			return statusUp, &entity.Alert{TargetID: &id, Severity: entity.SeverityInfo, Details: "Service is back up"}
 		default:
 			return statusUp, nil
 		}
@@ -183,7 +183,7 @@ func (p *Prober) transition(result probeResult) (string, *entity.Alert) {
 		return "", nil
 	}
 
-	return statusDown, &entity.Alert{TargetID: id, Severity: entity.SeverityError, Details: result.reason}
+	return statusDown, &entity.Alert{TargetID: &id, Severity: entity.SeverityError, Details: result.reason}
 }
 
 func (p *Prober) handleTransitions(ctx context.Context, results []probeResult) {

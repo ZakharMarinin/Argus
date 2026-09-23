@@ -35,6 +35,7 @@ func Router(h *handlers.Handler) (http.Handler, error) {
 	mux.HandleFunc("GET /partials/targets", h.PartialTargets)
 	mux.HandleFunc("GET /partials/containers", h.PartialContainers)
 	mux.HandleFunc("GET /partials/recent", h.PartialRecent)
+	mux.HandleFunc("GET /partials/host", h.PartialHost)
 	mux.HandleFunc("GET /partials/history/{tab}", h.PartialHistory)
 	mux.HandleFunc("GET /partials/container/{name}/meta", h.PartialMeta)
 	mux.HandleFunc("GET /partials/container/{name}/events", h.PartialEvents)

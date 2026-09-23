@@ -20,6 +20,15 @@ type Config struct {
 	Matcher   Matcher   `yaml:"matcher"`
 	Retention Retention `yaml:"retention"`
 	Watcher   Watcher   `yaml:"watcher"`
+	Host      Host      `yaml:"host"`
+}
+
+type Host struct {
+	Interval    time.Duration `yaml:"interval"    env-default:"15s"`
+	DiskPath    string        `yaml:"disk_path"   env-default:"/"   env:"HOST_DISK_PATH"`
+	Warning     float64       `yaml:"warning"     env-default:"90"`
+	Critical    float64       `yaml:"critical"    env-default:"95"`
+	Consecutive int           `yaml:"consecutive" env-default:"3"`
 }
 
 type Watcher struct {
@@ -115,6 +124,11 @@ func (c *Config) ValidateConfig() error {
 
 	if c.Watcher.CrashLoopRestarts < 2 || c.Watcher.CrashLoopWindow <= 0 {
 		return errors.New("watcher.crash_loop_restarts must be >= 2 and watcher.crash_loop_window positive")
+	}
+
+	h := c.Host
+	if h.Interval <= 0 || h.Consecutive < 1 || h.Warning <= 0 || h.Warning >= h.Critical || h.Critical > 100 {
+		return errors.New("host: interval must be positive, consecutive >= 1, and 0 < warning < critical <= 100")
 	}
 
 	return nil

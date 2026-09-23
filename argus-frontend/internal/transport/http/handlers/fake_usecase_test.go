@@ -25,6 +25,8 @@ type fakeUseCase struct {
 	err       error
 	detailErr error
 	writeErr  error
+	host      entity.Host
+	hostErr   error
 }
 
 func (f fakeUseCase) TargetStatus(context.Context) ([]entity.TargetSummary, error) {
@@ -73,6 +75,8 @@ func (f fakeUseCase) LogMatches(context.Context, string) (entity.LogMatchReport,
 
 func (f fakeUseCase) Ping(context.Context) error { return f.err }
 
+func (f fakeUseCase) Host(context.Context) (entity.Host, error) { return f.host, f.hostErr }
+
 func (f fakeUseCase) CreateProbe(context.Context, string, string) error { return f.writeErr }
 
 func (f fakeUseCase) DeleteTarget(context.Context, string) error { return f.writeErr }
@@ -111,7 +115,7 @@ func filledUseCase() fakeUseCase {
 				ID: "container:app-worker", Kind: entity.KindContainer,
 				Label: "app-worker", Status: entity.StatusUp, UpdatedAt: testNow,
 				Container: &entity.ContainerStats{
-					Restarts1h:  2,
+					Crashes:     2,
 					LastEvent:   "restart",
 					LastEventAt: new(testNow.Add(-20 * time.Minute)),
 				},
@@ -187,8 +191,8 @@ func filledUseCase() fakeUseCase {
 				ID: "container:app-worker", Kind: entity.KindContainer,
 				Label: "app-worker", Status: entity.StatusUp, UpdatedAt: testNow,
 				Container: &entity.ContainerStats{
-					Restarts1h: 2,
-					LastEvent:  "restart", LastEventAt: new(testNow.Add(-20 * time.Minute)),
+					Crashes:   2,
+					LastEvent: "restart", LastEventAt: new(testNow.Add(-20 * time.Minute)),
 				},
 			},
 			Events: []entity.ContainerEvent{

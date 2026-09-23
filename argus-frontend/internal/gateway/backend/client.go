@@ -16,6 +16,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -283,6 +284,10 @@ func listValues(q entity.ListQuery, skip, limit int) url.Values {
 		v.Add("target_id", id)
 	}
 
+	if q.Host {
+		v.Set("host", "true")
+	}
+
 	level, ok := severityLevel(q.Severity)
 	if ok {
 		v.Set("severity", strconv.Itoa(level))
@@ -293,6 +298,50 @@ func listValues(q entity.ListQuery, skip, limit int) url.Values {
 	}
 
 	return v
+}
+
+type hostMetricDTO struct {
+	Percent float64 `json:"percent"`
+	Used    uint64  `json:"used"`
+	Total   uint64  `json:"total"`
+	Level   string  `json:"level"`
+}
+
+type hostDTO struct {
+	Hostname  string         `json:"hostname"`
+	SampledAt *time.Time     `json:"sampled_at"`
+	CPU       *hostMetricDTO `json:"cpu"`
+	Memory    *hostMetricDTO `json:"memory"`
+	Disk      *hostMetricDTO `json:"disk"`
+}
+
+func (m *hostMetricDTO) entity() *entity.HostMetric {
+	if m == nil {
+		return nil
+	}
+
+	return &entity.HostMetric{Percent: m.Percent, Used: m.Used, Total: m.Total, Level: m.Level}
+}
+
+func (c *Client) Host(ctx context.Context) (entity.Host, error) {
+	var dto hostDTO
+
+	err := c.getJSON(ctx, "/v1/api/host", nil, &dto)
+	if errors.Is(err, ErrNotFound) {
+		return entity.Host{}, entity.ErrNotFound
+	}
+
+	if err != nil {
+		return entity.Host{}, err
+	}
+
+	return entity.Host{
+		Hostname:  dto.Hostname,
+		SampledAt: dto.SampledAt,
+		CPU:       dto.CPU.entity(),
+		Memory:    dto.Memory.entity(),
+		Disk:      dto.Disk.entity(),
+	}, nil
 }
 
 func (c *Client) CreateTarget(ctx context.Context, t entity.Target) error {

@@ -164,7 +164,7 @@ func (m *Matcher) onMatch(ctx context.Context, id uuid.UUID, t time.Time, msg st
 	}
 
 	_, err = m.uc.CreateAlert(ctx, &entity.Alert{
-		TargetID: id,
+		TargetID: &id,
 		Severity: rule.severity,
 		Details:  fmt.Sprintf("Log line matched rule %q", rule.re.String()),
 	})

@@ -551,7 +551,7 @@ func TestSidebarListsTroubledContainersFirst(t *testing.T) {
 		{
 			ID: "container:restarting", Kind: entity.KindContainer,
 			Label: "restarting", Status: entity.StatusUp, UpdatedAt: testNow,
-			Container: &entity.ContainerStats{Restarts1h: 3, LastEvent: "restart"},
+			Container: &entity.ContainerStats{Crashes: 3, LastEvent: "restart"},
 		},
 		{
 			ID: "container:stopped", Kind: entity.KindContainer,

@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
+	"argus-frontend/internal/domain/entity"
 	"argus-frontend/internal/transport/http/view"
 )
 
@@ -136,4 +138,18 @@ func (h *Handler) detailPartial(w http.ResponseWriter, r *http.Request, name str
 	}
 
 	h.partial(w, name, pick(detail))
+}
+
+func (h *Handler) PartialHost(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), queryTimeout)
+	defer cancel()
+
+	host, err := h.uc.Host(ctx)
+	if errors.Is(err, entity.ErrNotReady) {
+		h.partialError(w, r, err)
+
+		return
+	}
+
+	h.partial(w, "host-panel", h.present.HostPanel(host, err))
 }

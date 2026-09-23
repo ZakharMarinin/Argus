@@ -29,6 +29,7 @@ func (uc *UseCase) TargetStatus(ctx context.Context) ([]entity.TargetSummary, er
 			summary.Probe, err = uc.probeStats(ctx, t.ID)
 		case entity.KindContainer:
 			summary.Container, err = uc.containerStats(ctx, t.ID)
+		case entity.KindHost:
 		}
 
 		if err != nil {
@@ -103,7 +104,7 @@ func (uc *UseCase) probeStats(ctx context.Context, targetID string) (*entity.Pro
 	return stats, nil
 }
 
-const restartWindow = time.Hour
+const crashWindow = 15 * time.Minute
 
 // containerStats считает агрегаты контейнера из его событий Docker.
 func (uc *UseCase) containerStats(ctx context.Context, targetID string) (*entity.ContainerStats, error) {
@@ -116,12 +117,12 @@ func (uc *UseCase) containerStats(ctx context.Context, targetID string) (*entity
 }
 
 func containerStatsFromEvents(events []entity.ContainerEvent) *entity.ContainerStats {
-	restarts, lastReturn := returnsSince(events, time.Now().Add(-restartWindow))
-	stats := &entity.ContainerStats{Restarts1h: restarts}
+	crashes, lastReturn := crashesSince(events, time.Now().Add(-crashWindow))
+	stats := &entity.ContainerStats{Crashes: crashes}
 
 	if lastReturn != nil {
-		clearAt := lastReturn.Add(restartWindow)
-		stats.RestartsClearAt = &clearAt
+		clearAt := lastReturn.Add(crashWindow)
+		stats.CrashesClearAt = &clearAt
 	}
 
 	var latest *entity.ContainerEvent

@@ -106,6 +106,17 @@ func (a *App) run(ctx context.Context) error {
 		})
 	}
 
+	sampler, err := a.di.Host(ctx)
+	if err != nil {
+		return fmt.Errorf("init host sampler: %w", err)
+	}
+
+	a.wg.Go(func() {
+		a.log.Info("Run: host sampler started")
+
+		sampler.Run(workerCtx)
+	})
+
 	a.startCleaner(ctx, workerCtx)
 	a.startAlerter(ctx, workerCtx)
 

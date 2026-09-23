@@ -44,6 +44,30 @@ definitions:
     - ContainerRestart
     - ContainerDestroy
     - ContainerStart
+  entity.HostMetric:
+    properties:
+      level:
+        type: string
+      percent:
+        type: number
+      total:
+        type: integer
+      used:
+        type: integer
+    type: object
+  entity.HostSnapshot:
+    properties:
+      cpu:
+        $ref: '#/definitions/entity.HostMetric'
+      disk:
+        $ref: '#/definitions/entity.HostMetric'
+      hostname:
+        type: string
+      memory:
+        $ref: '#/definitions/entity.HostMetric'
+      sampled_at:
+        type: string
+    type: object
   entity.LogMatch:
     properties:
       created_at:
@@ -124,6 +148,10 @@ paths:
           type: string
         name: target_id
         type: array
+      - description: Только алерты хоста (без таргета)
+        in: query
+        name: host
+        type: boolean
       - description: Важность
         in: query
         name: severity
@@ -342,6 +370,20 @@ paths:
       summary: Получить событие
       tags:
       - events
+  /host:
+    get:
+      description: Последний замер CPU, RAM и корневого раздела. Метрика без значения
+        - null; до первого замера sampled_at - null
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.HostSnapshot'
+      summary: Ресурсы хоста
+      tags:
+      - host
   /log-matches:
     get:
       description: Возвращает лог-матчи; фильтры сочетаются между собой. Общее число

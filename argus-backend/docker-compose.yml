@@ -20,6 +20,8 @@ services:
   argus:
     build: .
     env_file: .env
+    environment:
+      HOST_DISK_PATH: /hostfs
     container_name: argus-coolector
     restart: unless-stopped
     ports:
@@ -33,6 +35,7 @@ services:
       - "label=disable"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - /:/hostfs:ro
     depends_on:
       argus-postgres:
         condition: service_healthy

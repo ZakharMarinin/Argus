@@ -60,8 +60,8 @@ var Moods = map[string]Mood{
 	"scared": {
 		Key: "scared", Src: "/static/img/argus-scared.gif",
 		Title: "Something's off",
-		Note:  "There are warnings: a flaky check, or a container just restarted.",
-		When:  "A flaky check, a restart in the last hour, a warning alert, or 3–4 log matches.",
+		Note:  "There are warnings: a flaky check, or a container just crashed and came back.",
+		When:  "A flaky check, a container crash in the last 15 minutes, a warning alert, or 3–4 log matches.",
 	},
 	"angry": {
 		Key: "angry", Src: "/static/img/argus-angry.gif",
@@ -134,15 +134,9 @@ type LegendMood struct {
 	Active bool
 }
 
-// HostPanel - метрики хоста (CPU/RAM/диск).
-//
-// В схеме бэкенда нет ни таблицы, ни колонки под них - собственного
-// host-коллектора первая версия не предусматривает. Блок остаётся местом
-// под него, но чисел не выдумывает (Available=false).
 type HostPanel struct {
-	Available bool
-	Note      string
-	Meters    []Meter
+	Note   string
+	Meters []Meter
 }
 
 // Meter - одна полоска использования ресурса.

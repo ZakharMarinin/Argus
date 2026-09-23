@@ -33,6 +33,23 @@ func TestRecordDie(t *testing.T) {
 	require.False(t, w.recordDie(uuid.New(), t0.Add(3*time.Minute)), "other targets have their own window")
 }
 
+func TestPlannedStop(t *testing.T) {
+	w := NewWatcher(&config.Config{}, nil, nil, nil, nil)
+	id := uuid.New()
+	t0 := time.Now()
+
+	require.False(t, w.plannedStop(id, entity.ContainerDie, t0), "die without kill is a crash")
+
+	require.False(t, w.plannedStop(id, entity.ContainerKill, t0))
+	require.True(t, w.plannedStop(id, entity.ContainerDie, t0.Add(time.Second)), "docker stop: kill then die")
+	require.False(t, w.plannedStop(id, entity.ContainerDie, t0.Add(2*time.Second)), "a kill covers only the next die")
+
+	require.False(t, w.plannedStop(id, entity.ContainerKill, t0))
+	require.False(t, w.plannedStop(id, entity.ContainerDie, t0.Add(time.Minute)), "a stale kill doesn't excuse a later crash")
+
+	require.False(t, w.plannedStop(uuid.New(), entity.ContainerDie, t0), "kills are per target")
+}
+
 func TestSyncStatuses(t *testing.T) {
 	stillUp := &entity.Target{ID: uuid.New(), Source: "api", Status: statusUp}
 	fresh := &entity.Target{ID: uuid.New(), Source: "db", Status: "unknown"}

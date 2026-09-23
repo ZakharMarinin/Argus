@@ -37,6 +37,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Только алерты хоста (без таргета)",
+                        "name": "host",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Важность",
                         "name": "severity",
@@ -356,6 +362,26 @@ const docTemplate = `{
                         "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/host": {
+            "get": {
+                "description": "Последний замер CPU, RAM и корневого раздела. Метрика без значения - null; до первого замера sampled_at - null",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "host"
+                ],
+                "summary": "Ресурсы хоста",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/entity.HostSnapshot"
                         }
                     }
                 }
@@ -951,6 +977,43 @@ const docTemplate = `{
                 "ContainerDestroy",
                 "ContainerStart"
             ]
+        },
+        "entity.HostMetric": {
+            "type": "object",
+            "properties": {
+                "level": {
+                    "type": "string"
+                },
+                "percent": {
+                    "type": "number"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "used": {
+                    "type": "integer"
+                }
+            }
+        },
+        "entity.HostSnapshot": {
+            "type": "object",
+            "properties": {
+                "cpu": {
+                    "$ref": "#/definitions/entity.HostMetric"
+                },
+                "disk": {
+                    "$ref": "#/definitions/entity.HostMetric"
+                },
+                "hostname": {
+                    "type": "string"
+                },
+                "memory": {
+                    "$ref": "#/definitions/entity.HostMetric"
+                },
+                "sampled_at": {
+                    "type": "string"
+                }
+            }
         },
         "entity.LogMatch": {
             "type": "object",

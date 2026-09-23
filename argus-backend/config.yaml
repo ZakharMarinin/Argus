@@ -25,3 +25,9 @@ matcher:
     - pattern: "(?i)connection refused"
       severity: error
       container: "argus-db"
+host:
+  interval: 15s
+  disk_path: /
+  warning: 90
+  critical: 95
+  consecutive: 3

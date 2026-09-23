@@ -45,7 +45,11 @@ func (uc *UseCase) HistoryAlerts(ctx context.Context, q entity.HistoryQuery) (en
 
 	lq := entity.ListQuery{Severity: q.Severity, Skip: skipFor(q.Page), Limit: historyPageSize}
 
-	if q.Kind != "" {
+	switch q.Kind {
+	case "":
+	case entity.KindHost:
+		lq.Host = true
+	case entity.KindProbe, entity.KindContainer:
 		lq.TargetIDs = idsOfKind(byID, q.Kind)
 		if len(lq.TargetIDs) == 0 {
 			return entity.Page[entity.Alert]{Skip: lq.Skip}, nil
@@ -57,8 +61,9 @@ func (uc *UseCase) HistoryAlerts(ctx context.Context, q entity.HistoryQuery) (en
 		return entity.Page[entity.Alert]{}, notReady(err)
 	}
 
+	host := uc.hostLabel(ctx)
 	for i := range page.Items {
-		page.Items[i] = enrichAlert(page.Items[i], byID)
+		page.Items[i] = enrichAlert(page.Items[i], byID, host)
 	}
 
 	return page, nil
@@ -100,7 +105,14 @@ func (uc *UseCase) targetsByID(ctx context.Context) (map[string]entity.Target, e
 
 // enrichAlert подшивает к алерту цель. Цели может не быть - тогда вместо
 // имени остаётся её id, а не выдуманная подпись.
-func enrichAlert(a entity.Alert, targetByID map[string]entity.Target) entity.Alert {
+func enrichAlert(a entity.Alert, targetByID map[string]entity.Target, hostLabel string) entity.Alert {
+	if a.TargetID == "" {
+		a.TargetLabel = hostLabel
+		a.TargetKind = entity.KindHost
+
+		return a
+	}
+
 	a.TargetLabel = a.TargetID
 
 	t, ok := targetByID[a.TargetID]
@@ -110,4 +122,13 @@ func enrichAlert(a entity.Alert, targetByID map[string]entity.Target) entity.Ale
 	}
 
 	return a
+}
+
+func (uc *UseCase) hostLabel(ctx context.Context) string {
+	h, err := uc.backend.Host(ctx)
+	if err != nil || h.Hostname == "" {
+		return "Host"
+	}
+
+	return "Host · " + h.Hostname
 }

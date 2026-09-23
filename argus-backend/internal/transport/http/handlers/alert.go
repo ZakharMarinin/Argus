@@ -65,6 +65,7 @@ func (h *Handler) CreateAlert(w http.ResponseWriter, r *http.Request) {
 // @Tags         alerts
 // @Produce      json
 // @Param        target_id query    []string false "ID таргета, можно несколько" collectionFormat(multi)
+// @Param        host      query    bool     false "Только алерты хоста (без таргета)"
 // @Param        severity  query    int      false "Важность"
 // @Param        notified  query    bool     false "Отправлен ли алерт"
 // @Param        since     query    string   false "Не раньше этого момента, RFC 3339"

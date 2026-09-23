@@ -18,7 +18,7 @@ Argus watches one machine and answers three questions: *is my service responding
 
 It is built for the case where Prometheus + Grafana + Alertmanager is three services too many — a single VPS running a handful of containers. You label the containers you care about, point Argus at a health-check URL, and get a dashboard plus Telegram alerts. No agents, no exporters, no query language.
 
-Everything it knows comes from three sources: HTTP health checks it performs itself, the Docker event stream, and the logs of the containers it watches. Nothing is inferred, sampled, or smoothed.
+Everything it knows comes from four sources: HTTP health checks it performs itself, the Docker event stream, the logs of the containers it watches, and the host's own counters for CPU, memory and disk. Nothing is inferred or smoothed.
 
 ![A failed health check becomes an outage, a Telegram alert, and a measured recovery](docs/media/incident.svg)
 
@@ -66,6 +66,7 @@ The same rule applies to sums: the outage summary adds up only the intervals it 
 - The *matcher* follows the output of every watched container and records the lines that match your rules.
 - The *alerter* groups new alerts by target, sends one Telegram message per target, and marks them as sent.
 - The *cleaner* deletes probes, events and log matches older than 14 days, once a day. Alerts are kept.
+- The *host sampler* reads CPU, memory and root-disk usage every 15 seconds and raises an alert when memory or disk climbs past a threshold.
 
 **The dashboard** is a separate process that talks to the collector over its own REST API. It reads everything it shows, and its only writes are creating and deleting uptime targets. It holds no state and can be restarted or rebuilt while the collector keeps recording. If the collector is down, the dashboard says so instead of showing stale numbers as if they were live.
 
@@ -88,6 +89,8 @@ The 24-hour bar shows measured outages. Its background is deliberately neutral, 
 ![Container detail](docs/media/container.png)
 
 The same page has the container's Docker events per hour, the raw event list, and the log lines it matched. Click a container in the sidebar and you land there. Containers that need attention sort above the calm ones.
+
+A container that crashed and came back on its own shows as *degraded* for 15 minutes, and its card says when that clears. A crash is an exit with a non-zero code or an OOM kill. Stops you asked for (`docker stop`, `docker restart`, `docker compose up` recreating a container) don't count: Docker reports them as a `kill` right before the exit, so they neither turn the card yellow nor raise an alert.
 
 ![Overview to container](docs/media/container.svg)
 
@@ -124,6 +127,20 @@ Latency p95 and uptime across all probe targets, Docker events per hour for a si
 
 ![Charts](docs/media/charts.svg)
 
+### Host resources in the sidebar
+
+CPU, RAM and the root partition, refreshed every 10 seconds:
+
+| Meter | What it measures |
+| --- | --- |
+| CPU | share of time the host wasn't idle between the last two samples |
+| RAM | `MemTotal − MemAvailable`, so page cache counts as free, the way the kernel sees it |
+| Disk | the root partition, counted as `df` counts it, blocks reserved for root left out |
+
+A bar turns yellow at 90% and red at 95%, once the level has held for three samples in a row, so a one-off spike doesn't paint it. The same rise raises a Telegram alert for memory and disk, once per rise: `Disk usage is 93% (warning above 90%)`. Nothing is sent when usage goes back down. CPU is shown but never alerts: a busy CPU is usually fine.
+
+Until the second sample there's no CPU figure, only `—`. A collector too old to report host metrics gets a note saying so instead of empty bars.
+
 ### A mascot that tells you the mood before you read a number
 
 <p>
@@ -140,7 +157,7 @@ The mood comes from the same data as everything else, and the loudest signal win
 | --- | --- |
 | All quiet | every target is up, no alerts, no log matches in 24 hours |
 | Watching | 1–2 log matches in 24 hours |
-| Something's off | a restart in the last hour, a failed check in 24 hours, a warning alert, or 3–4 log matches |
+| Something's off | a container crash in the last 15 minutes, a failed check in 24 hours, a warning alert, or 3–4 log matches |
 | Critical failure | a target is down, a critical alert in 24 hours, or 5+ log matches |
 | Asleep | nothing to watch yet, or no answer from the collector |
 
@@ -253,6 +270,8 @@ Any proxy with authentication works the same way. If yours runs in Docker, attac
 
 The collector mounts `/var/run/docker.sock`, and access to the Docker socket is equivalent to root on the host. Argus only reads events and logs through it, but anyone who takes over the collector container gets that access too, which is one more reason to keep its API on loopback.
 
+It also mounts the host's root filesystem read-only at `/hostfs`, to measure the root partition and read the host name. Read-only means it can't change anything there, and with the Docker socket already mounted it gains nothing it didn't have.
+
 ## Alerts
 
 ![Alert history](docs/media/alerts.png)
@@ -268,6 +287,12 @@ Alerts are raised by the collector and delivered by the Telegram bot. Put the bo
 | A down target answers again | `info` | `Service is back up` |
 | A log line matched a rule | the rule's | `Log line matched rule "panic\|FATAL"` |
 | Clean exit (code 0), `kill`, `restart`, `start`, `destroy` | — | no alert, only an event on the container's page |
+| A stop you asked for: `kill` followed by an exit within 30 seconds, whatever the code | — | no alert, and it doesn't count toward a crash loop |
+| Host memory or disk above `host.warning` for 3 samples | `warning` | `Disk usage is 93% (warning above 90%)` |
+| Host memory or disk above `host.critical` for 3 samples | `critical` | `Memory usage is 96% (critical above 95%)` |
+| Host memory or disk going back down | — | no alert, the bar changes colour |
+
+Host alerts don't belong to any target. In Telegram they arrive as `Host · <hostname>`, and *History → Alerts* has a `host` filter for them.
 
 Health check failures come with a readable reason rather than a raw Go error: `Health check timed out`, `Health check returned HTTP 502`, `Host web-frontend could not be resolved`, `Service is unreachable: connection refused`, `TLS certificate verification failed`.
 
@@ -292,6 +317,11 @@ Each row in the history shows its delivery state: `sent to Telegram` once the al
 | `retention.interval` | `24h` | how often old rows are deleted |
 | `telegram.notify_interval` | `5s` | how often pending alerts are pushed |
 | `telegram.cooldown` | `5m` | how long the same alert isn't repeated |
+| `host.interval` | `15s` | how often CPU, memory and disk are sampled |
+| `host.disk_path` | `/` | where the host's root partition is mounted; the compose file sets `/hostfs` through `HOST_DISK_PATH` |
+| `host.warning` | `90` | memory or disk percentage that raises a warning |
+| `host.critical` | `95` | …and a critical alert |
+| `host.consecutive` | `3` | samples in a row a new level has to hold before it counts |
 
 Secrets come from the environment or `.env`: `POSTGRES_URL`, `BOT_TOKEN`, `CHAT_ID`, and `CONFIG_PATH` for the config file itself.
 
@@ -309,7 +339,10 @@ Secrets come from the environment or `.env`: `POSTGRES_URL`, `BOT_TOKEN`, `CHAT_
 
 Named here because a monitoring tool that hides its blind spots is the problem it claims to solve:
 
-- **No CPU, RAM or disk**, for the host or for containers. Nothing collects them, so the dashboard shows a note instead of an empty gauge.
+- **No history of host resources.** The sidebar shows the latest sample only; there's no chart of CPU, memory or disk over time.
+- **No per-container CPU or memory.** Host resources are for the whole machine.
+- **Only the root partition.** A separate disk for `/var/lib/docker` or `/home` isn't measured.
+- **Docker Desktop reports its VM.** On macOS and Windows the host is the Docker virtual machine, so the numbers are that machine's, not your laptop's.
 - **No alert lifecycle.** There is no acknowledge or resolve — only "sent to Telegram". The screen says exactly that.
 - **No latency for containers.** Nothing pings a container, so its page shows Docker event activity instead of a made-up response time.
 - **Alerts are never pruned.** Retention deletes probes, events and log matches; alert history keeps growing until you delete rows through the API.

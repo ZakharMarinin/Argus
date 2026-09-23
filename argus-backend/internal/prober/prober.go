@@ -34,9 +34,10 @@ type UseCase interface {
 }
 
 type Prober struct {
-	cfg *config.Config
-	log *slog.Logger
-	uc  UseCase
+	cfg      *config.Config
+	log      *slog.Logger
+	uc       UseCase
+	failures map[uuid.UUID]int
 }
 
 type probeResult struct {
@@ -46,7 +47,7 @@ type probeResult struct {
 }
 
 func NewProber(cfg *config.Config, log *slog.Logger, uc UseCase) *Prober {
-	return &Prober{cfg: cfg, log: log, uc: uc}
+	return &Prober{cfg: cfg, log: log, uc: uc, failures: make(map[uuid.UUID]int)}
 }
 
 func (p *Prober) checkProbe(ctx context.Context, target *entity.Target) (*entity.Probe, string, error) {
@@ -141,20 +142,42 @@ func (p *Prober) runChecks(ctx context.Context, targets []*entity.Target) []prob
 	return results
 }
 
+func (p *Prober) transition(result probeResult) (string, *entity.Alert) {
+	id := result.target.ID
+	current := result.target.Status
+
+	if result.probe.Success {
+		delete(p.failures, id)
+
+		switch current {
+		case statusUp:
+			return "", nil
+		case statusDown:
+			return statusUp, &entity.Alert{TargetID: id, Severity: entity.SeverityInfo, Details: "Service is back up"}
+		default:
+			return statusUp, nil
+		}
+	}
+
+	p.failures[id]++
+
+	if current == statusDown || p.failures[id] < p.cfg.Prober.FailureThreshold {
+		return "", nil
+	}
+
+	return statusDown, &entity.Alert{TargetID: id, Severity: entity.SeverityError, Details: result.reason}
+}
+
 func (p *Prober) handleTransitions(ctx context.Context, results []probeResult) {
 	log := p.log.With("op", "Prober.handleTransitions")
 
 	for _, result := range results {
-		status := statusUp
-		if !result.probe.Success {
-			status = statusDown
-		}
-
-		if status == result.target.Status {
+		status, alert := p.transition(result)
+		if status == "" {
 			continue
 		}
 
-		if status == statusDown && !p.raiseAlert(ctx, result) {
+		if alert != nil && !p.raiseAlert(ctx, result.target.Source, alert) {
 			continue
 		}
 
@@ -165,17 +188,11 @@ func (p *Prober) handleTransitions(ctx context.Context, results []probeResult) {
 	}
 }
 
-func (p *Prober) raiseAlert(ctx context.Context, result probeResult) bool {
-	alert := &entity.Alert{
-		TargetID: result.target.ID,
-		Severity: entity.SeverityError,
-		Details:  result.reason,
-	}
-
+func (p *Prober) raiseAlert(ctx context.Context, source string, alert *entity.Alert) bool {
 	_, err := p.uc.CreateAlert(ctx, alert)
 	if err != nil {
 		p.log.With("op", "Prober.raiseAlert").
-			Error("failed to create alert", "source", result.target.Source, "error", err)
+			Error("failed to create alert", "source", source, "error", err)
 
 		return false
 	}

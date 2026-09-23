@@ -12,12 +12,24 @@ import (
 )
 
 type Config struct {
-	Env      string   `yaml:"env"`
-	Server   Server   `yaml:"http_server"`
-	Postgres string   `yaml:"postgres"`
-	Prober   Prober   `yaml:"prober"`
-	Telegram Telegram `yaml:"telegram"`
-	Matcher  Matcher  `yaml:"matcher"`
+	Env       string    `yaml:"env"`
+	Server    Server    `yaml:"http_server"`
+	Postgres  string    `yaml:"postgres"`
+	Prober    Prober    `yaml:"prober"`
+	Telegram  Telegram  `yaml:"telegram"`
+	Matcher   Matcher   `yaml:"matcher"`
+	Retention Retention `yaml:"retention"`
+	Watcher   Watcher   `yaml:"watcher"`
+}
+
+type Watcher struct {
+	CrashLoopRestarts int           `yaml:"crash_loop_restarts" env-default:"5"`
+	CrashLoopWindow   time.Duration `yaml:"crash_loop_window"   env-default:"5m"`
+}
+
+type Retention struct {
+	Keep     time.Duration `yaml:"keep"     env-default:"336h"`
+	Interval time.Duration `yaml:"interval" env-default:"24h"`
 }
 
 type Matcher struct {
@@ -39,8 +51,9 @@ type Server struct {
 }
 
 type Prober struct {
-	ProbeInterval time.Duration `yaml:"probe_interval"`
-	ProbeTimeout  time.Duration `yaml:"probe_timeout"`
+	ProbeInterval    time.Duration `yaml:"probe_interval"`
+	ProbeTimeout     time.Duration `yaml:"probe_timeout"`
+	FailureThreshold int           `yaml:"failure_threshold" env-default:"2"`
 }
 
 type Telegram struct {
@@ -90,6 +103,18 @@ func (c *Config) ValidateConfig() error {
 
 	if c.Server.Addr == "" {
 		return errors.New("no http addr")
+	}
+
+	if c.Prober.FailureThreshold < 1 {
+		return errors.New("prober.failure_threshold must be >= 1")
+	}
+
+	if c.Retention.Keep <= 0 || c.Retention.Interval <= 0 {
+		return errors.New("retention.keep and retention.interval must be positive")
+	}
+
+	if c.Watcher.CrashLoopRestarts < 2 || c.Watcher.CrashLoopWindow <= 0 {
+		return errors.New("watcher.crash_loop_restarts must be >= 2 and watcher.crash_loop_window positive")
 	}
 
 	return nil

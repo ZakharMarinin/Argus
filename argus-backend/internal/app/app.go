@@ -2,6 +2,7 @@ package app
 
 import (
 	"argus-collector/internal/config"
+	"argus-collector/internal/retention"
 	"context"
 	"fmt"
 	"log/slog"
@@ -76,6 +77,11 @@ func (a *App) run(ctx context.Context) error {
 	if err != nil {
 		a.log.Error("watcher not started, Docker client unavailable", "error", err)
 	} else {
+		err = watcherSvc.RegisterContainers(workerCtx)
+		if err != nil {
+			a.log.Error("failed to register existing containers", "error", err)
+		}
+
 		a.wg.Go(func() {
 			a.log.Info("Run: watcher started")
 
@@ -94,9 +100,27 @@ func (a *App) run(ctx context.Context) error {
 		})
 	}
 
+	a.startCleaner(ctx, workerCtx)
 	a.startAlerter(ctx, workerCtx)
 
 	return nil
+}
+
+func (a *App) startCleaner(ctx, workerCtx context.Context) {
+	uc, err := a.di.UseCase(ctx)
+	if err != nil {
+		a.log.Error("cleaner not started", "error", err)
+
+		return
+	}
+
+	cleaner := retention.NewCleaner(a.cfg, a.log, uc)
+
+	a.wg.Go(func() {
+		a.log.Info("Run: cleaner started")
+
+		cleaner.RunCleaner(workerCtx)
+	})
 }
 
 func (a *App) startAlerter(ctx, workerCtx context.Context) {

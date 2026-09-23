@@ -7,6 +7,13 @@ http_server:
 prober:
   probe_timeout: 5s
   probe_interval: 60s
+  failure_threshold: 2
+watcher:
+  crash_loop_restarts: 5
+  crash_loop_window: 5m
+retention:
+  keep: 336h
+  interval: 24h
 telegram:
   notify_interval: 5s
   cooldown: 5m

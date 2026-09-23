@@ -1,35 +1,48 @@
 {{define "new-target" -}}
-{{/* Дашборд - чистый читатель argus-backend API и ничего не пишет сам.
-     Контейнеры регистрирует watcher по лейблу; отдельный uptime-таргет без
-     контейнера создаётся через сам API бэкенда - формы под это здесь нет и
-     не появится, пока это не отдельная задача. */}}
 <div class="modal" x-data x-cloak x-show="$store.argus.modal"
      x-transition.opacity.duration.150ms
      @keydown.escape.window="$store.argus.modal = false"
+     @target-created.window="$store.argus.modal = false"
      @click.self="$store.argus.modal = false"
      role="dialog" aria-modal="true" aria-labelledby="new-target-title">
   <div class="modal__box">
     <h2 class="modal__title" id="new-target-title">Add a target</h2>
+
+    <h3 class="modal__subtitle">Uptime target</h3>
+    {{template "target-form" .NewTarget}}
+
+    <h3 class="modal__subtitle">Container</h3>
     <p class="modal__note">
       A container registers itself: tag it with the <code>argus.monitor=true</code> label
       (add <code>argus.probe.url</code> too for an HTTP check) and the watcher picks it up
       without a restart.
     </p>
-    <p class="modal__note">
-      A standalone uptime target has no label to hang off — create one against the
-      backend's own API:
-    </p>
-    <pre class="modal__code"><code>curl -X POST http://&lt;your argus-backend&gt;/v1/api/targets \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"my-app","source":"https://myapp.local/health","target_type":"probe"}'</code></pre>
-    <p class="modal__note">
-      Full request/response shapes are in the backend's Swagger UI at
-      <code>/swagger/index.html</code>.
-    </p>
     <div class="modal__foot">
-      <button type="button" class="btn btn--primary" @click="$store.argus.copySnippet($event)">Copy snippet</button>
       <button type="button" class="btn btn--ghost" @click="$store.argus.modal = false">Close</button>
     </div>
   </div>
 </div>
+{{- end}}
+
+{{define "target-form" -}}
+<form class="target-form" hx-post="/targets" hx-swap="outerHTML">
+  <label class="field">
+    <span class="field__label">Name</span>
+    <input class="field__input" name="name" value="{{.Name}}" required maxlength="100"
+           placeholder="my-app" autocomplete="off" spellcheck="false">
+  </label>
+  <label class="field">
+    <span class="field__label">Health check URL</span>
+    <input class="field__input" type="url" name="url" value="{{.URL}}" required
+           placeholder="http://host.docker.internal:8080/health" autocomplete="off" spellcheck="false">
+    <span class="field__hint">
+      Checked from inside Argus, so <code>localhost</code> is Argus itself. For a port published
+      on this host use <code>host.docker.internal</code>.
+    </span>
+  </label>
+  {{with .Error}}<p class="field__error" role="alert">{{.}}</p>{{end}}
+  <div class="target-form__foot">
+    <button type="submit" class="btn btn--primary">Create</button>
+  </div>
+</form>
 {{- end}}

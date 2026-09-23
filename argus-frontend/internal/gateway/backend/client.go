@@ -13,6 +13,7 @@
 package backend
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -292,6 +293,78 @@ func listValues(q entity.ListQuery, skip, limit int) url.Values {
 	}
 
 	return v
+}
+
+func (c *Client) CreateTarget(ctx context.Context, t entity.Target) error {
+	const path = "/v1/api/targets"
+
+	body, err := json.Marshal(map[string]string{
+		"name":        t.Label,
+		"source":      t.Source,
+		"target_type": string(t.Kind),
+	})
+	if err != nil {
+		return fmt.Errorf("запрос %s: %w", path, err)
+	}
+
+	status, resp, err := c.send(ctx, http.MethodPost, path, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+
+	switch status {
+	case http.StatusCreated:
+		return nil
+	case http.StatusConflict:
+		return &entity.ValidationError{Reason: "This URL is already monitored"}
+	case http.StatusBadRequest:
+		var e struct {
+			Error string `json:"error"`
+		}
+		if json.Unmarshal(resp, &e) != nil || e.Error == "" {
+			e.Error = "The collector rejected this target"
+		}
+
+		return &entity.ValidationError{Reason: e.Error}
+	default:
+		return fmt.Errorf("%w: POST %s: %d: %s", ErrUnreachable, path, status, resp)
+	}
+}
+
+func (c *Client) DeleteTarget(ctx context.Context, id string) error {
+	path := "/v1/api/targets/" + url.PathEscape(id)
+
+	status, resp, err := c.send(ctx, http.MethodDelete, path, http.NoBody)
+	if err != nil {
+		return err
+	}
+
+	if status != http.StatusNoContent && status != http.StatusNotFound {
+		return fmt.Errorf("%w: DELETE %s: %d: %s", ErrUnreachable, path, status, resp)
+	}
+
+	return nil
+}
+
+func (c *Client) send(ctx context.Context, method, path string, body io.Reader) (int, []byte, error) {
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, body)
+	if err != nil {
+		return 0, nil, fmt.Errorf("запрос %s: %w", path, err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return 0, nil, fmt.Errorf("%w: %s: %w", ErrUnreachable, path, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 2048))
+	if err != nil {
+		return 0, nil, fmt.Errorf("%w: %s: %w", ErrUnreachable, path, err)
+	}
+
+	return resp.StatusCode, data, nil
 }
 
 // Ping проверяет, что бэкенд отвечает.

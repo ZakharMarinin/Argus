@@ -308,6 +308,7 @@ func (p Presenter) targets(probes []entity.TargetSummary) []Target {
 		}
 
 		target := Target{
+			ID:     t.ID,
 			Name:   t.Label,
 			URL:    t.Source,
 			Status: status,
@@ -419,6 +420,9 @@ func (p Presenter) containerCardNote(s entity.ContainerStats) string {
 	}
 	if s.LastEventAt != nil {
 		note += " · " + p.ago(*s.LastEventAt)
+	}
+	if s.Restarts1h > 0 && s.RestartsClearAt != nil {
+		note += " · clears at " + s.RestartsClearAt.Local().Format("15:04")
 	}
 
 	return note

@@ -332,3 +332,44 @@ func i0Duration(t *testing.T, incidents []entity.Incident) (time.Duration, bool)
 
 	return incidents[0].Duration()
 }
+
+func TestRestartWarningClearsAnHourAfterLastReturn(t *testing.T) {
+	back := now.Add(-20 * time.Minute)
+	fb := fakeBackend{
+		targets: []targetJSON{
+			{ID: "c1", Name: "worker", TargetType: "container", Status: "up"},
+			{ID: "c2", Name: "old", TargetType: "container", Status: "up"},
+		},
+		events: map[string][]eventJSON{
+			"c1": {
+				{ID: 1, TargetID: "c1", Event: "die", CreatedAt: now.Add(-50 * time.Minute)},
+				{ID: 2, TargetID: "c1", Event: "start", CreatedAt: now.Add(-49 * time.Minute)},
+				{ID: 3, TargetID: "c1", Event: "die", CreatedAt: back.Add(-time.Minute)},
+				{ID: 4, TargetID: "c1", Event: "start", CreatedAt: back},
+			},
+			"c2": {
+				{ID: 5, TargetID: "c2", Event: "die", CreatedAt: now.Add(-3 * time.Hour)},
+				{ID: 6, TargetID: "c2", Event: "start", CreatedAt: now.Add(-3*time.Hour + time.Minute)},
+			},
+		},
+	}
+
+	targets, err := newUseCase(t, fb).TargetStatus(context.Background())
+	if err != nil {
+		t.Fatalf("TargetStatus: %v", err)
+	}
+
+	stats := map[string]*entity.ContainerStats{}
+	for _, s := range targets {
+		stats[s.Label] = s.Container
+	}
+
+	w := stats["worker"]
+	if w.Restarts1h != 2 || w.RestartsClearAt == nil || !w.RestartsClearAt.Equal(back.Add(time.Hour)) {
+		t.Errorf("worker = %+v, хотели 2 рестарта и снятие в %v", w, back.Add(time.Hour))
+	}
+
+	if o := stats["old"]; o.Restarts1h != 0 || o.RestartsClearAt != nil {
+		t.Errorf("old = %+v, хотели без рестартов и без времени снятия", o)
+	}
+}

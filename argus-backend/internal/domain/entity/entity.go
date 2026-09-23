@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -92,6 +94,33 @@ type Target struct {
 	TargetType string    `json:"target_type"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+const (
+	TargetTypeProbe     = "probe"
+	TargetTypeContainer = "container"
+)
+
+func (t *Target) Validate() error {
+	if strings.TrimSpace(t.Name) == "" {
+		return &ValidationError{Reason: "name is required"}
+	}
+
+	switch t.TargetType {
+	case TargetTypeContainer:
+		if strings.TrimSpace(t.Source) == "" {
+			return &ValidationError{Reason: "container name is required"}
+		}
+	case TargetTypeProbe:
+		u, err := url.Parse(t.Source)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return &ValidationError{Reason: "URL must be an absolute http:// or https:// address"}
+		}
+	default:
+		return &ValidationError{Reason: `target_type must be "probe" or "container"`}
+	}
+
+	return nil
 }
 
 type ContainerEvent struct {

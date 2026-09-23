@@ -51,7 +51,7 @@ The same rule applies to sums: the outage summary adds up only the intervals it 
             ▼                              ▼
        PostgreSQL                    Telegram bot
             │
-            │  GET /v1/api/…  (read-only)
+            │  /v1/api/…  (reads; creates and deletes uptime targets)
             ▼
     ┌──────────────────────────────────────────────────┐
     │  dashboard  (argus-frontend)  :8088              │
@@ -67,7 +67,7 @@ The same rule applies to sums: the outage summary adds up only the intervals it 
 - The *alerter* groups new alerts by target, sends one Telegram message per target, and marks them as sent.
 - The *cleaner* deletes probes, events and log matches older than 14 days, once a day. Alerts are kept.
 
-**The dashboard** is a separate process that only reads, over the collector's own REST API. It holds no state, has no write endpoints, and can be restarted or rebuilt while the collector keeps recording. If the collector is down, the dashboard says so instead of showing stale numbers as if they were live.
+**The dashboard** is a separate process that talks to the collector over its own REST API. It reads everything it shows, and its only writes are creating and deleting uptime targets. It holds no state and can be restarted or rebuilt while the collector keeps recording. If the collector is down, the dashboard says so instead of showing stale numbers as if they were live.
 
 The two processes share nothing but the API. Start them in any order.
 
@@ -156,25 +156,26 @@ Asleep never means all is well. Next to the mood, the card says which signal cho
 
 ## Getting started
 
-### 1. Start the collector
+### 1. Start Argus
 
 ```bash
-cd argus-backend
-cp .example.env .env      # Postgres credentials, BOT_TOKEN and CHAT_ID for Telegram
-docker compose up -d      # Postgres 16 + goose migrations + collector on :8099
+cp argus-backend/.example.env argus-backend/.env   # Postgres credentials, BOT_TOKEN and CHAT_ID for Telegram
+docker compose up -d --build                       # Postgres 16 + migrations + collector on :8099 + dashboard on :8088
 ```
 
 The collector needs `/var/run/docker.sock` mounted to watch containers and read their logs — the compose file does this. Without `BOT_TOKEN` and `CHAT_ID` the alerter doesn't start: everything is still recorded, and alerts stay `not sent`. Swagger UI for the collector's API is at `http://localhost:8099/swagger/index.html`.
 
-### 2. Start the dashboard
+Migrations are built into the collector and run on every start, before anything else. Each one runs in its own transaction under a Postgres advisory lock. If a migration fails, the collector exits instead of running on a half-migrated schema. If the database was migrated by a newer version of Argus, the collector refuses to start instead of running on a schema it doesn't know: upgrade, don't downgrade.
+
+The collector alone still starts from `argus-backend/` with its own `docker compose up -d`. To work on the dashboard, run it from source against that collector:
 
 ```bash
 cd argus-frontend
 export ARGUS_BACKEND_URL=http://localhost:8099
-go run ./cmd/web -config config.yaml    # dashboard on :8088
+go run ./cmd/web -config config.yaml
 ```
 
-### 3. Tell Argus what to watch
+### 2. Tell Argus what to watch
 
 Label the containers you care about:
 
@@ -184,7 +185,7 @@ services:
     image: my-app
     labels:
       argus.monitor: "true"                        # watch this container's lifecycle
-      argus.probe.url: "http://web:8080/health"    # and health-check this URL
+      argus.probe.url: "http://host.docker.internal:8080/health"    # and health-check this URL
 ```
 
 | Label | Effect |
@@ -194,13 +195,63 @@ services:
 
 The watcher picks up labelled containers as they start — no restart of Argus needed.
 
-An uptime target that isn't a container has no label to hang off, so it's created through the collector's API. The dashboard's *New target* button shows the same snippet:
+The probe runs from inside the Argus container, so the URL has to make sense from there. `localhost`, `127.0.0.1` and `0.0.0.0` point at Argus itself, not at your host. To check a port your service publishes on the host (`ports: - "8080:8080"`), use `host.docker.internal`, which the compose file maps to the host. That checks the same path real clients use: the published port, the mapping, and the service behind it.
+
+A service without published ports isn't reachable that way. Attach the collector to that project's network by adding it to `argus-backend/docker-compose.yml`, then probe it by service name:
+
+```yaml
+services:
+  argus:
+    networks: [default, db, myapp]
+
+networks:
+  myapp:
+    external: true
+    name: myapp_default    # the network `docker network ls` shows for that project
+```
+
+```yaml
+      argus.probe.url: "http://web:8080/health"
+```
+
+Attach Argus to the project's network, not the project to Argus's: its API has no authentication, and the project's containers don't need to reach it.
+
+An uptime target that isn't a container has no label to hang off. Create it from the dashboard: *New target* takes a name and a health-check URL, and the target appears under *Uptime targets* after its first check. The × on a target's row deletes it along with its check history and alerts. A target that came from an `argus.probe.url` label is registered again the next time its container starts, so remove the label to get rid of it for good.
+
+The same through the collector's API:
 
 ```bash
 curl -X POST http://localhost:8099/v1/api/targets \
   -H 'Content-Type: application/json' \
   -d '{"name":"my-app","source":"https://myapp.local/health","target_type":"probe"}'
 ```
+
+### 3. Open the dashboard from another machine
+
+Nothing Argus runs is reachable from outside the host. Postgres has no published port and sits on an internal network with no route out, and the collector and the dashboard listen on `127.0.0.1` only. Docker writes its own iptables rules that bypass ufw and firewalld, so a port published on `0.0.0.0` would be open to the internet whatever the firewall says. Binding to loopback is what actually keeps it closed.
+
+The simplest way in is an SSH tunnel:
+
+```bash
+ssh -L 8088:localhost:8088 user@your-host    # then open http://localhost:8088
+```
+
+For access from anywhere, put the dashboard behind a reverse proxy that does TLS and authentication. With [Caddy](https://caddyserver.com) on the host:
+
+```caddyfile
+argus.example.com {
+    basic_auth {
+        admin <hash from `caddy hash-password`>
+    }
+    reverse_proxy 127.0.0.1:8088
+}
+```
+
+Any proxy with authentication works the same way. If yours runs in Docker, attach it to the `argus_default` network and proxy to `argus-web:8088`. Expose only the dashboard, never the collector's API: it has endpoints that create and delete data, and no authentication.
+
+### What Argus can touch
+
+The collector mounts `/var/run/docker.sock`, and access to the Docker socket is equivalent to root on the host. Argus only reads events and logs through it, but anyone who takes over the collector container gets that access too, which is one more reason to keep its API on loopback.
 
 ## Alerts
 
@@ -262,7 +313,8 @@ Named here because a monitoring tool that hides its blind spots is the problem i
 - **No alert lifecycle.** There is no acknowledge or resolve — only "sent to Telegram". The screen says exactly that.
 - **No latency for containers.** Nothing pings a container, so its page shows Docker event activity instead of a made-up response time.
 - **Alerts are never pruned.** Retention deletes probes, events and log matches; alert history keeps growing until you delete rows through the API.
-- **No way to add targets from the dashboard.** It stays read-only: containers register themselves by label, and standalone uptime targets are created through the collector's API.
+- **No editing of targets.** Uptime targets are created and deleted from the dashboard, never changed in place: delete one and create it again. Containers register themselves by label and aren't managed from the dashboard at all.
+- **No login on the dashboard.** It can create and delete targets, so keep it on loopback or behind a proxy with authentication, see [Open the dashboard from another machine](#3-open-the-dashboard-from-another-machine).
 - **One host.** No clustering, no federation, no remote agents.
 
 ## Under the hood
@@ -278,7 +330,7 @@ argus-backend/     collector: prober, watcher, matcher, alerter, cleaner, REST A
   internal/transport/http       chi router, handlers, swagger
   migrations/                   goose
 
-argus-frontend/    dashboard: read-only
+argus-frontend/    dashboard
   internal/domain/entity        domain types, no dependencies
   internal/usecase              aggregation: uptime, outages, p95
   internal/gateway/backend      HTTP client to the collector

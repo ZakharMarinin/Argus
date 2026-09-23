@@ -24,6 +24,7 @@ type fakeUseCase struct {
 	logPage   *entity.Page[entity.LogMatch]
 	err       error
 	detailErr error
+	writeErr  error
 }
 
 func (f fakeUseCase) TargetStatus(context.Context) ([]entity.TargetSummary, error) {
@@ -71,6 +72,10 @@ func (f fakeUseCase) LogMatches(context.Context, string) (entity.LogMatchReport,
 }
 
 func (f fakeUseCase) Ping(context.Context) error { return f.err }
+
+func (f fakeUseCase) CreateProbe(context.Context, string, string) error { return f.writeErr }
+
+func (f fakeUseCase) DeleteTarget(context.Context, string) error { return f.writeErr }
 
 // ---------------------------------------------------------------------------
 // Данные для тестов

@@ -24,11 +24,16 @@ func TestUseCase_CreateTarget(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "success", setup: func(m *mocks.MockStorage) {
-			m.On("CreateTarget", mock.Anything, mock.Anything).Return(&entity.Target{ID: uuid.New(), Source: "src", Name: "t1", Status: "ok", TargetType: "svc"}, nil).Once()
-		}, in: args{target: &entity.Target{Source: "src", Name: "t1", Status: "ok", TargetType: "svc"}}, wantErr: false},
+			m.On("CreateTarget", mock.Anything, mock.Anything).Return(&entity.Target{ID: uuid.New(), Source: "https://api.local/health", Name: "t1", Status: "unknown", TargetType: "probe"}, nil).Once()
+		}, in: args{target: &entity.Target{Source: "https://api.local/health", Name: "t1", TargetType: "probe"}}, wantErr: false},
 		{name: "error", setup: func(m *mocks.MockStorage) {
 			m.On("CreateTarget", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
-		}, in: args{target: &entity.Target{}}, wantErr: true},
+		}, in: args{target: &entity.Target{Source: "web", Name: "web", TargetType: "container"}}, wantErr: true},
+		{name: "empty name", setup: func(*mocks.MockStorage) {}, in: args{target: &entity.Target{Source: "https://api.local", Name: " ", TargetType: "probe"}}, wantErr: true},
+		{name: "probe without scheme", setup: func(*mocks.MockStorage) {}, in: args{target: &entity.Target{Source: "api.local/health", Name: "api", TargetType: "probe"}}, wantErr: true},
+		{name: "probe with other scheme", setup: func(*mocks.MockStorage) {}, in: args{target: &entity.Target{Source: "ftp://api.local", Name: "api", TargetType: "probe"}}, wantErr: true},
+		{name: "unknown type", setup: func(*mocks.MockStorage) {}, in: args{target: &entity.Target{Source: "https://api.local", Name: "api", TargetType: "svc"}}, wantErr: true},
+		{name: "container without name", setup: func(*mocks.MockStorage) {}, in: args{target: &entity.Target{Source: "", Name: "web", TargetType: "container"}}, wantErr: true},
 	}
 
 	for _, tc := range cases {
@@ -44,6 +49,7 @@ func TestUseCase_CreateTarget(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, res)
 				require.NotEqual(t, uuid.Nil, res.ID)
+				require.Equal(t, "unknown", tc.in.target.Status)
 			}
 		})
 	}

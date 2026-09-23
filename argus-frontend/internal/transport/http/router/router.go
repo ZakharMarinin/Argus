@@ -50,7 +50,10 @@ func Router(h *handlers.Handler) (http.Handler, error) {
 	// Проба живости для docker-compose и обратного прокси.
 	mux.HandleFunc("GET /healthz", h.Healthz)
 
-	return mux, nil
+	mux.HandleFunc("POST /targets", h.CreateTarget)
+	mux.HandleFunc("DELETE /targets/{id}", h.DeleteTarget)
+
+	return http.NewCrossOriginProtection().Handler(mux), nil
 }
 
 // cacheStatic управляет кэшированием вшитых ассетов.

@@ -139,6 +139,11 @@ func (f fakeBackend) server(t *testing.T) *httptest.Server {
 		id := r.URL.Path[len("/v1/api/targets/"):]
 		for _, tg := range f.targets {
 			if tg.ID == id {
+				if r.Method == http.MethodDelete {
+					w.WriteHeader(http.StatusNoContent)
+
+					return
+				}
 				_ = json.NewEncoder(w).Encode(tg)
 
 				return
@@ -147,6 +152,11 @@ func (f fakeBackend) server(t *testing.T) *httptest.Server {
 		w.WriteHeader(http.StatusNotFound)
 	})
 	mux.HandleFunc("/v1/api/targets", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			f.create(w, r)
+
+			return
+		}
 		_ = json.NewEncoder(w).Encode(f.targets)
 	})
 	mux.HandleFunc("/v1/api/probes", func(w http.ResponseWriter, r *http.Request) {
@@ -170,6 +180,23 @@ func (f fakeBackend) server(t *testing.T) *httptest.Server {
 	t.Cleanup(srv.Close)
 
 	return srv
+}
+
+func (f fakeBackend) create(w http.ResponseWriter, r *http.Request) {
+	var body targetJSON
+	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	switch {
+	case body.TargetType != "probe":
+		w.WriteHeader(http.StatusInternalServerError)
+	case body.Name == "":
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"name is required"}`))
+	case body.Source == "https://dup.local":
+		w.WriteHeader(http.StatusConflict)
+	default:
+		w.WriteHeader(http.StatusCreated)
+	}
 }
 
 func newUseCase(t *testing.T, fb fakeBackend) *usecase.UseCase {

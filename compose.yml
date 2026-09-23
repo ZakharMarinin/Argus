@@ -1,0 +1,16 @@
+include:
+  - argus-backend/docker-compose.yml
+
+services:
+  argus-web:
+    build: argus-frontend
+    container_name: argus-web
+    restart: unless-stopped
+    environment:
+      ARGUS_BACKEND_URL: http://argus:8099
+    ports:
+      - "127.0.0.1:8088:8088"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - argus

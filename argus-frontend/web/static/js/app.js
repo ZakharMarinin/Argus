@@ -185,18 +185,6 @@
           if (window.htmx) htmx.trigger(document.body, 'refreshNow');
           scan();
         }
-      },
-
-      copySnippet: function (evt) {
-        var box = evt.target.closest('.modal__box');
-        var code = box && box.querySelector('.modal__code');
-        if (!code || !navigator.clipboard) return;
-        var btn = evt.target;
-        var was = btn.textContent;
-        navigator.clipboard.writeText(code.textContent).then(function () {
-          btn.textContent = 'Copied';
-          setTimeout(function () { btn.textContent = was; }, 1600);
-        });
       }
     });
 

@@ -96,7 +96,8 @@ type ContainerStats struct {
 	// restart: возврат Docker отмечает то как start, то как restart, а одна
 	// остановка приходит парой kill + die. Первый запуск контейнера
 	// перезапуском не считается - перед ним нет падения.
-	Restarts1h int
+	Restarts1h      int
+	RestartsClearAt *time.Time
 
 	// Последнее событие: чем именно занят контейнер прямо сейчас.
 	LastEvent       string

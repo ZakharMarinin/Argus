@@ -205,8 +205,11 @@ func containerIncidents(t entity.Target, events []entity.ContainerEvent) []entit
 // Упавший и не вернувшийся контейнер в счётчик не попадает: он не
 // перезапустился, он лежит. Одиночный restart без предшествующего падения -
 // тоже нет: без записи о падении утверждать возврат нечем.
-func returnsSince(events []entity.ContainerEvent, since time.Time) int {
-	var n int
+func returnsSince(events []entity.ContainerEvent, since time.Time) (int, *time.Time) {
+	var (
+		n    int
+		last *time.Time
+	)
 
 	for _, i := range containerIncidents(entity.Target{}, events) {
 		if i.State != entity.IncidentClosed || i.EndedAt == nil {
@@ -215,10 +218,14 @@ func returnsSince(events []entity.ContainerEvent, since time.Time) int {
 
 		if !i.EndedAt.Before(since) {
 			n++
+
+			if last == nil || i.EndedAt.After(*last) {
+				last = i.EndedAt
+			}
 		}
 	}
 
-	return n
+	return n, last
 }
 
 // withinWindow оставляет интервалы, которые пересекаются с периодом:

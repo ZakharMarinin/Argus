@@ -101,6 +101,14 @@ type Layout struct {
 	Sidebar Sidebar
 
 	Content any
+
+	NewTarget TargetForm
+}
+
+type TargetForm struct {
+	Name  string
+	URL   string
+	Error string
 }
 
 // NavItem - пункт меню в сайдбаре.
@@ -231,6 +239,7 @@ type TargetList struct {
 
 // Target - одна uptime-цель.
 type Target struct {
+	ID      string
 	Name    string
 	URL     string
 	Status  Status

@@ -12,4 +12,12 @@ var ErrNotReady = errors.New("argus-backend ещё не готов или нед
 // ErrNotFound - цели с таким именем бэкенд не отслеживает.
 var ErrNotFound = errors.New("цель не отслеживается")
 
+type ValidationError struct {
+	Reason string
+}
+
+func (e *ValidationError) Error() string {
+	return e.Reason
+}
+
 var ErrBackendTooOld = errors.New("argus-backend устарел: нет order=desc и X-Total-Count, обновите его")

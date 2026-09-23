@@ -2,6 +2,14 @@ package entity
 
 import "errors"
 
+type ValidationError struct {
+	Reason string
+}
+
+func (e *ValidationError) Error() string {
+	return e.Reason
+}
+
 var (
 	ErrTargetNotFound      = errors.New("target not found")
 	ErrTargetAlreadyExists = errors.New("target already exists")

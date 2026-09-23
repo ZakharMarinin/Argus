@@ -14,7 +14,6 @@ Two small Go services, one Postgres, and a dashboard that refuses to make number
 ## Contents
 
 - [What it is](#what-it-is)
-- [The rule that shapes everything](#the-rule-that-shapes-everything)
 - [How it works](#how-it-works)
 - [What you get](#what-you-get)
   - [Outage history with real durations](#outage-history-with-real-durations)
@@ -23,6 +22,7 @@ Two small Go services, one Postgres, and a dashboard that refuses to make number
   - [Log lines that match your rules](#log-lines-that-match-your-rules)
   - [Charts that keep their gaps](#charts-that-keep-their-gaps)
   - [Host resources in the sidebar](#host-resources-in-the-sidebar)
+  - [Alerts](#alerts)
   - [A mascot that tells you the mood before you read a number](#a-mascot-that-tells-you-the-mood-before-you-read-a-number)
   - [Details that matter at 3am](#details-that-matter-at-3am)
 - [Getting started](#getting-started)
@@ -30,7 +30,6 @@ Two small Go services, one Postgres, and a dashboard that refuses to make number
   - [2. Tell Argus what to watch](#2-tell-argus-what-to-watch)
   - [3. Open the dashboard from another machine](#3-open-the-dashboard-from-another-machine)
   - [What Argus can touch](#what-argus-can-touch)
-- [Alerts](#alerts)
 - [Configuration](#configuration)
 - [Deliberately not in this version](#deliberately-not-in-this-version)
 - [Under the hood](#under-the-hood)
@@ -45,19 +44,6 @@ It is built for the case where Prometheus + Grafana + Alertmanager is three serv
 Everything it knows comes from four sources: HTTP health checks it performs itself, the Docker event stream, the logs of the containers it watches, and the host's own counters for CPU, memory and disk. Nothing is inferred or smoothed.
 
 ![A failed health check becomes an outage, a Telegram alert, and a measured recovery](docs/media/incident.svg)
-
-## The rule that shapes everything
-
-**Only what is actually in the data reaches the screen.** A monitoring tool that shows a plausible number in place of a missing one is worse than a broken one, so Argus doesn't:
-
-| Situation | What Argus shows | What it refuses to show |
-| --- | --- | --- |
-| An hour with no checks | a gap in the chart | a zero, drawn as if latency were 0 ms |
-| A target that has never been checked | `—` | `100% uptime` |
-| A container that went down, came back, but the return was never recorded | `return not recorded`, duration `—` | a downtime counter that keeps growing |
-| An empty database | empty states in every block | demo numbers |
-
-The same rule applies to sums: the outage summary adds up only the intervals it could actually measure, and says out loud how many it couldn't.
 
 ## How it works
 
@@ -79,7 +65,7 @@ The same rule applies to sums: the outage summary adds up only the intervals it 
             ▼
     ┌──────────────────────────────────────────────────┐
     │  dashboard  (argus-frontend)  :8088              │
-    │  htmx · Alpine · Chart.js on Go templates         │
+    │  htmx · Alpine · Chart.js on Go templates        │
     └──────────────────────────────────────────────────┘
 ```
 
@@ -164,6 +150,34 @@ CPU, RAM and the root partition, refreshed every 10 seconds:
 A bar turns yellow at 90% and red at 95%, once the level has held for three samples in a row, so a one-off spike doesn't paint it. The same rise raises a Telegram alert for memory and disk, once per rise: `Disk usage is 93% (warning above 90%)`. Nothing is sent when usage goes back down. CPU is shown but never alerts: a busy CPU is usually fine.
 
 Until the second sample there's no CPU figure, only `—`. A collector too old to report host metrics gets a note saying so instead of empty bars.
+
+### Alerts
+
+![Alert history](docs/media/alerts.png)
+
+Alerts are raised by the collector and delivered by the Telegram bot. Put the bot's token in `BOT_TOKEN` and send it `/start`: it replies with the chat id that goes into `CHAT_ID`.
+
+| What happened | Severity | Alert text |
+| --- | --- | --- |
+| Container ran out of memory | `critical` | `Container was killed after running out of memory (image: …)` |
+| Container exited 5 times within 5 minutes | `critical` | `Container is crash-looping: 5 restarts within 5m0s` |
+| Container exited with a non-zero code | `error` | `Container exited unexpectedly with code 137 (image: …)` |
+| Health check failed twice in a row | `error` | the reason, see below |
+| A down target answers again | `info` | `Service is back up` |
+| A log line matched a rule | the rule's | `Log line matched rule "panic\|FATAL"` |
+| Clean exit (code 0), `kill`, `restart`, `start`, `destroy` | — | no alert, only an event on the container's page |
+| A stop you asked for: `kill` followed by an exit within 30 seconds, whatever the code | — | no alert, and it doesn't count toward a crash loop |
+| Host memory or disk above `host.warning` for 3 samples | `warning` | `Disk usage is 93% (warning above 90%)` |
+| Host memory or disk above `host.critical` for 3 samples | `critical` | `Memory usage is 96% (critical above 95%)` |
+| Host memory or disk going back down | — | no alert, the bar changes colour |
+
+Host alerts don't belong to any target. In Telegram they arrive as `Host · <hostname>`, and *History → Alerts* has a `host` filter for them.
+
+Health check failures come with a readable reason rather than a raw Go error: `Health check timed out`, `Health check returned HTTP 502`, `Host web-frontend could not be resolved`, `Service is unreachable: connection refused`, `TLS certificate verification failed`.
+
+Every alert goes to Telegram, whatever its severity. The alerter checks for new ones every 5 seconds and sends one message per target, headed by the worst severity in it. The same alert for the same target isn't repeated within `telegram.cooldown` (5 minutes): it's counted into the next message as `+N suppressed` instead.
+
+Each row in the history shows its delivery state: `sent to Telegram` once the alerter has handled it, `not sent` while it's waiting or when Telegram isn't configured.
 
 ### A mascot that tells you the mood before you read a number
 
@@ -295,34 +309,6 @@ Any proxy with authentication works the same way. If yours runs in Docker, attac
 The collector mounts `/var/run/docker.sock`, and access to the Docker socket is equivalent to root on the host. Argus only reads events and logs through it, but anyone who takes over the collector container gets that access too, which is one more reason to keep its API on loopback.
 
 It also mounts the host's root filesystem read-only at `/hostfs`, to measure the root partition and read the host name. Read-only means it can't change anything there, and with the Docker socket already mounted it gains nothing it didn't have.
-
-## Alerts
-
-![Alert history](docs/media/alerts.png)
-
-Alerts are raised by the collector and delivered by the Telegram bot. Put the bot's token in `BOT_TOKEN` and send it `/start`: it replies with the chat id that goes into `CHAT_ID`.
-
-| What happened | Severity | Alert text |
-| --- | --- | --- |
-| Container ran out of memory | `critical` | `Container was killed after running out of memory (image: …)` |
-| Container exited 5 times within 5 minutes | `critical` | `Container is crash-looping: 5 restarts within 5m0s` |
-| Container exited with a non-zero code | `error` | `Container exited unexpectedly with code 137 (image: …)` |
-| Health check failed twice in a row | `error` | the reason, see below |
-| A down target answers again | `info` | `Service is back up` |
-| A log line matched a rule | the rule's | `Log line matched rule "panic\|FATAL"` |
-| Clean exit (code 0), `kill`, `restart`, `start`, `destroy` | — | no alert, only an event on the container's page |
-| A stop you asked for: `kill` followed by an exit within 30 seconds, whatever the code | — | no alert, and it doesn't count toward a crash loop |
-| Host memory or disk above `host.warning` for 3 samples | `warning` | `Disk usage is 93% (warning above 90%)` |
-| Host memory or disk above `host.critical` for 3 samples | `critical` | `Memory usage is 96% (critical above 95%)` |
-| Host memory or disk going back down | — | no alert, the bar changes colour |
-
-Host alerts don't belong to any target. In Telegram they arrive as `Host · <hostname>`, and *History → Alerts* has a `host` filter for them.
-
-Health check failures come with a readable reason rather than a raw Go error: `Health check timed out`, `Health check returned HTTP 502`, `Host web-frontend could not be resolved`, `Service is unreachable: connection refused`, `TLS certificate verification failed`.
-
-Every alert goes to Telegram, whatever its severity. The alerter checks for new ones every 5 seconds and sends one message per target, headed by the worst severity in it. The same alert for the same target isn't repeated within `telegram.cooldown` (5 minutes): it's counted into the next message as `+N suppressed` instead.
-
-Each row in the history shows its delivery state: `sent to Telegram` once the alerter has handled it, `not sent` while it's waiting or when Telegram isn't configured.
 
 ## Configuration
 

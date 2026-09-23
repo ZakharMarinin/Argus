@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"sync"
 	"syscall"
 	"time"
@@ -66,7 +67,7 @@ func (p *Prober) checkProbe(ctx context.Context, target *entity.Target) (*entity
 	if err != nil {
 		probe.Latency = time.Since(start).Microseconds()
 
-		return probe, probeFailureReason(err), nil
+		return probe, probeFailureReason(err) + selfAddressHint(target.Source), nil
 	}
 	defer func() {
 		_ = resp.Body.Close()
@@ -103,6 +104,23 @@ func probeFailureReason(err error) string {
 	}
 
 	return fmt.Sprintf("Health check request failed: %v", err)
+}
+
+func selfAddressHint(source string) string {
+	u, err := url.Parse(source)
+	if err != nil {
+		return ""
+	}
+
+	host := u.Hostname()
+	ip := net.ParseIP(host)
+
+	self := host == "localhost" || (ip != nil && (ip.IsLoopback() || ip.IsUnspecified()))
+	if !self {
+		return ""
+	}
+
+	return fmt.Sprintf(". Inside Argus, %s is the Argus container itself: use host.docker.internal to reach a port published on the host", host)
 }
 
 func (p *Prober) runChecks(ctx context.Context, targets []*entity.Target) []probeResult {
@@ -153,7 +171,7 @@ func (p *Prober) transition(result probeResult) (string, *entity.Alert) {
 		case statusUp:
 			return "", nil
 		case statusDown:
-			return statusUp, &entity.Alert{TargetID: id, Severity: entity.SeverityInfo, Details: "Service is back up"}
+			return statusUp, &entity.Alert{TargetID: &id, Severity: entity.SeverityInfo, Details: "Service is back up"}
 		default:
 			return statusUp, nil
 		}
@@ -165,7 +183,7 @@ func (p *Prober) transition(result probeResult) (string, *entity.Alert) {
 		return "", nil
 	}
 
-	return statusDown, &entity.Alert{TargetID: id, Severity: entity.SeverityError, Details: result.reason}
+	return statusDown, &entity.Alert{TargetID: &id, Severity: entity.SeverityError, Details: result.reason}
 }
 
 func (p *Prober) handleTransitions(ctx context.Context, results []probeResult) {

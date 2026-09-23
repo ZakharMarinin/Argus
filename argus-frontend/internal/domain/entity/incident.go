@@ -48,6 +48,7 @@ type Incident struct {
 
 	// Cause - чем простой начался: die, oom, kill, probe failed.
 	Cause string
+	Crash bool
 
 	State IncidentState
 }

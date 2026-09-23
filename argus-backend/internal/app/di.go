@@ -3,6 +3,7 @@ package app
 import (
 	"argus-collector/internal/alerter"
 	"argus-collector/internal/config"
+	"argus-collector/internal/host"
 	"argus-collector/internal/matcher"
 	"argus-collector/internal/prober"
 	"argus-collector/internal/storage"
@@ -28,6 +29,8 @@ type Container struct {
 	matcher      *matcher.Matcher
 	dockerClient *client.Client
 	handlers     *handlers.Handler
+	host         *host.Sampler
+	hostName     string
 	uc           *usecase.UseCase
 	db           *storage.Storage
 	starts       chan string
@@ -102,7 +105,7 @@ func (c *Container) Alerter(ctx context.Context) (*alerter.Alerter, error) {
 			return nil, err
 		}
 
-		a, err := alerter.NewAlerter(c.cfg, c.log, uc)
+		a, err := alerter.NewAlerter(c.cfg, c.log, uc, c.HostName(ctx))
 		if err != nil {
 			return nil, err
 		}
@@ -133,11 +136,49 @@ func (c *Container) Handler(ctx context.Context) (*handlers.Handler, error) {
 			return nil, err
 		}
 
-		c.handlers = handlers.NewHandler(c.log, uc)
+		sampler, err := c.Host(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		c.handlers = handlers.NewHandler(c.log, uc, sampler)
 		router.Router(c.log, c.Router(), c.handlers)
 	}
 
 	return c.handlers, nil
+}
+
+func (c *Container) Host(ctx context.Context) (*host.Sampler, error) {
+	if c.host == nil {
+		uc, err := c.UseCase(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		c.host = host.NewSampler(c.cfg, c.log, uc, c.HostName(ctx))
+	}
+
+	return c.host, nil
+}
+
+func (c *Container) HostName(ctx context.Context) string {
+	if c.hostName != "" {
+		return c.hostName
+	}
+
+	var fromDocker string
+
+	cli, err := c.DockerClient()
+	if err == nil {
+		info, err := cli.Info(ctx, client.InfoOptions{})
+		if err == nil {
+			fromDocker = info.Info.Name
+		}
+	}
+
+	c.hostName = host.Hostname(c.cfg.Host.DiskPath, fromDocker)
+
+	return c.hostName
 }
 
 func (c *Container) Router() *chi.Mux {

@@ -16,7 +16,6 @@ WORKDIR /app
 
 COPY --from=builder /out/argus ./argus
 COPY config.yaml ./config.yaml
-COPY migrations ./migrations
 
 EXPOSE 8099
 

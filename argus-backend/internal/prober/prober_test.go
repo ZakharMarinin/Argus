@@ -101,3 +101,25 @@ func TestProbeFailureReason(t *testing.T) {
 		})
 	}
 }
+
+func TestSelfAddressHint(t *testing.T) {
+	cases := []struct {
+		source string
+		hinted bool
+	}{
+		{"http://0.0.0.0:8093/health", true},
+		{"http://localhost:8093/health", true},
+		{"http://127.0.0.1:8093/health", true},
+		{"http://[::1]:8093/health", true},
+		{"http://host.docker.internal:8093/health", false},
+		{"http://gateway:8093/health", false},
+		{"https://example.com/health", false},
+		{"http://192.168.0.10/health", false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.source, func(t *testing.T) {
+			require.Equal(t, tc.hinted, selfAddressHint(tc.source) != "")
+		})
+	}
+}

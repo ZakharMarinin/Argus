@@ -95,6 +95,10 @@ func listWhere(b sq.SelectBuilder, f entity.ListFilter) sq.SelectBuilder {
 		b = b.Where(sq.Eq{"target_id": f.TargetIDs})
 	}
 
+	if f.Host {
+		b = b.Where(sq.Eq{"target_id": nil})
+	}
+
 	if f.Severity != nil {
 		b = b.Where(sq.Eq{"severity": *f.Severity})
 	}

@@ -48,7 +48,7 @@ type eventJSON struct {
 
 type alertJSON struct {
 	ID        int       `json:"id"`
-	TargetID  string    `json:"target_id"`
+	TargetID  string    `json:"target_id,omitempty"`
 	Severity  int       `json:"severity"`
 	Details   string    `json:"details"`
 	CreatedAt time.Time `json:"created_at"`
@@ -65,6 +65,7 @@ type fakeBackend struct {
 
 	logMatches []logMatchJSON
 	old        bool
+	host       any
 }
 
 type logMatchJSON struct {
@@ -105,6 +106,9 @@ func listPage[T any](w http.ResponseWriter, r *http.Request, old bool, items []T
 		if len(q["target_id"]) > 0 && !slices.Contains(q["target_id"], target) {
 			continue
 		}
+		if q.Get("host") == "true" && target != "" {
+			continue
+		}
 		if q.Get("severity") != "" && q.Get("severity") != strconv.Itoa(severity) {
 			continue
 		}
@@ -139,6 +143,11 @@ func (f fakeBackend) server(t *testing.T) *httptest.Server {
 		id := r.URL.Path[len("/v1/api/targets/"):]
 		for _, tg := range f.targets {
 			if tg.ID == id {
+				if r.Method == http.MethodDelete {
+					w.WriteHeader(http.StatusNoContent)
+
+					return
+				}
 				_ = json.NewEncoder(w).Encode(tg)
 
 				return
@@ -147,7 +156,20 @@ func (f fakeBackend) server(t *testing.T) *httptest.Server {
 		w.WriteHeader(http.StatusNotFound)
 	})
 	mux.HandleFunc("/v1/api/targets", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			f.create(w, r)
+
+			return
+		}
 		_ = json.NewEncoder(w).Encode(f.targets)
+	})
+	mux.HandleFunc("/v1/api/host", func(w http.ResponseWriter, r *http.Request) {
+		if f.host == nil {
+			w.WriteHeader(http.StatusNotFound)
+
+			return
+		}
+		_ = json.NewEncoder(w).Encode(f.host)
 	})
 	mux.HandleFunc("/v1/api/probes", func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(f.probes[r.URL.Query().Get("target_id")])
@@ -170,6 +192,23 @@ func (f fakeBackend) server(t *testing.T) *httptest.Server {
 	t.Cleanup(srv.Close)
 
 	return srv
+}
+
+func (f fakeBackend) create(w http.ResponseWriter, r *http.Request) {
+	var body targetJSON
+	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	switch {
+	case body.TargetType != "probe":
+		w.WriteHeader(http.StatusInternalServerError)
+	case body.Name == "":
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"name is required"}`))
+	case body.Source == "https://dup.local":
+		w.WriteHeader(http.StatusConflict)
+	default:
+		w.WriteHeader(http.StatusCreated)
+	}
 }
 
 func newUseCase(t *testing.T, fb fakeBackend) *usecase.UseCase {
@@ -220,37 +259,31 @@ func TestTargetStatusAggregatesFromRawProbes(t *testing.T) {
 	}
 }
 
-// TestContainerRestartsCountReturnsWithinHour - «перезапустился» значит лёг и
-// поднялся, поэтому счётчик считает возвраты за последний час: и те, что
-// закрылись событием start, и те, что закрылись restart'ом.
-//
-// Пара kill + die - одна остановка, а не две, и упавший контейнер, который
-// ещё не вернулся, в счётчик не попадает вовсе.
-func TestContainerRestartsCountReturnsWithinHour(t *testing.T) {
-	old := now.Add(-90 * time.Minute)
-	recent := now.Add(-20 * time.Minute)
-
+func TestContainerCrashesCountOnlyUnplannedReturns(t *testing.T) {
 	fb := fakeBackend{
 		targets: []targetJSON{
 			{ID: "c1", Name: "worker", TargetType: "container", Status: "up", UpdatedAt: now},
 		},
 		events: map[string][]eventJSON{
 			"c1": {
-				// Возврат старше часа - не считается.
-				{ID: 1, TargetID: "c1", Event: "die", CreatedAt: old},
-				{ID: 2, TargetID: "c1", Event: "start", CreatedAt: old.Add(time.Minute)},
+				{ID: 1, TargetID: "c1", Event: "die", Details: "exitCode=1", CreatedAt: now.Add(-40 * time.Minute)},
+				{ID: 2, TargetID: "c1", Event: "start", CreatedAt: now.Add(-39 * time.Minute)},
 
-				// Остановка парой kill + die и возврат - это один возврат.
-				{ID: 3, TargetID: "c1", Event: "kill", Details: "signal=9", CreatedAt: recent},
-				{ID: 4, TargetID: "c1", Event: "die", CreatedAt: recent.Add(time.Second)},
-				{ID: 5, TargetID: "c1", Event: "start", CreatedAt: recent.Add(2 * time.Minute)},
+				{ID: 3, TargetID: "c1", Event: "kill", Details: "signal=15", CreatedAt: now.Add(-12 * time.Minute)},
+				{ID: 4, TargetID: "c1", Event: "die", Details: "exitCode=137", CreatedAt: now.Add(-12*time.Minute + 10*time.Second)},
+				{ID: 5, TargetID: "c1", Event: "start", CreatedAt: now.Add(-11 * time.Minute)},
 
-				// Ещё один возврат, закрытый restart'ом.
-				{ID: 6, TargetID: "c1", Event: "die", CreatedAt: now.Add(-10 * time.Minute)},
+				{ID: 6, TargetID: "c1", Event: "die", Details: "exitCode=0", CreatedAt: now.Add(-10 * time.Minute)},
 				{ID: 7, TargetID: "c1", Event: "restart", CreatedAt: now.Add(-9 * time.Minute)},
 
-				// Упал и пока не вернулся - это не перезапуск.
-				{ID: 8, TargetID: "c1", Event: "die", Details: "exit 1", CreatedAt: now.Add(-5 * time.Minute)},
+				{ID: 8, TargetID: "c1", Event: "die", Details: "exitCode=2", CreatedAt: now.Add(-8 * time.Minute)},
+				{ID: 9, TargetID: "c1", Event: "start", CreatedAt: now.Add(-7 * time.Minute)},
+
+				{ID: 10, TargetID: "c1", Event: "oom", CreatedAt: now.Add(-6 * time.Minute)},
+				{ID: 11, TargetID: "c1", Event: "die", Details: "exitCode=137", CreatedAt: now.Add(-6 * time.Minute)},
+				{ID: 12, TargetID: "c1", Event: "start", CreatedAt: now.Add(-5 * time.Minute)},
+
+				{ID: 13, TargetID: "c1", Event: "die", Details: "exitCode=1", CreatedAt: now.Add(-2 * time.Minute)},
 			},
 		},
 	}
@@ -261,11 +294,11 @@ func TestContainerRestartsCountReturnsWithinHour(t *testing.T) {
 	}
 
 	c := targets[0].Container
-	if c.Restarts1h != 2 {
-		t.Errorf("Restarts1h = %d, хотели 2 возврата за час", c.Restarts1h)
+	if c.Crashes != 2 {
+		t.Errorf("Crashes = %d, want 2: exit 2 and oom within 15m; old crash, docker stop, clean exit and the unreturned die don't count", c.Crashes)
 	}
-	if c.LastEvent != "die" || c.LastEventDetail != "exit 1" {
-		t.Errorf("LastEvent = %q/%q, хотели die/exit 1", c.LastEvent, c.LastEventDetail)
+	if c.LastEvent != "die" || c.LastEventDetail != "exitCode=1" {
+		t.Errorf("LastEvent = %q/%q", c.LastEvent, c.LastEventDetail)
 	}
 }
 

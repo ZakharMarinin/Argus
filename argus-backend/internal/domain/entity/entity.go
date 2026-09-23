@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -94,6 +96,33 @@ type Target struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
+const (
+	TargetTypeProbe     = "probe"
+	TargetTypeContainer = "container"
+)
+
+func (t *Target) Validate() error {
+	if strings.TrimSpace(t.Name) == "" {
+		return &ValidationError{Reason: "name is required"}
+	}
+
+	switch t.TargetType {
+	case TargetTypeContainer:
+		if strings.TrimSpace(t.Source) == "" {
+			return &ValidationError{Reason: "container name is required"}
+		}
+	case TargetTypeProbe:
+		u, err := url.Parse(t.Source)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return &ValidationError{Reason: "URL must be an absolute http:// or https:// address"}
+		}
+	default:
+		return &ValidationError{Reason: `target_type must be "probe" or "container"`}
+	}
+
+	return nil
+}
+
 type ContainerEvent struct {
 	ID        int       `json:"id"`
 	TargetID  uuid.UUID `json:"target_id"`
@@ -119,8 +148,8 @@ type Probe struct {
 }
 
 type Alert struct {
-	ID        int       `json:"id"`
-	TargetID  uuid.UUID `json:"target_id"`
+	ID        int        `json:"id"`
+	TargetID  *uuid.UUID `json:"target_id"`
 	Severity  Severity  `json:"severity"`
 	Details   string    `json:"details"`
 	Notified  bool      `json:"notified"`
@@ -129,6 +158,7 @@ type Alert struct {
 
 type ListFilter struct {
 	TargetIDs []uuid.UUID
+	Host      bool
 	Severity  *Severity
 	Notified  *bool
 	Since     *time.Time
@@ -136,4 +166,25 @@ type ListFilter struct {
 	Skip      uint64
 	Limit     uint64
 	Desc      bool
+}
+
+const (
+	HostLevelOK       = "ok"
+	HostLevelWarning  = "warning"
+	HostLevelCritical = "critical"
+)
+
+type HostMetric struct {
+	Percent float64 `json:"percent"`
+	Used    uint64  `json:"used,omitempty"`
+	Total   uint64  `json:"total,omitempty"`
+	Level   string  `json:"level"`
+}
+
+type HostSnapshot struct {
+	Hostname  string      `json:"hostname"`
+	SampledAt *time.Time  `json:"sampled_at"`
+	CPU       *HostMetric `json:"cpu"`
+	Memory    *HostMetric `json:"memory"`
+	Disk      *HostMetric `json:"disk"`
 }

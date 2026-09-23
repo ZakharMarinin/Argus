@@ -31,6 +31,10 @@ type Backend interface {
 	Alerts(ctx context.Context, q entity.ListQuery) (entity.Page[entity.Alert], error)
 	LogMatches(ctx context.Context, q entity.ListQuery) (entity.Page[entity.LogMatch], error)
 
+	Host(ctx context.Context) (entity.Host, error)
+	CreateTarget(ctx context.Context, t entity.Target) error
+	DeleteTarget(ctx context.Context, id string) error
+
 	// Ping проверяет, что бэкенд отвечает.
 	Ping(ctx context.Context) error
 }

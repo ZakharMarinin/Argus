@@ -19,6 +19,12 @@ func JSONError(w http.ResponseWriter, r *http.Request, status int, msg string) {
 }
 
 func HandleError(w http.ResponseWriter, r *http.Request, err error) {
+	if v, ok := errors.AsType[*entity.ValidationError](err); ok {
+		JSONError(w, r, http.StatusBadRequest, v.Reason)
+
+		return
+	}
+
 	switch {
 	case errors.Is(err, entity.ErrTargetNotFound),
 		errors.Is(err, entity.ErrContainerEventNotFound),

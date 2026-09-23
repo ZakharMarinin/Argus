@@ -20,10 +20,11 @@ func (uc *UseCase) Recent(ctx context.Context) (entity.Recent, error) {
 		return entity.Recent{}, notReady(err)
 	}
 
+	host := uc.hostLabel(ctx)
 	alerts := make([]entity.Alert, 0, len(page.Items))
 	for _, a := range page.Items {
 		if !a.CreatedAt.After(now) {
-			alerts = append(alerts, enrichAlert(a, byID))
+			alerts = append(alerts, enrichAlert(a, byID, host))
 		}
 	}
 

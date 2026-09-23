@@ -37,13 +37,18 @@
       {{range .Strip}}<span class="strip__bar {{.Class}}"></span>{{end}}
     </div>
     {{end}}
+
+    <button type="button" class="target-row__delete"
+            hx-delete="/targets/{{.ID}}" hx-swap="none"
+            hx-confirm="Delete {{.Name}} ({{.URL}})? Its check history and alerts are deleted too."
+            aria-label="Delete {{.Name}}" title="Delete target">&times;</button>
   </div>
   {{else}}
   <div class="empty">
     <img class="empty__img pixel" src="/static/img/argus-sleeping.gif" alt="" width="88" height="88">
     <h3 class="empty__title">No uptime targets</h3>
     <p class="empty__note">
-      Create one against the backend's own API — it will show up here after the first check.
+      Add one with <b>New target</b> — it will show up here after the first check.
     </p>
   </div>
   {{end}}

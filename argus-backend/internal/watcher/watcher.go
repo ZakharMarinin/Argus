@@ -16,6 +16,8 @@ import (
 	"github.com/moby/moby/client"
 )
 
+const stopGrace = 30 * time.Second
+
 const (
 	watcherTargetType = "container"
 	probeTargetType   = "probe"
@@ -48,6 +50,7 @@ type Watcher struct {
 	client DockerClient
 	starts chan<- string
 	dies   map[uuid.UUID][]time.Time
+	kills  map[uuid.UUID]time.Time
 }
 
 func NewWatcher(cfg *config.Config, log *slog.Logger, uc UseCase, client DockerClient, starts chan<- string) *Watcher {
@@ -58,6 +61,7 @@ func NewWatcher(cfg *config.Config, log *slog.Logger, uc UseCase, client DockerC
 		client: client,
 		starts: starts,
 		dies:   make(map[uuid.UUID][]time.Time),
+		kills:  make(map[uuid.UUID]time.Time),
 	}
 }
 
@@ -126,13 +130,35 @@ func (w *Watcher) createEvent(ctx context.Context, message events.Message) error
 		return err
 	}
 
+	now := time.Now()
+	if w.plannedStop(target.ID, eventType, now) {
+		return nil
+	}
+
 	w.createAlert(ctx, event, message.Actor.Attributes)
 
-	if eventType == entity.ContainerDie && w.recordDie(target.ID, time.Now()) {
+	if eventType == entity.ContainerDie && w.recordDie(target.ID, now) {
 		w.raiseCrashLoop(ctx, target.ID)
 	}
 
 	return nil
+}
+
+func (w *Watcher) plannedStop(id uuid.UUID, event entity.EventType, now time.Time) bool {
+	if event == entity.ContainerKill {
+		w.kills[id] = now
+
+		return false
+	}
+
+	if event != entity.ContainerDie {
+		return false
+	}
+
+	killedAt, ok := w.kills[id]
+	delete(w.kills, id)
+
+	return ok && now.Sub(killedAt) <= stopGrace
 }
 
 func (w *Watcher) recordDie(id uuid.UUID, now time.Time) bool {
@@ -145,7 +171,7 @@ func (w *Watcher) recordDie(id uuid.UUID, now time.Time) bool {
 
 func (w *Watcher) raiseCrashLoop(ctx context.Context, targetID uuid.UUID) {
 	_, err := w.uc.CreateAlert(ctx, &entity.Alert{
-		TargetID: targetID,
+		TargetID: &targetID,
 		Severity: entity.SeverityCritical,
 		Details: fmt.Sprintf("Container is crash-looping: %d restarts within %s",
 			w.cfg.Watcher.CrashLoopRestarts, w.cfg.Watcher.CrashLoopWindow),
@@ -219,8 +245,9 @@ func (w *Watcher) createAlert(ctx context.Context, event *entity.ContainerEvent,
 		return
 	}
 
+	targetID := event.TargetID
 	alert := &entity.Alert{
-		TargetID: event.TargetID,
+		TargetID: &targetID,
 		Severity: severity,
 		Details:  alertDetails(event.Event, attrs),
 	}

@@ -69,29 +69,7 @@
   </details>
   {{end}}
 
-  {{with .Sidebar.Host}}
-  <div class="side-section">
-    <h2 class="side-label">
-      Host resources
-      {{if not .Available}}
-      <span class="side-label__stub" title="Host metrics are out of scope for the first version — this block is waiting on a host collector">soon</span>
-      {{end}}
-    </h2>
-    {{range .Meters}}
-    <div class="meter {{.Status.Class}}">
-      <div class="meter__head">
-        <span>{{.Label}}</span>
-        <span class="meter__value">{{.Value}}</span>
-      </div>
-      <div class="meter__track" role="img" aria-label="{{.Label}}: {{.Value}}">
-        <div class="meter__fill" style="{{styleWidth .Percent}}"></div>
-      </div>
-    </div>
-    {{else}}
-    <p class="side-note">{{.Note}}</p>
-    {{end}}
-  </div>
-  {{end}}
+  {{template "host-panel" .Sidebar.Host}}
 
   <div class="sidebar__spacer"></div>
 
@@ -125,4 +103,23 @@
   {{end}}
 
 </aside>
+{{- end}}
+
+{{define "host-panel" -}}
+<div class="side-section" id="host-panel"
+     hx-get="/partials/host" hx-trigger="every 10s, refreshNow from:body" hx-swap="outerHTML">
+  <h2 class="side-label">Host resources</h2>
+  {{range .Meters}}
+  <div class="meter {{.Status.Class}}">
+    <div class="meter__head">
+      <span>{{.Label}}</span>
+      <span class="meter__value">{{.Value}}</span>
+    </div>
+    <div class="meter__track" role="img" aria-label="{{.Label}}: {{.Value}}">
+      <div class="meter__fill" style="{{styleWidth .Percent}}"></div>
+    </div>
+  </div>
+  {{end}}
+  {{with .Note}}<p class="side-note">{{.}}</p>{{end}}
+</div>
 {{- end}}

@@ -13,6 +13,7 @@ type Kind string
 const (
 	KindProbe     Kind = "probe"
 	KindContainer Kind = "container"
+	KindHost      Kind = "host"
 )
 
 // Status - состояние цели, как его держит бэкенд.
@@ -89,14 +90,8 @@ type ProbeOutcome struct {
 
 // ContainerStats - агрегаты по событиям контейнера.
 type ContainerStats struct {
-	// Restarts1h - сколько раз контейнер лёг и снова поднялся за последний
-	// час (ТЗ §4.1).
-	//
-	// Считается по закрытым интервалам простоя, а не по событию с именем
-	// restart: возврат Docker отмечает то как start, то как restart, а одна
-	// остановка приходит парой kill + die. Первый запуск контейнера
-	// перезапуском не считается - перед ним нет падения.
-	Restarts1h int
+	Crashes        int
+	CrashesClearAt *time.Time
 
 	// Последнее событие: чем именно занят контейнер прямо сейчас.
 	LastEvent       string
@@ -204,6 +199,7 @@ type LatencyPoint struct {
 
 type ListQuery struct {
 	TargetIDs []string
+	Host      bool
 	Severity  string
 	Since     time.Time
 	Skip      int
@@ -227,4 +223,25 @@ type Recent struct {
 	Alerts     []Alert
 	LogMatches []LogMatch
 	Incidents  []Incident
+}
+
+const (
+	HostLevelOK       = "ok"
+	HostLevelWarning  = "warning"
+	HostLevelCritical = "critical"
+)
+
+type HostMetric struct {
+	Percent float64
+	Used    uint64
+	Total   uint64
+	Level   string
+}
+
+type Host struct {
+	Hostname  string
+	SampledAt *time.Time
+	CPU       *HostMetric
+	Memory    *HostMetric
+	Disk      *HostMetric
 }

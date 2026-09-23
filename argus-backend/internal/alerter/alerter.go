@@ -27,7 +27,9 @@ const (
 
 type notification struct {
 	Alerts []*entity.Alert
-	Target entity.Target
+	Key    uuid.UUID
+	Name   string
+	Status string
 }
 
 type UseCase interface {
@@ -37,8 +39,16 @@ type UseCase interface {
 }
 
 type alertKey struct {
-	targetID uuid.UUID
-	details  string
+	key     uuid.UUID
+	details string
+}
+
+func keyOf(alert *entity.Alert) alertKey {
+	if alert.TargetID == nil {
+		return alertKey{uuid.Nil, alert.Details}
+	}
+
+	return alertKey{*alert.TargetID, alert.Details}
 }
 
 type Alerter struct {
@@ -46,12 +56,13 @@ type Alerter struct {
 	log         *slog.Logger
 	bot         *telebot.Bot
 	uc          UseCase
+	hostName    string
 	lastSent    map[alertKey]time.Time
 	suppressed  map[uuid.UUID]int
 	pausedUntil time.Time
 }
 
-func NewAlerter(cfg *config.Config, log *slog.Logger, uc UseCase) (*Alerter, error) {
+func NewAlerter(cfg *config.Config, log *slog.Logger, uc UseCase, hostName string) (*Alerter, error) {
 	b, err := telebot.NewBot(telebot.Settings{
 		Token:  cfg.Telegram.BotToken,
 		Poller: &telebot.LongPoller{Timeout: pollerTimeout},
@@ -72,6 +83,7 @@ func NewAlerter(cfg *config.Config, log *slog.Logger, uc UseCase) (*Alerter, err
 		log:        log,
 		bot:        b,
 		uc:         uc,
+		hostName:   hostName,
 		lastSent:   make(map[alertKey]time.Time),
 		suppressed: make(map[uuid.UUID]int),
 	}, nil
@@ -88,7 +100,7 @@ func (a *Alerter) StopBot() {
 func formatMessage(n *notification, suppressed int) string {
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "[%s] %s - %s\n", maxSeverity(n.Alerts), n.Target.Name, n.Target.Status)
+	fmt.Fprintf(&b, "[%s] %s - %s\n", maxSeverity(n.Alerts), n.Name, n.Status)
 
 	if len(n.Alerts) <= maxListedAlerts {
 		for _, alert := range n.Alerts {
@@ -150,21 +162,37 @@ func truncate(s string, limit int) string {
 	return s
 }
 
-func (a *Alerter) targetsByID(ctx context.Context, alerts []*entity.Alert) ([]*notification, error) {
-	seen := make(map[uuid.UUID][]*entity.Alert, len(alerts))
+func (a *Alerter) group(ctx context.Context, alerts []*entity.Alert) ([]*notification, error) {
+	byTarget := make(map[uuid.UUID][]*entity.Alert, len(alerts))
+
+	var host []*entity.Alert
 
 	for _, alert := range alerts {
-		seen[alert.TargetID] = append(seen[alert.TargetID], alert)
+		if alert.TargetID == nil {
+			host = append(host, alert)
+
+			continue
+		}
+
+		byTarget[*alert.TargetID] = append(byTarget[*alert.TargetID], alert)
 	}
 
-	targets, err := a.uc.GetTargetsByIDs(ctx, slices.Collect(maps.Keys(seen)))
+	notifs := make([]*notification, 0, len(byTarget)+1)
+	if len(host) > 0 {
+		notifs = append(notifs, &notification{Alerts: host, Key: uuid.Nil, Name: "Host · " + a.hostName, Status: "n/a"})
+	}
+
+	if len(byTarget) == 0 {
+		return notifs, nil
+	}
+
+	targets, err := a.uc.GetTargetsByIDs(ctx, slices.Collect(maps.Keys(byTarget)))
 	if err != nil {
 		return nil, err
 	}
 
-	notifs := make([]*notification, 0, len(targets))
 	for _, target := range targets {
-		notifs = append(notifs, &notification{Alerts: seen[target.ID], Target: *target})
+		notifs = append(notifs, &notification{Alerts: byTarget[target.ID], Key: target.ID, Name: target.Name, Status: target.Status})
 	}
 
 	return notifs, nil
@@ -191,7 +219,7 @@ func (a *Alerter) AlertWorker(ctx context.Context) {
 		return
 	}
 
-	notifications, err := a.targetsByID(ctx, alerts)
+	notifications, err := a.group(ctx, alerts)
 	if err != nil {
 		log.Error("failed to get notifications", "error", err)
 
@@ -220,12 +248,12 @@ func (a *Alerter) notify(ctx context.Context, log *slog.Logger, n *notification,
 			return true
 		}
 
-		a.suppressed[n.Target.ID] += len(muted)
+		a.suppressed[n.Key] += len(muted)
 
 		return true
 	}
 
-	msg := formatMessage(&notification{Alerts: send, Target: n.Target}, a.suppressed[n.Target.ID]+len(muted))
+	msg := formatMessage(&notification{Alerts: send, Name: n.Name, Status: n.Status}, a.suppressed[n.Key]+len(muted))
 
 	_, err := a.bot.Send(telebot.ChatID(a.cfg.Telegram.ChatID), msg)
 
@@ -237,16 +265,16 @@ func (a *Alerter) notify(ctx context.Context, log *slog.Logger, n *notification,
 	}
 
 	if err != nil {
-		log.Error("failed to send notification", "id", n.Target.ID, "error", err)
+		log.Error("failed to send notification", "id", n.Key, "name", n.Name, "error", err)
 
 		return true
 	}
 
 	for _, alert := range send {
-		a.lastSent[alertKey{alert.TargetID, alert.Details}] = now
+		a.lastSent[keyOf(alert)] = now
 	}
 
-	delete(a.suppressed, n.Target.ID)
+	delete(a.suppressed, n.Key)
 
 	err = a.uc.MarkAlertsNotified(ctx, n.Alerts)
 	if err != nil {
@@ -260,7 +288,7 @@ func (a *Alerter) split(n *notification, now time.Time) ([]*entity.Alert, []*ent
 	var send, muted []*entity.Alert
 
 	for _, alert := range n.Alerts {
-		sent, ok := a.lastSent[alertKey{alert.TargetID, alert.Details}]
+		sent, ok := a.lastSent[keyOf(alert)]
 		if ok && now.Sub(sent) < a.cfg.Telegram.Cooldown {
 			muted = append(muted, alert)
 

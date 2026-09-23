@@ -35,6 +35,7 @@ func Router(h *handlers.Handler) (http.Handler, error) {
 	mux.HandleFunc("GET /partials/targets", h.PartialTargets)
 	mux.HandleFunc("GET /partials/containers", h.PartialContainers)
 	mux.HandleFunc("GET /partials/recent", h.PartialRecent)
+	mux.HandleFunc("GET /partials/host", h.PartialHost)
 	mux.HandleFunc("GET /partials/history/{tab}", h.PartialHistory)
 	mux.HandleFunc("GET /partials/container/{name}/meta", h.PartialMeta)
 	mux.HandleFunc("GET /partials/container/{name}/events", h.PartialEvents)
@@ -50,7 +51,10 @@ func Router(h *handlers.Handler) (http.Handler, error) {
 	// Проба живости для docker-compose и обратного прокси.
 	mux.HandleFunc("GET /healthz", h.Healthz)
 
-	return mux, nil
+	mux.HandleFunc("POST /targets", h.CreateTarget)
+	mux.HandleFunc("DELETE /targets/{id}", h.DeleteTarget)
+
+	return http.NewCrossOriginProtection().Handler(mux), nil
 }
 
 // cacheStatic управляет кэшированием вшитых ассетов.

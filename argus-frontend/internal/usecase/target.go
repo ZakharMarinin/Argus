@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"time"
 
@@ -28,6 +29,7 @@ func (uc *UseCase) TargetStatus(ctx context.Context) ([]entity.TargetSummary, er
 			summary.Probe, err = uc.probeStats(ctx, t.ID)
 		case entity.KindContainer:
 			summary.Container, err = uc.containerStats(ctx, t.ID)
+		case entity.KindHost:
 		}
 
 		if err != nil {
@@ -102,6 +104,8 @@ func (uc *UseCase) probeStats(ctx context.Context, targetID string) (*entity.Pro
 	return stats, nil
 }
 
+const crashWindow = 15 * time.Minute
+
 // containerStats считает агрегаты контейнера из его событий Docker.
 func (uc *UseCase) containerStats(ctx context.Context, targetID string) (*entity.ContainerStats, error) {
 	events, err := uc.backend.Events(ctx, targetID)
@@ -113,8 +117,13 @@ func (uc *UseCase) containerStats(ctx context.Context, targetID string) (*entity
 }
 
 func containerStatsFromEvents(events []entity.ContainerEvent) *entity.ContainerStats {
-	hourAgo := time.Now().Add(-time.Hour)
-	stats := &entity.ContainerStats{Restarts1h: returnsSince(events, hourAgo)}
+	crashes, lastReturn := crashesSince(events, time.Now().Add(-crashWindow))
+	stats := &entity.ContainerStats{Crashes: crashes}
+
+	if lastReturn != nil {
+		clearAt := lastReturn.Add(crashWindow)
+		stats.CrashesClearAt = &clearAt
+	}
 
 	var latest *entity.ContainerEvent
 
@@ -133,4 +142,17 @@ func containerStatsFromEvents(events []entity.ContainerEvent) *entity.ContainerS
 	}
 
 	return stats
+}
+
+func (uc *UseCase) CreateProbe(ctx context.Context, name, source string) error {
+	err := uc.backend.CreateTarget(ctx, entity.Target{Kind: entity.KindProbe, Label: name, Source: source})
+	if _, ok := errors.AsType[*entity.ValidationError](err); ok {
+		return err
+	}
+
+	return notReady(err)
+}
+
+func (uc *UseCase) DeleteTarget(ctx context.Context, id string) error {
+	return notReady(uc.backend.DeleteTarget(ctx, id))
 }

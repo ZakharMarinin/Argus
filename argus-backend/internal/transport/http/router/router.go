@@ -15,6 +15,8 @@ func Router(log *slog.Logger, r *chi.Mux, h *handlers.Handler) {
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	r.Route("/v1/api", func(r chi.Router) {
+		r.Get("/host", h.GetHost)
+
 		r.Route("/targets", func(r chi.Router) {
 			r.Post("/", h.CreateTarget)
 			r.Get("/", h.GetListTargets)

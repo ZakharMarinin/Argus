@@ -1,8 +1,8 @@
 // Package handlers - HTTP-слой дашборда: страницы, htmx-партиалы и точки
 // графиков.
 //
-// Он только читает через порт UseCase и отдаёт готовую разметку. Ни Docker,
-// ни Telegram, ни записи в бэкенд здесь нет и быть не должно.
+// Он работает через порт UseCase и отдаёт готовую разметку. Ни Docker, ни
+// Telegram здесь нет.
 package handlers
 
 import (
@@ -36,6 +36,9 @@ type UseCase interface {
 	HistoryAlerts(ctx context.Context, q entity.HistoryQuery) (entity.Page[entity.Alert], error)
 	HistoryLogMatches(ctx context.Context, q entity.HistoryQuery) (entity.Page[entity.LogMatch], error)
 	Recent(ctx context.Context) (entity.Recent, error)
+	Host(ctx context.Context) (entity.Host, error)
+	CreateProbe(ctx context.Context, name, source string) error
+	DeleteTarget(ctx context.Context, id string) error
 	Ping(ctx context.Context) error
 }
 
@@ -64,6 +67,7 @@ type snapshot struct {
 	targets []entity.TargetSummary
 	counts  entity.AlertCounts
 	logs    entity.LogMatchReport
+	host    view.HostPanel
 }
 
 func (h *Handler) snapshot(ctx context.Context) (snapshot, error) {
@@ -82,7 +86,9 @@ func (h *Handler) snapshot(ctx context.Context) (snapshot, error) {
 		return snapshot{}, err
 	}
 
-	return snapshot{targets: targets, counts: counts, logs: logs}, nil
+	host, err := h.uc.Host(ctx)
+
+	return snapshot{targets: targets, counts: counts, logs: logs, host: h.present.HostPanel(host, err)}, nil
 }
 
 // layout собирает обвязку страницы вокруг готовой модели содержимого.
@@ -93,7 +99,7 @@ func (h *Handler) layout(snap snapshot, active, title, sub, partial string, cont
 		Active:      active,
 		PartialPath: partial,
 		Nav:         h.present.Nav(snap.targets, snap.counts),
-		Sidebar:     h.present.Sidebar(snap.targets, snap.counts, len(snap.logs.Matches)),
+		Sidebar:     h.present.Sidebar(snap.targets, snap.counts, len(snap.logs.Matches), snap.host),
 		Content:     content,
 	}
 }

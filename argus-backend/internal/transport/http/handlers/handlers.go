@@ -45,13 +45,18 @@ type UseCase interface {
 	FindAlerts(ctx context.Context, f entity.ListFilter) ([]*entity.Alert, int, error)
 }
 
-type Handler struct {
-	log *slog.Logger
-	uc  UseCase
+type HostReader interface {
+	Snapshot() entity.HostSnapshot
 }
 
-func NewHandler(log *slog.Logger, uc UseCase) *Handler {
-	return &Handler{log: log, uc: uc}
+type Handler struct {
+	log  *slog.Logger
+	uc   UseCase
+	host HostReader
+}
+
+func NewHandler(log *slog.Logger, uc UseCase, host HostReader) *Handler {
+	return &Handler{log: log, uc: uc, host: host}
 }
 
 func parsePagination(r *http.Request) (limit uint64, offset int) {
@@ -101,7 +106,7 @@ var errInvalidOrder = errors.New("invalid order")
 func parseListFilter(r *http.Request) (entity.ListFilter, error) {
 	q := r.URL.Query()
 	limit, offset := parsePagination(r)
-	f := entity.ListFilter{Limit: limit, After: offset}
+	f := entity.ListFilter{Limit: limit, After: offset, Host: q.Get("host") == "true"}
 
 	for _, raw := range q["target_id"] {
 		id, err := uuid.Parse(raw)

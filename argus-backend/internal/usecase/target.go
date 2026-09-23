@@ -10,7 +10,13 @@ import (
 func (uc *UseCase) CreateTarget(ctx context.Context, target *entity.Target) (*entity.Target, error) {
 	const op = "UseCase.CreateTarget"
 
+	err := target.Validate()
+	if err != nil {
+		return nil, wrapErr(op, err)
+	}
+
 	target.ID = uuid.New()
+	target.Status = "unknown"
 
 	created, err := uc.db.CreateTarget(ctx, target)
 

@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"sort"
+	"strings"
 	"time"
 
 	"argus-frontend/internal/domain/entity"
@@ -89,6 +90,8 @@ func (uc *UseCase) incidentsFor(ctx context.Context, t entity.Target) ([]entity.
 		}
 
 		return containerIncidents(t, events), nil
+
+	case entity.KindHost:
 	}
 
 	return nil, nil
@@ -176,6 +179,7 @@ func containerIncidents(t entity.Target, events []entity.ContainerEvent) []entit
 				StartedAt:   e.OccurredAt,
 				LastKnownAt: e.OccurredAt,
 				Cause:       e.Event,
+				Crash:       crashed(e),
 				State:       entity.IncidentUnclosed,
 			}
 
@@ -195,30 +199,46 @@ func containerIncidents(t entity.Target, events []entity.ContainerEvent) []entit
 	return out
 }
 
-// returnsSince считает, сколько раз контейнер лёг и снова поднялся начиная с
-// since. Это и есть «перезапустился»: возврат, а не событие с именем restart.
-//
-// Считается по тем же интервалам, что рисует таймлайн, поэтому карточка и
-// таймлайн не могут разойтись. Цель здесь не нужна - в счётчик идут только
-// времена, а не подписи, поэтому передаётся пустая.
-//
-// Упавший и не вернувшийся контейнер в счётчик не попадает: он не
-// перезапустился, он лежит. Одиночный restart без предшествующего падения -
-// тоже нет: без записи о падении утверждать возврат нечем.
-func returnsSince(events []entity.ContainerEvent, since time.Time) int {
-	var n int
+func crashesSince(events []entity.ContainerEvent, since time.Time) (int, *time.Time) {
+	var (
+		n    int
+		last *time.Time
+	)
 
 	for _, i := range containerIncidents(entity.Target{}, events) {
-		if i.State != entity.IncidentClosed || i.EndedAt == nil {
+		if !i.Crash || i.State != entity.IncidentClosed || i.EndedAt == nil || i.EndedAt.Before(since) {
 			continue
 		}
 
-		if !i.EndedAt.Before(since) {
-			n++
+		n++
+
+		if last == nil || i.EndedAt.After(*last) {
+			last = i.EndedAt
 		}
 	}
 
-	return n
+	return n, last
+}
+
+func crashed(e entity.ContainerEvent) bool {
+	switch e.Event {
+	case "oom":
+		return true
+	case "die":
+		return exitCode(e.Detail) != "0"
+	default:
+		return false
+	}
+}
+
+func exitCode(detail string) string {
+	for f := range strings.FieldsSeq(detail) {
+		if code, ok := strings.CutPrefix(f, "exitCode="); ok {
+			return code
+		}
+	}
+
+	return ""
 }
 
 // withinWindow оставляет интервалы, которые пересекаются с периодом:

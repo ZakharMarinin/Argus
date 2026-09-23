@@ -3,6 +3,7 @@ package app
 import (
 	"argus-collector/internal/config"
 	"argus-collector/internal/retention"
+	"argus-collector/internal/storage"
 	"context"
 	"fmt"
 	"log/slog"
@@ -40,7 +41,12 @@ func (a *App) run(ctx context.Context) error {
 	workerCtx, cancel := context.WithCancel(ctx)
 	a.cancel = cancel
 
-	err := a.initDeps(ctx)
+	err := storage.Migrate(ctx, a.cfg.Postgres, a.log)
+	if err != nil {
+		return fmt.Errorf("migrate database: %w", err)
+	}
+
+	err = a.initDeps(ctx)
 	if err != nil {
 		return err
 	}
@@ -99,6 +105,17 @@ func (a *App) run(ctx context.Context) error {
 			matcherSvc.RunMatcher(workerCtx)
 		})
 	}
+
+	sampler, err := a.di.Host(ctx)
+	if err != nil {
+		return fmt.Errorf("init host sampler: %w", err)
+	}
+
+	a.wg.Go(func() {
+		a.log.Info("Run: host sampler started")
+
+		sampler.Run(workerCtx)
+	})
 
 	a.startCleaner(ctx, workerCtx)
 	a.startAlerter(ctx, workerCtx)

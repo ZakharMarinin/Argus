@@ -332,3 +332,53 @@ func i0Duration(t *testing.T, incidents []entity.Incident) (time.Duration, bool)
 
 	return incidents[0].Duration()
 }
+
+func TestCrashWarningClearsFifteenMinutesAfterLastReturn(t *testing.T) {
+	back := now.Add(-5 * time.Minute)
+	fb := fakeBackend{
+		targets: []targetJSON{
+			{ID: "c1", Name: "worker", TargetType: "container", Status: "up"},
+			{ID: "c2", Name: "old", TargetType: "container", Status: "up"},
+			{ID: "c3", Name: "deployed", TargetType: "container", Status: "up"},
+		},
+		events: map[string][]eventJSON{
+			"c1": {
+				{ID: 1, TargetID: "c1", Event: "die", Details: "exitCode=1", CreatedAt: now.Add(-12 * time.Minute)},
+				{ID: 2, TargetID: "c1", Event: "start", CreatedAt: now.Add(-11 * time.Minute)},
+				{ID: 3, TargetID: "c1", Event: "die", Details: "exitCode=1", CreatedAt: back.Add(-time.Minute)},
+				{ID: 4, TargetID: "c1", Event: "start", CreatedAt: back},
+			},
+			"c2": {
+				{ID: 5, TargetID: "c2", Event: "die", Details: "exitCode=1", CreatedAt: now.Add(-40 * time.Minute)},
+				{ID: 6, TargetID: "c2", Event: "start", CreatedAt: now.Add(-39 * time.Minute)},
+			},
+			"c3": {
+				{ID: 7, TargetID: "c3", Event: "kill", Details: "signal=15", CreatedAt: now.Add(-3 * time.Minute)},
+				{ID: 8, TargetID: "c3", Event: "die", Details: "exitCode=0", CreatedAt: now.Add(-3 * time.Minute)},
+				{ID: 9, TargetID: "c3", Event: "destroy", CreatedAt: now.Add(-3 * time.Minute)},
+				{ID: 10, TargetID: "c3", Event: "start", CreatedAt: now.Add(-2 * time.Minute)},
+			},
+		},
+	}
+
+	targets, err := newUseCase(t, fb).TargetStatus(context.Background())
+	if err != nil {
+		t.Fatalf("TargetStatus: %v", err)
+	}
+
+	stats := map[string]*entity.ContainerStats{}
+	for _, s := range targets {
+		stats[s.Label] = s.Container
+	}
+
+	w := stats["worker"]
+	if w.Crashes != 2 || w.CrashesClearAt == nil || !w.CrashesClearAt.Equal(back.Add(15*time.Minute)) {
+		t.Errorf("worker = %+v, want 2 crashes clearing at %v", w, back.Add(15*time.Minute))
+	}
+
+	for _, name := range []string{"old", "deployed"} {
+		if s := stats[name]; s.Crashes != 0 || s.CrashesClearAt != nil {
+			t.Errorf("%s = %+v, want no crashes", name, s)
+		}
+	}
+}

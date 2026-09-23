@@ -1,6 +1,7 @@
 package view
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"net/url"
@@ -111,6 +112,7 @@ func split(targets []entity.TargetSummary) (probes, containers []entity.TargetSu
 			probes = append(probes, t)
 		case entity.KindContainer:
 			containers = append(containers, t)
+		case entity.KindHost:
 		}
 	}
 
@@ -308,6 +310,7 @@ func (p Presenter) targets(probes []entity.TargetSummary) []Target {
 		}
 
 		target := Target{
+			ID:     t.ID,
 			Name:   t.Label,
 			URL:    t.Source,
 			Status: status,
@@ -366,7 +369,7 @@ func (p Presenter) containers(containers []entity.TargetSummary, logs map[string
 		}
 
 		status := statusOf(c.Status)
-		if status == StatusUp && stats.Restarts1h > 0 {
+		if status == StatusUp && stats.Crashes > 0 {
 			status = StatusWarn
 		}
 		label := warnAwareLabel(status, labelOf(c.Status))
@@ -375,7 +378,7 @@ func (p Presenter) containers(containers []entity.TargetSummary, logs map[string
 		switch {
 		case c.Status == entity.StatusDown:
 			rank[c.Label] = 3
-		case stats.Restarts1h > 0:
+		case stats.Crashes > 0:
 			rank[c.Label] = 2
 		case logStatus == StatusWarn || logStatus == StatusDown:
 			rank[c.Label] = 1
@@ -389,7 +392,7 @@ func (p Presenter) containers(containers []entity.TargetSummary, logs map[string
 			Label:  label,
 			Dark:   status == StatusDown,
 			Metrics: []Metric{
-				{Label: "restarts, 1h", Value: fmt.Sprint(stats.Restarts1h), Status: nonZero(stats.Restarts1h)},
+				{Label: "crashes, 15m", Value: fmt.Sprint(stats.Crashes), Status: nonZero(stats.Crashes)},
 				{Label: "log matches, 24h", Value: fmt.Sprint(logs[c.ID]), Status: countStatus(logs[c.ID], logStatus)},
 				{Label: "last event", Value: firstNonEmpty(stats.LastEvent, "none")},
 			},
@@ -420,6 +423,9 @@ func (p Presenter) containerCardNote(s entity.ContainerStats) string {
 	if s.LastEventAt != nil {
 		note += " · " + p.ago(*s.LastEventAt)
 	}
+	if s.Crashes > 0 && s.CrashesClearAt != nil {
+		note += " · clears at " + s.CrashesClearAt.Local().Format("15:04")
+	}
 
 	return note
 }
@@ -433,7 +439,7 @@ func (p Presenter) containerCardNote(s entity.ContainerStats) string {
 // Тип - это вид цели: своей колонки под тип алерта в бэкенде нет. Важности -
 // все пять уровней entity.Severity бэкенда, от срочного к тихому.
 var (
-	AlertTypes      = []string{"all", "uptime", "container"}
+	AlertTypes      = []string{"all", "uptime", "container", "host"}
 	AlertSeverities = []string{
 		"all",
 		entity.SeverityCritical, entity.SeverityError, entity.SeverityWarning,
@@ -448,6 +454,8 @@ func alertKind(filter string) entity.Kind {
 		return entity.KindProbe
 	case "container":
 		return entity.KindContainer
+	case "host":
+		return entity.KindHost
 	default:
 		return ""
 	}
@@ -475,6 +483,8 @@ func alertType(kind entity.Kind) string {
 		return "uptime"
 	case entity.KindContainer:
 		return "container"
+	case entity.KindHost:
+		return "host"
 	default:
 		return "—"
 	}
@@ -537,10 +547,10 @@ func (p Presenter) hero(t entity.TargetSummary, s entity.ContainerStats) Hero {
 			MoodSrc: Moods["sleeping"].Src,
 			Status:  StatusIdle,
 		}
-	case s.Restarts1h > 0:
+	case s.Crashes > 0:
 		return Hero{
-			Badge:   "WARNING · RESTARTED",
-			Title:   fmt.Sprintf("%s in the last hour", plural(s.Restarts1h, "restart", "restarts")),
+			Badge:   "WARNING · CRASHED",
+			Title:   fmt.Sprintf("Came back after %s in the last 15 minutes", plural(s.Crashes, "crash", "crashes")),
 			Rule:    eventRule(s),
 			MoodSrc: Moods["scared"].Src,
 			Status:  StatusWarn,
@@ -572,7 +582,7 @@ func (p Presenter) detailMeta(t entity.TargetSummary, s entity.ContainerStats, l
 
 	return []MetaTile{
 		{Label: "Status", Value: labelOf(t.Status), Status: statusOf(t.Status)},
-		{Label: "Restarts, 1h", Value: fmt.Sprint(s.Restarts1h), Status: nonZero(s.Restarts1h)},
+		{Label: "Crashes, 15m", Value: fmt.Sprint(s.Crashes), Status: nonZero(s.Crashes)},
 		{Label: "Log matches, 24h", Value: fmt.Sprint(logMatches), Status: logStatus},
 		{Label: "Updated", Value: p.ago(t.UpdatedAt)},
 	}
@@ -715,7 +725,7 @@ func (p Presenter) containerNav(targets []entity.TargetSummary) []NavItem {
 			Label: t.Label,
 			Href:  "/containers/" + url.PathEscape(t.Label),
 		}
-		if t.Status == entity.StatusDown || (t.Container != nil && t.Container.Restarts1h > 0) {
+		if t.Status == entity.StatusDown || (t.Container != nil && t.Container.Crashes > 0) {
 			item.Badge = "!"
 			attention = append(attention, item)
 
@@ -736,7 +746,7 @@ func badge(n int) string {
 }
 
 // Sidebar собирает постоянную часть сайдбара.
-func (p Presenter) Sidebar(targets []entity.TargetSummary, counts entity.AlertCounts, logs int) Sidebar {
+func (p Presenter) Sidebar(targets []entity.TargetSummary, counts entity.AlertCounts, logs int, host HostPanel) Sidebar {
 	mood, _ := p.mood(targets, counts, logs)
 
 	return Sidebar{
@@ -744,13 +754,7 @@ func (p Presenter) Sidebar(targets []entity.TargetSummary, counts entity.AlertCo
 		Legend:     legend(mood),
 		Build:      p.build(true),
 		Containers: p.containerNav(targets),
-		Host: HostPanel{
-			// Метрики хоста в первую версию не входят: у бэкенда нет ни
-			// таблицы, ни колонки под них. Блок остаётся местом под будущий
-			// host-коллектор, но полосок с числами не рисует.
-			Available: false,
-			Note:      "CPU, RAM, and disk aren't collected in this version",
-		},
+		Host:       host,
 	}
 }
 
@@ -814,8 +818,8 @@ func (p Presenter) mood(targets []entity.TargetSummary, counts entity.AlertCount
 	}
 
 	for _, t := range targets {
-		if t.Container != nil && t.Container.Restarts1h > 0 {
-			signals = append(signals, moodSignal{"scared", t.Label + " restarted in the last hour"})
+		if t.Container != nil && t.Container.Crashes > 0 {
+			signals = append(signals, moodSignal{"scared", t.Label + " crashed in the last 15 minutes"})
 		}
 
 		if t.Probe != nil && t.Probe.Checks24h > 0 && t.Probe.Successes24h < t.Probe.Checks24h {
@@ -923,7 +927,11 @@ func percentOrDash(value float64, ok bool) string {
 		return "—"
 	}
 
-	return fmt.Sprintf("%.2f%%", value)
+	if value >= 100 {
+		return "100%"
+	}
+
+	return fmt.Sprintf("%.2f%%", math.Floor(value*100+1e-9)/100)
 }
 
 func pct(part, total int) int {
@@ -1012,10 +1020,63 @@ func (p Presenter) WaitingLayout() Layout {
 			Mood:   Moods["sleeping"],
 			Legend: legend(Moods["sleeping"]),
 			Build:  p.build(false),
-			Host:   HostPanel{Note: "CPU, RAM, and disk aren't collected in this version"},
+			Host:   HostPanel{Note: hostUnreachable},
 		},
 		Content: WaitingForData(
 			"argus-backend isn't responding right now. The page will refresh itself " +
 				"once it comes up."),
 	}
+}
+
+const (
+	hostUnreachable = "no answer from the collector"
+	hostUnsupported = "collector doesn't report host metrics, update argus-backend"
+)
+
+func (p Presenter) HostPanel(h entity.Host, err error) HostPanel {
+	switch {
+	case errors.Is(err, entity.ErrNotFound):
+		return HostPanel{Note: hostUnsupported}
+	case err != nil:
+		return HostPanel{Note: hostUnreachable}
+	}
+
+	return HostPanel{
+		Note: h.Hostname,
+		Meters: []Meter{
+			hostMeter("CPU", h.CPU, func(m entity.HostMetric) string { return fmt.Sprintf("%.0f%%", m.Percent) }),
+			hostMeter("RAM", h.Memory, bytesOfTotal),
+			hostMeter("Disk", h.Disk, bytesOfTotal),
+		},
+	}
+}
+
+func hostMeter(label string, m *entity.HostMetric, value func(entity.HostMetric) string) Meter {
+	if m == nil {
+		return Meter{Label: label, Value: "—", Status: StatusIdle}
+	}
+
+	status := StatusUp
+
+	switch m.Level {
+	case entity.HostLevelWarning:
+		status = StatusWarn
+	case entity.HostLevelCritical:
+		status = StatusDown
+	}
+
+	return Meter{Label: label, Value: value(*m), Percent: int(math.Round(m.Percent)), Status: status}
+}
+
+func bytesOfTotal(m entity.HostMetric) string {
+	return gib(m.Used) + " / " + gib(m.Total) + " GiB"
+}
+
+func gib(b uint64) string {
+	v := float64(b) / (1 << 30)
+	if v < 10 {
+		return fmt.Sprintf("%.1f", v)
+	}
+
+	return fmt.Sprintf("%.0f", v)
 }

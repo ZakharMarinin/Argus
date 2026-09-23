@@ -328,6 +328,7 @@ type Hero struct {
 	Title   string
 	Rule    string // сработавшее событие, моноширинным
 	MoodSrc string
+	Status  Status
 }
 
 // MetaPanel - плитки состояния контейнера.

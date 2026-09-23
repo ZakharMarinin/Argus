@@ -497,14 +497,14 @@ img { max-width: 100%; display: block; }
 /* Гифка рисует до самого края кадра: скругление на ней срезало бы углы
    рисунка. Подложка и скругление - на полях вокруг, content-box держит
    саму картинку в её 48px. */
-.summary-mood__img {
+.summary-mood__img, .detail-hero__img {
   flex-shrink: 0; box-sizing: content-box; padding: 5px;
   border-radius: var(--radius-sm); background: color-mix(in srgb, var(--s) 22%, var(--emphasis-tile));
 }
 
 /* Карточка состояния окрашивается настроением маскота - тем же --s, что и
    у остальных статусов: злой - красноватая, спокойный - зеленоватая. */
-#summary {
+#summary, .detail-hero {
   background: color-mix(in srgb, var(--s) 10%, var(--emphasis-bg));
   border-color: color-mix(in srgb, var(--s) 40%, var(--emphasis-border));
   box-shadow: var(--shadow-card), inset 0 1px 0 color-mix(in srgb, var(--s) 25%, transparent);
@@ -874,7 +874,7 @@ a.log-row__target:hover { color: var(--accent-deep); text-decoration: underline;
 /* --- 13. Container detail ---------------------------------------------------- */
 
 .detail-hero { display: flex; align-items: center; gap: 16px; }
-.detail-hero__img { box-sizing: content-box; padding: 5px; border-radius: var(--radius-sm); flex-shrink: 0; background: rgba(255, 255, 255, .12); }
+.detail-hero .badge { color: var(--s); }
 .detail-hero__title { font-size: 19px; margin: 6px 0 4px; }
 .detail-hero__rule {
   display: inline-block; max-width: 100%; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 12.5px;

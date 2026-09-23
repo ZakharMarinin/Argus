@@ -527,6 +527,7 @@ func (p Presenter) hero(t entity.TargetSummary, s entity.ContainerStats) Hero {
 			Title:   "Container stopped",
 			Rule:    eventRule(s),
 			MoodSrc: Moods["angry"].Src,
+			Status:  StatusDown,
 		}
 	case t.Status == entity.StatusUnknown:
 		return Hero{
@@ -534,6 +535,7 @@ func (p Presenter) hero(t entity.TargetSummary, s entity.ContainerStats) Hero {
 			Title:   "Collector can't see the container",
 			Rule:    eventRule(s),
 			MoodSrc: Moods["sleeping"].Src,
+			Status:  StatusIdle,
 		}
 	case s.Restarts1h > 0:
 		return Hero{
@@ -541,6 +543,7 @@ func (p Presenter) hero(t entity.TargetSummary, s entity.ContainerStats) Hero {
 			Title:   fmt.Sprintf("%s in the last hour", plural(s.Restarts1h, "restart", "restarts")),
 			Rule:    eventRule(s),
 			MoodSrc: Moods["scared"].Src,
+			Status:  StatusWarn,
 		}
 	default:
 		return Hero{
@@ -548,6 +551,7 @@ func (p Presenter) hero(t entity.TargetSummary, s entity.ContainerStats) Hero {
 			Title:   "Container is running normally",
 			Rule:    eventRule(s),
 			MoodSrc: Moods["happy"].Src,
+			Status:  StatusUp,
 		}
 	}
 }

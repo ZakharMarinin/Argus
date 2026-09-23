@@ -30,12 +30,14 @@ type Container struct {
 	handlers     *handlers.Handler
 	uc           *usecase.UseCase
 	db           *storage.Storage
+	starts       chan string
 }
 
 func NewContainer(cfg *config.Config, log *slog.Logger) *Container {
 	return &Container{
-		cfg: cfg,
-		log: log,
+		cfg:    cfg,
+		log:    log,
+		starts: make(chan string, 16),
 	}
 }
 
@@ -64,7 +66,7 @@ func (c *Container) Matcher(ctx context.Context) (*matcher.Matcher, error) {
 			return nil, err
 		}
 
-		m, err := matcher.NewMatcher(c.cfg, c.log, uc, client)
+		m, err := matcher.NewMatcher(c.cfg, c.log, uc, client, c.starts)
 		if err != nil {
 			return nil, fmt.Errorf("init matcher: %w", err)
 		}
@@ -87,12 +89,7 @@ func (c *Container) Watcher(ctx context.Context) (*watcher.Watcher, error) {
 			return nil, err
 		}
 
-		w, err := watcher.NewWatcher(c.cfg, c.log, uc, client)
-		if err != nil {
-			return nil, fmt.Errorf("init watcher: %w", err)
-		}
-
-		c.watcher = w
+		c.watcher = watcher.NewWatcher(c.cfg, c.log, uc, client, c.starts)
 	}
 
 	return c.watcher, nil

@@ -37,6 +37,10 @@ type Matcher struct {
 	client DockerClient
 	uc     UseCase
 	rules  []rule
+	starts <-chan string
+
+	mu      sync.Mutex
+	running map[string]struct{}
 }
 
 type rule struct {
@@ -45,17 +49,19 @@ type rule struct {
 	container string
 }
 
-func NewMatcher(cfg *config.Config, log *slog.Logger, uc UseCase, client DockerClient) (*Matcher, error) {
+func NewMatcher(cfg *config.Config, log *slog.Logger, uc UseCase, client DockerClient, starts <-chan string) (*Matcher, error) {
 	rules, err := compileRules(cfg.Matcher.Rules)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Matcher{
-		log:    log,
-		uc:     uc,
-		client: client,
-		rules:  rules,
+		log:     log,
+		uc:      uc,
+		client:  client,
+		rules:   rules,
+		starts:  starts,
+		running: make(map[string]struct{}),
 	}, nil
 }
 
@@ -92,9 +98,7 @@ func (m *Matcher) follow(ctx context.Context, source string, id uuid.UUID, since
 	if err != nil {
 		return since, err
 	}
-	defer func() {
-		_ = rc.Close()
-	}()
+	defer func() { _ = rc.Close() }()
 
 	pr, pw := io.Pipe()
 
@@ -185,13 +189,13 @@ const (
 	minStableDuration = 10 * time.Second
 )
 
-func (m *Matcher) stillRunning(ctx context.Context, source string) (running, retry bool) {
+func (m *Matcher) gone(ctx context.Context, source string) bool {
 	info, err := m.client.ContainerInspect(ctx, source, client.ContainerInspectOptions{})
 	if err != nil {
-		return false, !cerrdefs.IsNotFound(err)
+		return cerrdefs.IsNotFound(err)
 	}
 
-	return info.Container.State != nil && info.Container.State.Running, false
+	return info.Container.State == nil || !info.Container.State.Running
 }
 
 func (m *Matcher) startMatching(ctx context.Context, source string, id uuid.UUID) {
@@ -212,8 +216,7 @@ func (m *Matcher) startMatching(ctx context.Context, source string, id uuid.UUID
 			log.Error("log stream failed", "error", err)
 		}
 
-		running, retry := m.stillRunning(ctx, source)
-		if !running && !retry {
+		if m.gone(ctx, source) {
 			log.Info("container stopped, log stream closed")
 
 			return
@@ -236,23 +239,73 @@ func (m *Matcher) startMatching(ctx context.Context, source string, id uuid.UUID
 	}
 }
 
-func (m *Matcher) RunMatcher(ctx context.Context) {
-	const op = "Matcher.RunMatcher"
+func (m *Matcher) spawn(ctx context.Context, wg *sync.WaitGroup, source string, id uuid.UUID) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
-	targets, err := m.uc.GetTargetsByType(ctx, "container")
-	if err != nil {
-		m.log.Error("failed to get container targets", "op", op, "error", err)
-
+	if _, ok := m.running[source]; ok {
 		return
 	}
 
-	var wg sync.WaitGroup
+	m.running[source] = struct{}{}
 
-	for _, target := range targets {
-		wg.Go(func() {
-			m.startMatching(ctx, target.Source, target.ID)
-		})
+	wg.Go(func() {
+		defer func() {
+			m.mu.Lock()
+			delete(m.running, source)
+			m.mu.Unlock()
+		}()
+
+		m.startMatching(ctx, source, id)
+	})
+}
+
+func (m *Matcher) targetByName(ctx context.Context, name string) (*entity.Target, error) {
+	targets, err := m.uc.GetTargetsByType(ctx, "container")
+	if err != nil {
+		return nil, err
 	}
 
-	wg.Wait()
+	for _, t := range targets {
+		if t.Source == name {
+			return t, nil
+		}
+	}
+
+	return nil, entity.ErrTargetNotFound
+}
+
+func (m *Matcher) RunMatcher(ctx context.Context) {
+	const op = "Matcher.RunMatcher"
+
+	log := m.log.With("op", op)
+
+	var wg sync.WaitGroup
+
+	targets, err := m.uc.GetTargetsByType(ctx, "container")
+	if err != nil {
+		log.Error("failed to get container targets", "error", err)
+	}
+
+	for _, t := range targets {
+		m.spawn(ctx, &wg, t.Source, t.ID)
+	}
+
+	for {
+		select {
+		case name := <-m.starts:
+			t, err := m.targetByName(ctx, name)
+			if err != nil {
+				log.Error("failed to find target for started container", "container", name, "error", err)
+
+				continue
+			}
+
+			m.spawn(ctx, &wg, t.Source, t.ID)
+		case <-ctx.Done():
+			wg.Wait()
+
+			return
+		}
+	}
 }

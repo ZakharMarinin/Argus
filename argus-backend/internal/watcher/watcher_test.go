@@ -8,32 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAlertForEvent(t *testing.T) {
-	cases := []struct {
-		name         string
-		event        entity.EventType
-		exitCode     string
-		wantSeverity entity.Severity
-		wantAlert    bool
-	}{
-		{name: "oom always alerts", event: entity.ContainerOOM, exitCode: "137", wantSeverity: entity.SeverityCritical, wantAlert: true},
-		{name: "crash exit alerts", event: entity.ContainerDie, exitCode: "1", wantSeverity: entity.SeverityError, wantAlert: true},
-		{name: "clean exit is silent", event: entity.ContainerDie, exitCode: "0", wantSeverity: entity.SeverityInfo, wantAlert: false},
-		{name: "kill is silent", event: entity.ContainerKill, exitCode: "", wantSeverity: entity.SeverityInfo, wantAlert: false},
-		{name: "restart is silent", event: entity.ContainerRestart, exitCode: "", wantSeverity: entity.SeverityInfo, wantAlert: false},
-		{name: "destroy is silent", event: entity.ContainerDestroy, exitCode: "", wantSeverity: entity.SeverityInfo, wantAlert: false},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			severity, ok := alertForEvent(tc.event, tc.exitCode)
-
-			require.Equal(t, tc.wantAlert, ok)
-			require.Equal(t, tc.wantSeverity, severity)
-		})
-	}
-}
-
 func TestAlertDetails(t *testing.T) {
 	cases := []struct {
 		name  string

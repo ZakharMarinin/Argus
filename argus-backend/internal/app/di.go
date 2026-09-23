@@ -3,6 +3,7 @@ package app
 import (
 	"argus-collector/internal/alerter"
 	"argus-collector/internal/config"
+	"argus-collector/internal/matcher"
 	"argus-collector/internal/prober"
 	"argus-collector/internal/storage"
 	"argus-collector/internal/transport/http/handlers"
@@ -14,18 +15,21 @@ import (
 	"log/slog"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/moby/moby/client"
 )
 
 type Container struct {
-	cfg      *config.Config
-	log      *slog.Logger
-	router   *chi.Mux
-	prober   *prober.Prober
-	watcher  *watcher.Watcher
-	alerter  *alerter.Alerter
-	handlers *handlers.Handler
-	uc       *usecase.UseCase
-	db       *storage.Storage
+	cfg          *config.Config
+	log          *slog.Logger
+	router       *chi.Mux
+	prober       *prober.Prober
+	watcher      *watcher.Watcher
+	alerter      *alerter.Alerter
+	matcher      *matcher.Matcher
+	dockerClient *client.Client
+	handlers     *handlers.Handler
+	uc           *usecase.UseCase
+	db           *storage.Storage
 }
 
 func NewContainer(cfg *config.Config, log *slog.Logger) *Container {
@@ -48,6 +52,29 @@ func (c *Container) Prober(ctx context.Context) (*prober.Prober, error) {
 	return c.prober, nil
 }
 
+func (c *Container) Matcher(ctx context.Context) (*matcher.Matcher, error) {
+	if c.matcher == nil {
+		uc, err := c.UseCase(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		client, err := c.DockerClient()
+		if err != nil {
+			return nil, err
+		}
+
+		m, err := matcher.NewMatcher(c.cfg, c.log, uc, client)
+		if err != nil {
+			return nil, fmt.Errorf("init matcher: %w", err)
+		}
+
+		c.matcher = m
+	}
+
+	return c.matcher, nil
+}
+
 func (c *Container) Watcher(ctx context.Context) (*watcher.Watcher, error) {
 	if c.watcher == nil {
 		uc, err := c.UseCase(ctx)
@@ -55,7 +82,12 @@ func (c *Container) Watcher(ctx context.Context) (*watcher.Watcher, error) {
 			return nil, err
 		}
 
-		w, err := watcher.NewWatcher(c.cfg, c.log, uc)
+		client, err := c.DockerClient()
+		if err != nil {
+			return nil, err
+		}
+
+		w, err := watcher.NewWatcher(c.cfg, c.log, uc, client)
 		if err != nil {
 			return nil, fmt.Errorf("init watcher: %w", err)
 		}
@@ -82,6 +114,19 @@ func (c *Container) Alerter(ctx context.Context) (*alerter.Alerter, error) {
 	}
 
 	return c.alerter, nil
+}
+
+func (c *Container) DockerClient() (*client.Client, error) {
+	if c.dockerClient == nil {
+		client, err := client.New(client.FromEnv)
+		if err != nil {
+			return nil, err
+		}
+
+		c.dockerClient = client
+	}
+
+	return c.dockerClient, nil
 }
 
 func (c *Container) Handler(ctx context.Context) (*handlers.Handler, error) {

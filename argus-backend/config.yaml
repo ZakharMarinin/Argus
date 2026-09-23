@@ -9,3 +9,12 @@ prober:
   probe_interval: 60s
 telegram:
   notify_interval: 5s
+  cooldown: 5m
+matcher:
+  rules:
+    - pattern: "panic|FATAL"
+      severity: critical
+      container: "*"
+    - pattern: "(?i)connection refused"
+      severity: error
+      container: "argus-db"

@@ -61,14 +61,19 @@ func (h *Handler) CreateAlert(w http.ResponseWriter, r *http.Request) {
 
 // GetListAlerts godoc
 // @Summary      Список алертов
-// @Description  Возвращает алерты с фильтрацией по важности/отправке либо постранично
+// @Description  Возвращает алерты; фильтры сочетаются между собой. Общее число подходящих записей - в заголовке X-Total-Count
 // @Tags         alerts
 // @Produce      json
-// @Param        severity query    int  false "Важность"
-// @Param        notified query    bool false "Отправлен ли алерт"
-// @Param        limit    query    int  false "Лимит"
-// @Param        offset   query    int  false "Отступ"
+// @Param        target_id query    []string false "ID таргета, можно несколько" collectionFormat(multi)
+// @Param        severity  query    int      false "Важность"
+// @Param        notified  query    bool     false "Отправлен ли алерт"
+// @Param        since     query    string   false "Не раньше этого момента, RFC 3339"
+// @Param        order     query    string   false "Порядок по id" Enums(asc, desc)
+// @Param        limit     query    int      false "Лимит"
+// @Param        skip      query    int      false "Сколько записей пропустить"
+// @Param        offset    query    int      false "Только записи с id больше указанного"
 // @Success      200  {array}  entity.Alert
+// @Header       200  {integer} X-Total-Count "Число записей под фильтром"
 // @Failure      400  {object} response.ErrorResponse
 // @Failure      500  {object} response.ErrorResponse
 // @Router       /alerts [get].
@@ -76,47 +81,32 @@ func (h *Handler) GetListAlerts(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
 
-	q := r.URL.Query()
+	f, err := parseListFilter(r)
+	if err != nil {
+		response.JSONError(w, r, http.StatusBadRequest, "invalid arguments")
 
-	var (
-		alerts []*entity.Alert
-		err    error
-	)
-
-	switch {
-	case q.Get("severity") != "":
-		var severity int
-
-		severity, err = strconv.Atoi(q.Get("severity"))
-		if err != nil {
-			response.JSONError(w, r, http.StatusBadRequest, "invalid arguments")
-
-			return
-		}
-
-		alerts, err = h.uc.GetAlertsBySeverity(ctx, entity.Severity(severity))
-	case q.Get("notified") != "":
-		var notified bool
-
-		notified, err = strconv.ParseBool(q.Get("notified"))
-		if err != nil {
-			response.JSONError(w, r, http.StatusBadRequest, "invalid arguments")
-
-			return
-		}
-
-		alerts, err = h.uc.GetAlertsByNotification(ctx, notified)
-	default:
-		limit, offset := parsePagination(r)
-		alerts, err = h.uc.GetAllAlerts(ctx, limit, offset)
+		return
 	}
 
+	if raw := r.URL.Query().Get("notified"); raw != "" {
+		notified, err := strconv.ParseBool(raw)
+		if err != nil {
+			response.JSONError(w, r, http.StatusBadRequest, "invalid arguments")
+
+			return
+		}
+
+		f.Notified = &notified
+	}
+
+	alerts, total, err := h.uc.FindAlerts(ctx, f)
 	if err != nil {
 		response.HandleError(w, r, err)
 
 		return
 	}
 
+	setTotal(w, total)
 	w.Header().Set("Content-Type", "application/json")
 	render.JSON(w, r, alerts)
 }

@@ -83,6 +83,17 @@ func (a *App) run(ctx context.Context) error {
 		})
 	}
 
+	matcherSvc, err := a.di.Matcher(ctx)
+	if err != nil {
+		a.log.Error("matcher not started", "error", err)
+	} else {
+		a.wg.Go(func() {
+			a.log.Info("Run: matcher started")
+
+			matcherSvc.RunMatcher(workerCtx)
+		})
+	}
+
 	a.startAlerter(ctx, workerCtx)
 
 	return nil

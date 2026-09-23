@@ -1337,6 +1337,80 @@ func (_c *MockAlertRepository_DeleteAlert_Call) RunAndReturn(run func(ctx contex
 	return _c
 }
 
+// FindAlerts provides a mock function for the type MockAlertRepository
+func (_mock *MockAlertRepository) FindAlerts(ctx context.Context, f entity.ListFilter) ([]*entity.Alert, int, error) {
+	ret := _mock.Called(ctx, f)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindAlerts")
+	}
+
+	var r0 []*entity.Alert
+	var r1 int
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.ListFilter) ([]*entity.Alert, int, error)); ok {
+		return returnFunc(ctx, f)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.ListFilter) []*entity.Alert); ok {
+		r0 = returnFunc(ctx, f)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*entity.Alert)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, entity.ListFilter) int); ok {
+		r1 = returnFunc(ctx, f)
+	} else {
+		r1 = ret.Get(1).(int)
+	}
+	if returnFunc, ok := ret.Get(2).(func(context.Context, entity.ListFilter) error); ok {
+		r2 = returnFunc(ctx, f)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
+}
+
+// MockAlertRepository_FindAlerts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindAlerts'
+type MockAlertRepository_FindAlerts_Call struct {
+	*mock.Call
+}
+
+// FindAlerts is a helper method to define mock.On call
+//   - ctx context.Context
+//   - f entity.ListFilter
+func (_e *MockAlertRepository_Expecter) FindAlerts(ctx any, f any) *MockAlertRepository_FindAlerts_Call {
+	return &MockAlertRepository_FindAlerts_Call{Call: _e.mock.On("FindAlerts", ctx, f)}
+}
+
+func (_c *MockAlertRepository_FindAlerts_Call) Run(run func(ctx context.Context, f entity.ListFilter)) *MockAlertRepository_FindAlerts_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 entity.ListFilter
+		if args[1] != nil {
+			arg1 = args[1].(entity.ListFilter)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockAlertRepository_FindAlerts_Call) Return(alerts []*entity.Alert, n int, err error) *MockAlertRepository_FindAlerts_Call {
+	_c.Call.Return(alerts, n, err)
+	return _c
+}
+
+func (_c *MockAlertRepository_FindAlerts_Call) RunAndReturn(run func(ctx context.Context, f entity.ListFilter) ([]*entity.Alert, int, error)) *MockAlertRepository_FindAlerts_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAlert provides a mock function for the type MockAlertRepository
 func (_mock *MockAlertRepository) GetAlert(ctx context.Context, id int) (*entity.Alert, error) {
 	ret := _mock.Called(ctx, id)
@@ -1406,8 +1480,8 @@ func (_c *MockAlertRepository_GetAlert_Call) RunAndReturn(run func(ctx context.C
 }
 
 // GetAlertsByNotification provides a mock function for the type MockAlertRepository
-func (_mock *MockAlertRepository) GetAlertsByNotification(ctx context.Context, flag bool) ([]*entity.Alert, error) {
-	ret := _mock.Called(ctx, flag)
+func (_mock *MockAlertRepository) GetAlertsByNotification(ctx context.Context, flag bool, limit uint64) ([]*entity.Alert, error) {
+	ret := _mock.Called(ctx, flag, limit)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAlertsByNotification")
@@ -1415,18 +1489,18 @@ func (_mock *MockAlertRepository) GetAlertsByNotification(ctx context.Context, f
 
 	var r0 []*entity.Alert
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, bool) ([]*entity.Alert, error)); ok {
-		return returnFunc(ctx, flag)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, bool, uint64) ([]*entity.Alert, error)); ok {
+		return returnFunc(ctx, flag, limit)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, bool) []*entity.Alert); ok {
-		r0 = returnFunc(ctx, flag)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, bool, uint64) []*entity.Alert); ok {
+		r0 = returnFunc(ctx, flag, limit)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*entity.Alert)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, bool) error); ok {
-		r1 = returnFunc(ctx, flag)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, bool, uint64) error); ok {
+		r1 = returnFunc(ctx, flag, limit)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1441,11 +1515,12 @@ type MockAlertRepository_GetAlertsByNotification_Call struct {
 // GetAlertsByNotification is a helper method to define mock.On call
 //   - ctx context.Context
 //   - flag bool
-func (_e *MockAlertRepository_Expecter) GetAlertsByNotification(ctx any, flag any) *MockAlertRepository_GetAlertsByNotification_Call {
-	return &MockAlertRepository_GetAlertsByNotification_Call{Call: _e.mock.On("GetAlertsByNotification", ctx, flag)}
+//   - limit uint64
+func (_e *MockAlertRepository_Expecter) GetAlertsByNotification(ctx any, flag any, limit any) *MockAlertRepository_GetAlertsByNotification_Call {
+	return &MockAlertRepository_GetAlertsByNotification_Call{Call: _e.mock.On("GetAlertsByNotification", ctx, flag, limit)}
 }
 
-func (_c *MockAlertRepository_GetAlertsByNotification_Call) Run(run func(ctx context.Context, flag bool)) *MockAlertRepository_GetAlertsByNotification_Call {
+func (_c *MockAlertRepository_GetAlertsByNotification_Call) Run(run func(ctx context.Context, flag bool, limit uint64)) *MockAlertRepository_GetAlertsByNotification_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1455,146 +1530,9 @@ func (_c *MockAlertRepository_GetAlertsByNotification_Call) Run(run func(ctx con
 		if args[1] != nil {
 			arg1 = args[1].(bool)
 		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockAlertRepository_GetAlertsByNotification_Call) Return(alerts []*entity.Alert, err error) *MockAlertRepository_GetAlertsByNotification_Call {
-	_c.Call.Return(alerts, err)
-	return _c
-}
-
-func (_c *MockAlertRepository_GetAlertsByNotification_Call) RunAndReturn(run func(ctx context.Context, flag bool) ([]*entity.Alert, error)) *MockAlertRepository_GetAlertsByNotification_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetAlertsBySeverity provides a mock function for the type MockAlertRepository
-func (_mock *MockAlertRepository) GetAlertsBySeverity(ctx context.Context, severity entity.Severity) ([]*entity.Alert, error) {
-	ret := _mock.Called(ctx, severity)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetAlertsBySeverity")
-	}
-
-	var r0 []*entity.Alert
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.Severity) ([]*entity.Alert, error)); ok {
-		return returnFunc(ctx, severity)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.Severity) []*entity.Alert); ok {
-		r0 = returnFunc(ctx, severity)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*entity.Alert)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, entity.Severity) error); ok {
-		r1 = returnFunc(ctx, severity)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockAlertRepository_GetAlertsBySeverity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAlertsBySeverity'
-type MockAlertRepository_GetAlertsBySeverity_Call struct {
-	*mock.Call
-}
-
-// GetAlertsBySeverity is a helper method to define mock.On call
-//   - ctx context.Context
-//   - severity entity.Severity
-func (_e *MockAlertRepository_Expecter) GetAlertsBySeverity(ctx any, severity any) *MockAlertRepository_GetAlertsBySeverity_Call {
-	return &MockAlertRepository_GetAlertsBySeverity_Call{Call: _e.mock.On("GetAlertsBySeverity", ctx, severity)}
-}
-
-func (_c *MockAlertRepository_GetAlertsBySeverity_Call) Run(run func(ctx context.Context, severity entity.Severity)) *MockAlertRepository_GetAlertsBySeverity_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 entity.Severity
-		if args[1] != nil {
-			arg1 = args[1].(entity.Severity)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockAlertRepository_GetAlertsBySeverity_Call) Return(alerts []*entity.Alert, err error) *MockAlertRepository_GetAlertsBySeverity_Call {
-	_c.Call.Return(alerts, err)
-	return _c
-}
-
-func (_c *MockAlertRepository_GetAlertsBySeverity_Call) RunAndReturn(run func(ctx context.Context, severity entity.Severity) ([]*entity.Alert, error)) *MockAlertRepository_GetAlertsBySeverity_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetAllAlerts provides a mock function for the type MockAlertRepository
-func (_mock *MockAlertRepository) GetAllAlerts(ctx context.Context, limit uint64, offset int) ([]*entity.Alert, error) {
-	ret := _mock.Called(ctx, limit, offset)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetAllAlerts")
-	}
-
-	var r0 []*entity.Alert
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uint64, int) ([]*entity.Alert, error)); ok {
-		return returnFunc(ctx, limit, offset)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uint64, int) []*entity.Alert); ok {
-		r0 = returnFunc(ctx, limit, offset)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*entity.Alert)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uint64, int) error); ok {
-		r1 = returnFunc(ctx, limit, offset)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockAlertRepository_GetAllAlerts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllAlerts'
-type MockAlertRepository_GetAllAlerts_Call struct {
-	*mock.Call
-}
-
-// GetAllAlerts is a helper method to define mock.On call
-//   - ctx context.Context
-//   - limit uint64
-//   - offset int
-func (_e *MockAlertRepository_Expecter) GetAllAlerts(ctx any, limit any, offset any) *MockAlertRepository_GetAllAlerts_Call {
-	return &MockAlertRepository_GetAllAlerts_Call{Call: _e.mock.On("GetAllAlerts", ctx, limit, offset)}
-}
-
-func (_c *MockAlertRepository_GetAllAlerts_Call) Run(run func(ctx context.Context, limit uint64, offset int)) *MockAlertRepository_GetAllAlerts_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uint64
-		if args[1] != nil {
-			arg1 = args[1].(uint64)
-		}
-		var arg2 int
+		var arg2 uint64
 		if args[2] != nil {
-			arg2 = args[2].(int)
+			arg2 = args[2].(uint64)
 		}
 		run(
 			arg0,
@@ -1605,26 +1543,26 @@ func (_c *MockAlertRepository_GetAllAlerts_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockAlertRepository_GetAllAlerts_Call) Return(alerts []*entity.Alert, err error) *MockAlertRepository_GetAllAlerts_Call {
+func (_c *MockAlertRepository_GetAlertsByNotification_Call) Return(alerts []*entity.Alert, err error) *MockAlertRepository_GetAlertsByNotification_Call {
 	_c.Call.Return(alerts, err)
 	return _c
 }
 
-func (_c *MockAlertRepository_GetAllAlerts_Call) RunAndReturn(run func(ctx context.Context, limit uint64, offset int) ([]*entity.Alert, error)) *MockAlertRepository_GetAllAlerts_Call {
+func (_c *MockAlertRepository_GetAlertsByNotification_Call) RunAndReturn(run func(ctx context.Context, flag bool, limit uint64) ([]*entity.Alert, error)) *MockAlertRepository_GetAlertsByNotification_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// MarkAlertNotified provides a mock function for the type MockAlertRepository
-func (_mock *MockAlertRepository) MarkAlertNotified(ctx context.Context, id int) error {
+// MarkAlertsNotified provides a mock function for the type MockAlertRepository
+func (_mock *MockAlertRepository) MarkAlertsNotified(ctx context.Context, id []int) error {
 	ret := _mock.Called(ctx, id)
 
 	if len(ret) == 0 {
-		panic("no return value specified for MarkAlertNotified")
+		panic("no return value specified for MarkAlertsNotified")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []int) error); ok {
 		r0 = returnFunc(ctx, id)
 	} else {
 		r0 = ret.Error(0)
@@ -1632,27 +1570,27 @@ func (_mock *MockAlertRepository) MarkAlertNotified(ctx context.Context, id int)
 	return r0
 }
 
-// MockAlertRepository_MarkAlertNotified_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkAlertNotified'
-type MockAlertRepository_MarkAlertNotified_Call struct {
+// MockAlertRepository_MarkAlertsNotified_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkAlertsNotified'
+type MockAlertRepository_MarkAlertsNotified_Call struct {
 	*mock.Call
 }
 
-// MarkAlertNotified is a helper method to define mock.On call
+// MarkAlertsNotified is a helper method to define mock.On call
 //   - ctx context.Context
-//   - id int
-func (_e *MockAlertRepository_Expecter) MarkAlertNotified(ctx any, id any) *MockAlertRepository_MarkAlertNotified_Call {
-	return &MockAlertRepository_MarkAlertNotified_Call{Call: _e.mock.On("MarkAlertNotified", ctx, id)}
+//   - id []int
+func (_e *MockAlertRepository_Expecter) MarkAlertsNotified(ctx any, id any) *MockAlertRepository_MarkAlertsNotified_Call {
+	return &MockAlertRepository_MarkAlertsNotified_Call{Call: _e.mock.On("MarkAlertsNotified", ctx, id)}
 }
 
-func (_c *MockAlertRepository_MarkAlertNotified_Call) Run(run func(ctx context.Context, id int)) *MockAlertRepository_MarkAlertNotified_Call {
+func (_c *MockAlertRepository_MarkAlertsNotified_Call) Run(run func(ctx context.Context, id []int)) *MockAlertRepository_MarkAlertsNotified_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 int
+		var arg1 []int
 		if args[1] != nil {
-			arg1 = args[1].(int)
+			arg1 = args[1].([]int)
 		}
 		run(
 			arg0,
@@ -1662,12 +1600,12 @@ func (_c *MockAlertRepository_MarkAlertNotified_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockAlertRepository_MarkAlertNotified_Call) Return(err error) *MockAlertRepository_MarkAlertNotified_Call {
+func (_c *MockAlertRepository_MarkAlertsNotified_Call) Return(err error) *MockAlertRepository_MarkAlertsNotified_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockAlertRepository_MarkAlertNotified_Call) RunAndReturn(run func(ctx context.Context, id int) error) *MockAlertRepository_MarkAlertNotified_Call {
+func (_c *MockAlertRepository_MarkAlertsNotified_Call) RunAndReturn(run func(ctx context.Context, id []int) error) *MockAlertRepository_MarkAlertsNotified_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2336,76 +2274,76 @@ func (_c *MockLogMatchRepository_DeleteLogMatchesOlderThan_Call) RunAndReturn(ru
 	return _c
 }
 
-// GetAllLogMatches provides a mock function for the type MockLogMatchRepository
-func (_mock *MockLogMatchRepository) GetAllLogMatches(ctx context.Context, limit uint64, offset int) ([]*entity.LogMatch, error) {
-	ret := _mock.Called(ctx, limit, offset)
+// FindLogMatches provides a mock function for the type MockLogMatchRepository
+func (_mock *MockLogMatchRepository) FindLogMatches(ctx context.Context, f entity.ListFilter) ([]*entity.LogMatch, int, error) {
+	ret := _mock.Called(ctx, f)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetAllLogMatches")
+		panic("no return value specified for FindLogMatches")
 	}
 
 	var r0 []*entity.LogMatch
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uint64, int) ([]*entity.LogMatch, error)); ok {
-		return returnFunc(ctx, limit, offset)
+	var r1 int
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.ListFilter) ([]*entity.LogMatch, int, error)); ok {
+		return returnFunc(ctx, f)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uint64, int) []*entity.LogMatch); ok {
-		r0 = returnFunc(ctx, limit, offset)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.ListFilter) []*entity.LogMatch); ok {
+		r0 = returnFunc(ctx, f)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*entity.LogMatch)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uint64, int) error); ok {
-		r1 = returnFunc(ctx, limit, offset)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, entity.ListFilter) int); ok {
+		r1 = returnFunc(ctx, f)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(int)
 	}
-	return r0, r1
+	if returnFunc, ok := ret.Get(2).(func(context.Context, entity.ListFilter) error); ok {
+		r2 = returnFunc(ctx, f)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
 }
 
-// MockLogMatchRepository_GetAllLogMatches_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllLogMatches'
-type MockLogMatchRepository_GetAllLogMatches_Call struct {
+// MockLogMatchRepository_FindLogMatches_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindLogMatches'
+type MockLogMatchRepository_FindLogMatches_Call struct {
 	*mock.Call
 }
 
-// GetAllLogMatches is a helper method to define mock.On call
+// FindLogMatches is a helper method to define mock.On call
 //   - ctx context.Context
-//   - limit uint64
-//   - offset int
-func (_e *MockLogMatchRepository_Expecter) GetAllLogMatches(ctx any, limit any, offset any) *MockLogMatchRepository_GetAllLogMatches_Call {
-	return &MockLogMatchRepository_GetAllLogMatches_Call{Call: _e.mock.On("GetAllLogMatches", ctx, limit, offset)}
+//   - f entity.ListFilter
+func (_e *MockLogMatchRepository_Expecter) FindLogMatches(ctx any, f any) *MockLogMatchRepository_FindLogMatches_Call {
+	return &MockLogMatchRepository_FindLogMatches_Call{Call: _e.mock.On("FindLogMatches", ctx, f)}
 }
 
-func (_c *MockLogMatchRepository_GetAllLogMatches_Call) Run(run func(ctx context.Context, limit uint64, offset int)) *MockLogMatchRepository_GetAllLogMatches_Call {
+func (_c *MockLogMatchRepository_FindLogMatches_Call) Run(run func(ctx context.Context, f entity.ListFilter)) *MockLogMatchRepository_FindLogMatches_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 uint64
+		var arg1 entity.ListFilter
 		if args[1] != nil {
-			arg1 = args[1].(uint64)
-		}
-		var arg2 int
-		if args[2] != nil {
-			arg2 = args[2].(int)
+			arg1 = args[1].(entity.ListFilter)
 		}
 		run(
 			arg0,
 			arg1,
-			arg2,
 		)
 	})
 	return _c
 }
 
-func (_c *MockLogMatchRepository_GetAllLogMatches_Call) Return(logMatchs []*entity.LogMatch, err error) *MockLogMatchRepository_GetAllLogMatches_Call {
-	_c.Call.Return(logMatchs, err)
+func (_c *MockLogMatchRepository_FindLogMatches_Call) Return(logMatchs []*entity.LogMatch, n int, err error) *MockLogMatchRepository_FindLogMatches_Call {
+	_c.Call.Return(logMatchs, n, err)
 	return _c
 }
 
-func (_c *MockLogMatchRepository_GetAllLogMatches_Call) RunAndReturn(run func(ctx context.Context, limit uint64, offset int) ([]*entity.LogMatch, error)) *MockLogMatchRepository_GetAllLogMatches_Call {
+func (_c *MockLogMatchRepository_FindLogMatches_Call) RunAndReturn(run func(ctx context.Context, f entity.ListFilter) ([]*entity.LogMatch, int, error)) *MockLogMatchRepository_FindLogMatches_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2474,142 +2412,6 @@ func (_c *MockLogMatchRepository_GetLogMatch_Call) Return(logMatch *entity.LogMa
 }
 
 func (_c *MockLogMatchRepository_GetLogMatch_Call) RunAndReturn(run func(ctx context.Context, id int) (*entity.LogMatch, error)) *MockLogMatchRepository_GetLogMatch_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetLogMatchesBySeverity provides a mock function for the type MockLogMatchRepository
-func (_mock *MockLogMatchRepository) GetLogMatchesBySeverity(ctx context.Context, severity entity.Severity) ([]*entity.LogMatch, error) {
-	ret := _mock.Called(ctx, severity)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetLogMatchesBySeverity")
-	}
-
-	var r0 []*entity.LogMatch
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.Severity) ([]*entity.LogMatch, error)); ok {
-		return returnFunc(ctx, severity)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.Severity) []*entity.LogMatch); ok {
-		r0 = returnFunc(ctx, severity)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*entity.LogMatch)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, entity.Severity) error); ok {
-		r1 = returnFunc(ctx, severity)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockLogMatchRepository_GetLogMatchesBySeverity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLogMatchesBySeverity'
-type MockLogMatchRepository_GetLogMatchesBySeverity_Call struct {
-	*mock.Call
-}
-
-// GetLogMatchesBySeverity is a helper method to define mock.On call
-//   - ctx context.Context
-//   - severity entity.Severity
-func (_e *MockLogMatchRepository_Expecter) GetLogMatchesBySeverity(ctx any, severity any) *MockLogMatchRepository_GetLogMatchesBySeverity_Call {
-	return &MockLogMatchRepository_GetLogMatchesBySeverity_Call{Call: _e.mock.On("GetLogMatchesBySeverity", ctx, severity)}
-}
-
-func (_c *MockLogMatchRepository_GetLogMatchesBySeverity_Call) Run(run func(ctx context.Context, severity entity.Severity)) *MockLogMatchRepository_GetLogMatchesBySeverity_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 entity.Severity
-		if args[1] != nil {
-			arg1 = args[1].(entity.Severity)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockLogMatchRepository_GetLogMatchesBySeverity_Call) Return(logMatchs []*entity.LogMatch, err error) *MockLogMatchRepository_GetLogMatchesBySeverity_Call {
-	_c.Call.Return(logMatchs, err)
-	return _c
-}
-
-func (_c *MockLogMatchRepository_GetLogMatchesBySeverity_Call) RunAndReturn(run func(ctx context.Context, severity entity.Severity) ([]*entity.LogMatch, error)) *MockLogMatchRepository_GetLogMatchesBySeverity_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetLogMatchesByTarget provides a mock function for the type MockLogMatchRepository
-func (_mock *MockLogMatchRepository) GetLogMatchesByTarget(ctx context.Context, targetID uuid.UUID) ([]*entity.LogMatch, error) {
-	ret := _mock.Called(ctx, targetID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetLogMatchesByTarget")
-	}
-
-	var r0 []*entity.LogMatch
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) ([]*entity.LogMatch, error)); ok {
-		return returnFunc(ctx, targetID)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) []*entity.LogMatch); ok {
-		r0 = returnFunc(ctx, targetID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*entity.LogMatch)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
-		r1 = returnFunc(ctx, targetID)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockLogMatchRepository_GetLogMatchesByTarget_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLogMatchesByTarget'
-type MockLogMatchRepository_GetLogMatchesByTarget_Call struct {
-	*mock.Call
-}
-
-// GetLogMatchesByTarget is a helper method to define mock.On call
-//   - ctx context.Context
-//   - targetID uuid.UUID
-func (_e *MockLogMatchRepository_Expecter) GetLogMatchesByTarget(ctx any, targetID any) *MockLogMatchRepository_GetLogMatchesByTarget_Call {
-	return &MockLogMatchRepository_GetLogMatchesByTarget_Call{Call: _e.mock.On("GetLogMatchesByTarget", ctx, targetID)}
-}
-
-func (_c *MockLogMatchRepository_GetLogMatchesByTarget_Call) Run(run func(ctx context.Context, targetID uuid.UUID)) *MockLogMatchRepository_GetLogMatchesByTarget_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uuid.UUID
-		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockLogMatchRepository_GetLogMatchesByTarget_Call) Return(logMatchs []*entity.LogMatch, err error) *MockLogMatchRepository_GetLogMatchesByTarget_Call {
-	_c.Call.Return(logMatchs, err)
-	return _c
-}
-
-func (_c *MockLogMatchRepository_GetLogMatchesByTarget_Call) RunAndReturn(run func(ctx context.Context, targetID uuid.UUID) ([]*entity.LogMatch, error)) *MockLogMatchRepository_GetLogMatchesByTarget_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3414,6 +3216,154 @@ func (_c *MockStorage_DeleteTarget_Call) RunAndReturn(run func(ctx context.Conte
 	return _c
 }
 
+// FindAlerts provides a mock function for the type MockStorage
+func (_mock *MockStorage) FindAlerts(ctx context.Context, f entity.ListFilter) ([]*entity.Alert, int, error) {
+	ret := _mock.Called(ctx, f)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindAlerts")
+	}
+
+	var r0 []*entity.Alert
+	var r1 int
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.ListFilter) ([]*entity.Alert, int, error)); ok {
+		return returnFunc(ctx, f)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.ListFilter) []*entity.Alert); ok {
+		r0 = returnFunc(ctx, f)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*entity.Alert)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, entity.ListFilter) int); ok {
+		r1 = returnFunc(ctx, f)
+	} else {
+		r1 = ret.Get(1).(int)
+	}
+	if returnFunc, ok := ret.Get(2).(func(context.Context, entity.ListFilter) error); ok {
+		r2 = returnFunc(ctx, f)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
+}
+
+// MockStorage_FindAlerts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindAlerts'
+type MockStorage_FindAlerts_Call struct {
+	*mock.Call
+}
+
+// FindAlerts is a helper method to define mock.On call
+//   - ctx context.Context
+//   - f entity.ListFilter
+func (_e *MockStorage_Expecter) FindAlerts(ctx any, f any) *MockStorage_FindAlerts_Call {
+	return &MockStorage_FindAlerts_Call{Call: _e.mock.On("FindAlerts", ctx, f)}
+}
+
+func (_c *MockStorage_FindAlerts_Call) Run(run func(ctx context.Context, f entity.ListFilter)) *MockStorage_FindAlerts_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 entity.ListFilter
+		if args[1] != nil {
+			arg1 = args[1].(entity.ListFilter)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockStorage_FindAlerts_Call) Return(alerts []*entity.Alert, n int, err error) *MockStorage_FindAlerts_Call {
+	_c.Call.Return(alerts, n, err)
+	return _c
+}
+
+func (_c *MockStorage_FindAlerts_Call) RunAndReturn(run func(ctx context.Context, f entity.ListFilter) ([]*entity.Alert, int, error)) *MockStorage_FindAlerts_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FindLogMatches provides a mock function for the type MockStorage
+func (_mock *MockStorage) FindLogMatches(ctx context.Context, f entity.ListFilter) ([]*entity.LogMatch, int, error) {
+	ret := _mock.Called(ctx, f)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindLogMatches")
+	}
+
+	var r0 []*entity.LogMatch
+	var r1 int
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.ListFilter) ([]*entity.LogMatch, int, error)); ok {
+		return returnFunc(ctx, f)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.ListFilter) []*entity.LogMatch); ok {
+		r0 = returnFunc(ctx, f)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*entity.LogMatch)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, entity.ListFilter) int); ok {
+		r1 = returnFunc(ctx, f)
+	} else {
+		r1 = ret.Get(1).(int)
+	}
+	if returnFunc, ok := ret.Get(2).(func(context.Context, entity.ListFilter) error); ok {
+		r2 = returnFunc(ctx, f)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
+}
+
+// MockStorage_FindLogMatches_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindLogMatches'
+type MockStorage_FindLogMatches_Call struct {
+	*mock.Call
+}
+
+// FindLogMatches is a helper method to define mock.On call
+//   - ctx context.Context
+//   - f entity.ListFilter
+func (_e *MockStorage_Expecter) FindLogMatches(ctx any, f any) *MockStorage_FindLogMatches_Call {
+	return &MockStorage_FindLogMatches_Call{Call: _e.mock.On("FindLogMatches", ctx, f)}
+}
+
+func (_c *MockStorage_FindLogMatches_Call) Run(run func(ctx context.Context, f entity.ListFilter)) *MockStorage_FindLogMatches_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 entity.ListFilter
+		if args[1] != nil {
+			arg1 = args[1].(entity.ListFilter)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockStorage_FindLogMatches_Call) Return(logMatchs []*entity.LogMatch, n int, err error) *MockStorage_FindLogMatches_Call {
+	_c.Call.Return(logMatchs, n, err)
+	return _c
+}
+
+func (_c *MockStorage_FindLogMatches_Call) RunAndReturn(run func(ctx context.Context, f entity.ListFilter) ([]*entity.LogMatch, int, error)) *MockStorage_FindLogMatches_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAlert provides a mock function for the type MockStorage
 func (_mock *MockStorage) GetAlert(ctx context.Context, id int) (*entity.Alert, error) {
 	ret := _mock.Called(ctx, id)
@@ -3483,8 +3433,8 @@ func (_c *MockStorage_GetAlert_Call) RunAndReturn(run func(ctx context.Context, 
 }
 
 // GetAlertsByNotification provides a mock function for the type MockStorage
-func (_mock *MockStorage) GetAlertsByNotification(ctx context.Context, flag bool) ([]*entity.Alert, error) {
-	ret := _mock.Called(ctx, flag)
+func (_mock *MockStorage) GetAlertsByNotification(ctx context.Context, flag bool, limit uint64) ([]*entity.Alert, error) {
+	ret := _mock.Called(ctx, flag, limit)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAlertsByNotification")
@@ -3492,18 +3442,18 @@ func (_mock *MockStorage) GetAlertsByNotification(ctx context.Context, flag bool
 
 	var r0 []*entity.Alert
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, bool) ([]*entity.Alert, error)); ok {
-		return returnFunc(ctx, flag)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, bool, uint64) ([]*entity.Alert, error)); ok {
+		return returnFunc(ctx, flag, limit)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, bool) []*entity.Alert); ok {
-		r0 = returnFunc(ctx, flag)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, bool, uint64) []*entity.Alert); ok {
+		r0 = returnFunc(ctx, flag, limit)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*entity.Alert)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, bool) error); ok {
-		r1 = returnFunc(ctx, flag)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, bool, uint64) error); ok {
+		r1 = returnFunc(ctx, flag, limit)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -3518,11 +3468,12 @@ type MockStorage_GetAlertsByNotification_Call struct {
 // GetAlertsByNotification is a helper method to define mock.On call
 //   - ctx context.Context
 //   - flag bool
-func (_e *MockStorage_Expecter) GetAlertsByNotification(ctx any, flag any) *MockStorage_GetAlertsByNotification_Call {
-	return &MockStorage_GetAlertsByNotification_Call{Call: _e.mock.On("GetAlertsByNotification", ctx, flag)}
+//   - limit uint64
+func (_e *MockStorage_Expecter) GetAlertsByNotification(ctx any, flag any, limit any) *MockStorage_GetAlertsByNotification_Call {
+	return &MockStorage_GetAlertsByNotification_Call{Call: _e.mock.On("GetAlertsByNotification", ctx, flag, limit)}
 }
 
-func (_c *MockStorage_GetAlertsByNotification_Call) Run(run func(ctx context.Context, flag bool)) *MockStorage_GetAlertsByNotification_Call {
+func (_c *MockStorage_GetAlertsByNotification_Call) Run(run func(ctx context.Context, flag bool, limit uint64)) *MockStorage_GetAlertsByNotification_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -3532,146 +3483,9 @@ func (_c *MockStorage_GetAlertsByNotification_Call) Run(run func(ctx context.Con
 		if args[1] != nil {
 			arg1 = args[1].(bool)
 		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockStorage_GetAlertsByNotification_Call) Return(alerts []*entity.Alert, err error) *MockStorage_GetAlertsByNotification_Call {
-	_c.Call.Return(alerts, err)
-	return _c
-}
-
-func (_c *MockStorage_GetAlertsByNotification_Call) RunAndReturn(run func(ctx context.Context, flag bool) ([]*entity.Alert, error)) *MockStorage_GetAlertsByNotification_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetAlertsBySeverity provides a mock function for the type MockStorage
-func (_mock *MockStorage) GetAlertsBySeverity(ctx context.Context, severity entity.Severity) ([]*entity.Alert, error) {
-	ret := _mock.Called(ctx, severity)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetAlertsBySeverity")
-	}
-
-	var r0 []*entity.Alert
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.Severity) ([]*entity.Alert, error)); ok {
-		return returnFunc(ctx, severity)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.Severity) []*entity.Alert); ok {
-		r0 = returnFunc(ctx, severity)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*entity.Alert)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, entity.Severity) error); ok {
-		r1 = returnFunc(ctx, severity)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockStorage_GetAlertsBySeverity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAlertsBySeverity'
-type MockStorage_GetAlertsBySeverity_Call struct {
-	*mock.Call
-}
-
-// GetAlertsBySeverity is a helper method to define mock.On call
-//   - ctx context.Context
-//   - severity entity.Severity
-func (_e *MockStorage_Expecter) GetAlertsBySeverity(ctx any, severity any) *MockStorage_GetAlertsBySeverity_Call {
-	return &MockStorage_GetAlertsBySeverity_Call{Call: _e.mock.On("GetAlertsBySeverity", ctx, severity)}
-}
-
-func (_c *MockStorage_GetAlertsBySeverity_Call) Run(run func(ctx context.Context, severity entity.Severity)) *MockStorage_GetAlertsBySeverity_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 entity.Severity
-		if args[1] != nil {
-			arg1 = args[1].(entity.Severity)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockStorage_GetAlertsBySeverity_Call) Return(alerts []*entity.Alert, err error) *MockStorage_GetAlertsBySeverity_Call {
-	_c.Call.Return(alerts, err)
-	return _c
-}
-
-func (_c *MockStorage_GetAlertsBySeverity_Call) RunAndReturn(run func(ctx context.Context, severity entity.Severity) ([]*entity.Alert, error)) *MockStorage_GetAlertsBySeverity_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetAllAlerts provides a mock function for the type MockStorage
-func (_mock *MockStorage) GetAllAlerts(ctx context.Context, limit uint64, offset int) ([]*entity.Alert, error) {
-	ret := _mock.Called(ctx, limit, offset)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetAllAlerts")
-	}
-
-	var r0 []*entity.Alert
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uint64, int) ([]*entity.Alert, error)); ok {
-		return returnFunc(ctx, limit, offset)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uint64, int) []*entity.Alert); ok {
-		r0 = returnFunc(ctx, limit, offset)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*entity.Alert)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uint64, int) error); ok {
-		r1 = returnFunc(ctx, limit, offset)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockStorage_GetAllAlerts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllAlerts'
-type MockStorage_GetAllAlerts_Call struct {
-	*mock.Call
-}
-
-// GetAllAlerts is a helper method to define mock.On call
-//   - ctx context.Context
-//   - limit uint64
-//   - offset int
-func (_e *MockStorage_Expecter) GetAllAlerts(ctx any, limit any, offset any) *MockStorage_GetAllAlerts_Call {
-	return &MockStorage_GetAllAlerts_Call{Call: _e.mock.On("GetAllAlerts", ctx, limit, offset)}
-}
-
-func (_c *MockStorage_GetAllAlerts_Call) Run(run func(ctx context.Context, limit uint64, offset int)) *MockStorage_GetAllAlerts_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uint64
-		if args[1] != nil {
-			arg1 = args[1].(uint64)
-		}
-		var arg2 int
+		var arg2 uint64
 		if args[2] != nil {
-			arg2 = args[2].(int)
+			arg2 = args[2].(uint64)
 		}
 		run(
 			arg0,
@@ -3682,12 +3496,12 @@ func (_c *MockStorage_GetAllAlerts_Call) Run(run func(ctx context.Context, limit
 	return _c
 }
 
-func (_c *MockStorage_GetAllAlerts_Call) Return(alerts []*entity.Alert, err error) *MockStorage_GetAllAlerts_Call {
+func (_c *MockStorage_GetAlertsByNotification_Call) Return(alerts []*entity.Alert, err error) *MockStorage_GetAlertsByNotification_Call {
 	_c.Call.Return(alerts, err)
 	return _c
 }
 
-func (_c *MockStorage_GetAllAlerts_Call) RunAndReturn(run func(ctx context.Context, limit uint64, offset int) ([]*entity.Alert, error)) *MockStorage_GetAllAlerts_Call {
+func (_c *MockStorage_GetAlertsByNotification_Call) RunAndReturn(run func(ctx context.Context, flag bool, limit uint64) ([]*entity.Alert, error)) *MockStorage_GetAlertsByNotification_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3762,80 +3576,6 @@ func (_c *MockStorage_GetAllEvents_Call) Return(containerEvents []*entity.Contai
 }
 
 func (_c *MockStorage_GetAllEvents_Call) RunAndReturn(run func(ctx context.Context, limit uint64, offset int) ([]*entity.ContainerEvent, error)) *MockStorage_GetAllEvents_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetAllLogMatches provides a mock function for the type MockStorage
-func (_mock *MockStorage) GetAllLogMatches(ctx context.Context, limit uint64, offset int) ([]*entity.LogMatch, error) {
-	ret := _mock.Called(ctx, limit, offset)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetAllLogMatches")
-	}
-
-	var r0 []*entity.LogMatch
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uint64, int) ([]*entity.LogMatch, error)); ok {
-		return returnFunc(ctx, limit, offset)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uint64, int) []*entity.LogMatch); ok {
-		r0 = returnFunc(ctx, limit, offset)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*entity.LogMatch)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uint64, int) error); ok {
-		r1 = returnFunc(ctx, limit, offset)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockStorage_GetAllLogMatches_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllLogMatches'
-type MockStorage_GetAllLogMatches_Call struct {
-	*mock.Call
-}
-
-// GetAllLogMatches is a helper method to define mock.On call
-//   - ctx context.Context
-//   - limit uint64
-//   - offset int
-func (_e *MockStorage_Expecter) GetAllLogMatches(ctx any, limit any, offset any) *MockStorage_GetAllLogMatches_Call {
-	return &MockStorage_GetAllLogMatches_Call{Call: _e.mock.On("GetAllLogMatches", ctx, limit, offset)}
-}
-
-func (_c *MockStorage_GetAllLogMatches_Call) Run(run func(ctx context.Context, limit uint64, offset int)) *MockStorage_GetAllLogMatches_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uint64
-		if args[1] != nil {
-			arg1 = args[1].(uint64)
-		}
-		var arg2 int
-		if args[2] != nil {
-			arg2 = args[2].(int)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-		)
-	})
-	return _c
-}
-
-func (_c *MockStorage_GetAllLogMatches_Call) Return(logMatchs []*entity.LogMatch, err error) *MockStorage_GetAllLogMatches_Call {
-	_c.Call.Return(logMatchs, err)
-	return _c
-}
-
-func (_c *MockStorage_GetAllLogMatches_Call) RunAndReturn(run func(ctx context.Context, limit uint64, offset int) ([]*entity.LogMatch, error)) *MockStorage_GetAllLogMatches_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -4256,142 +3996,6 @@ func (_c *MockStorage_GetLogMatch_Call) Return(logMatch *entity.LogMatch, err er
 }
 
 func (_c *MockStorage_GetLogMatch_Call) RunAndReturn(run func(ctx context.Context, id int) (*entity.LogMatch, error)) *MockStorage_GetLogMatch_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetLogMatchesBySeverity provides a mock function for the type MockStorage
-func (_mock *MockStorage) GetLogMatchesBySeverity(ctx context.Context, severity entity.Severity) ([]*entity.LogMatch, error) {
-	ret := _mock.Called(ctx, severity)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetLogMatchesBySeverity")
-	}
-
-	var r0 []*entity.LogMatch
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.Severity) ([]*entity.LogMatch, error)); ok {
-		return returnFunc(ctx, severity)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.Severity) []*entity.LogMatch); ok {
-		r0 = returnFunc(ctx, severity)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*entity.LogMatch)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, entity.Severity) error); ok {
-		r1 = returnFunc(ctx, severity)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockStorage_GetLogMatchesBySeverity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLogMatchesBySeverity'
-type MockStorage_GetLogMatchesBySeverity_Call struct {
-	*mock.Call
-}
-
-// GetLogMatchesBySeverity is a helper method to define mock.On call
-//   - ctx context.Context
-//   - severity entity.Severity
-func (_e *MockStorage_Expecter) GetLogMatchesBySeverity(ctx any, severity any) *MockStorage_GetLogMatchesBySeverity_Call {
-	return &MockStorage_GetLogMatchesBySeverity_Call{Call: _e.mock.On("GetLogMatchesBySeverity", ctx, severity)}
-}
-
-func (_c *MockStorage_GetLogMatchesBySeverity_Call) Run(run func(ctx context.Context, severity entity.Severity)) *MockStorage_GetLogMatchesBySeverity_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 entity.Severity
-		if args[1] != nil {
-			arg1 = args[1].(entity.Severity)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockStorage_GetLogMatchesBySeverity_Call) Return(logMatchs []*entity.LogMatch, err error) *MockStorage_GetLogMatchesBySeverity_Call {
-	_c.Call.Return(logMatchs, err)
-	return _c
-}
-
-func (_c *MockStorage_GetLogMatchesBySeverity_Call) RunAndReturn(run func(ctx context.Context, severity entity.Severity) ([]*entity.LogMatch, error)) *MockStorage_GetLogMatchesBySeverity_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetLogMatchesByTarget provides a mock function for the type MockStorage
-func (_mock *MockStorage) GetLogMatchesByTarget(ctx context.Context, targetID uuid.UUID) ([]*entity.LogMatch, error) {
-	ret := _mock.Called(ctx, targetID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetLogMatchesByTarget")
-	}
-
-	var r0 []*entity.LogMatch
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) ([]*entity.LogMatch, error)); ok {
-		return returnFunc(ctx, targetID)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) []*entity.LogMatch); ok {
-		r0 = returnFunc(ctx, targetID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*entity.LogMatch)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
-		r1 = returnFunc(ctx, targetID)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockStorage_GetLogMatchesByTarget_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLogMatchesByTarget'
-type MockStorage_GetLogMatchesByTarget_Call struct {
-	*mock.Call
-}
-
-// GetLogMatchesByTarget is a helper method to define mock.On call
-//   - ctx context.Context
-//   - targetID uuid.UUID
-func (_e *MockStorage_Expecter) GetLogMatchesByTarget(ctx any, targetID any) *MockStorage_GetLogMatchesByTarget_Call {
-	return &MockStorage_GetLogMatchesByTarget_Call{Call: _e.mock.On("GetLogMatchesByTarget", ctx, targetID)}
-}
-
-func (_c *MockStorage_GetLogMatchesByTarget_Call) Run(run func(ctx context.Context, targetID uuid.UUID)) *MockStorage_GetLogMatchesByTarget_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uuid.UUID
-		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockStorage_GetLogMatchesByTarget_Call) Return(logMatchs []*entity.LogMatch, err error) *MockStorage_GetLogMatchesByTarget_Call {
-	_c.Call.Return(logMatchs, err)
-	return _c
-}
-
-func (_c *MockStorage_GetLogMatchesByTarget_Call) RunAndReturn(run func(ctx context.Context, targetID uuid.UUID) ([]*entity.LogMatch, error)) *MockStorage_GetLogMatchesByTarget_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -4872,16 +4476,16 @@ func (_c *MockStorage_GetTargetsByType_Call) RunAndReturn(run func(ctx context.C
 	return _c
 }
 
-// MarkAlertNotified provides a mock function for the type MockStorage
-func (_mock *MockStorage) MarkAlertNotified(ctx context.Context, id int) error {
+// MarkAlertsNotified provides a mock function for the type MockStorage
+func (_mock *MockStorage) MarkAlertsNotified(ctx context.Context, id []int) error {
 	ret := _mock.Called(ctx, id)
 
 	if len(ret) == 0 {
-		panic("no return value specified for MarkAlertNotified")
+		panic("no return value specified for MarkAlertsNotified")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []int) error); ok {
 		r0 = returnFunc(ctx, id)
 	} else {
 		r0 = ret.Error(0)
@@ -4889,27 +4493,27 @@ func (_mock *MockStorage) MarkAlertNotified(ctx context.Context, id int) error {
 	return r0
 }
 
-// MockStorage_MarkAlertNotified_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkAlertNotified'
-type MockStorage_MarkAlertNotified_Call struct {
+// MockStorage_MarkAlertsNotified_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkAlertsNotified'
+type MockStorage_MarkAlertsNotified_Call struct {
 	*mock.Call
 }
 
-// MarkAlertNotified is a helper method to define mock.On call
+// MarkAlertsNotified is a helper method to define mock.On call
 //   - ctx context.Context
-//   - id int
-func (_e *MockStorage_Expecter) MarkAlertNotified(ctx any, id any) *MockStorage_MarkAlertNotified_Call {
-	return &MockStorage_MarkAlertNotified_Call{Call: _e.mock.On("MarkAlertNotified", ctx, id)}
+//   - id []int
+func (_e *MockStorage_Expecter) MarkAlertsNotified(ctx any, id any) *MockStorage_MarkAlertsNotified_Call {
+	return &MockStorage_MarkAlertsNotified_Call{Call: _e.mock.On("MarkAlertsNotified", ctx, id)}
 }
 
-func (_c *MockStorage_MarkAlertNotified_Call) Run(run func(ctx context.Context, id int)) *MockStorage_MarkAlertNotified_Call {
+func (_c *MockStorage_MarkAlertsNotified_Call) Run(run func(ctx context.Context, id []int)) *MockStorage_MarkAlertsNotified_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 int
+		var arg1 []int
 		if args[1] != nil {
-			arg1 = args[1].(int)
+			arg1 = args[1].([]int)
 		}
 		run(
 			arg0,
@@ -4919,12 +4523,12 @@ func (_c *MockStorage_MarkAlertNotified_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockStorage_MarkAlertNotified_Call) Return(err error) *MockStorage_MarkAlertNotified_Call {
+func (_c *MockStorage_MarkAlertsNotified_Call) Return(err error) *MockStorage_MarkAlertsNotified_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockStorage_MarkAlertNotified_Call) RunAndReturn(run func(ctx context.Context, id int) error) *MockStorage_MarkAlertNotified_Call {
+func (_c *MockStorage_MarkAlertsNotified_Call) RunAndReturn(run func(ctx context.Context, id []int) error) *MockStorage_MarkAlertsNotified_Call {
 	_c.Call.Return(run)
 	return _c
 }

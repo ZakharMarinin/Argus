@@ -5,8 +5,6 @@ import (
 	"argus-collector/internal/domain/entity"
 	"context"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 func (uc *UseCase) SaveLogMatch(ctx context.Context, logMatch *entity.LogMatch) (*entity.LogMatch, error) {
@@ -45,26 +43,10 @@ func (uc *UseCase) GetLogMatch(ctx context.Context, id int) (*entity.LogMatch, e
 	return logMatch, wrapErr(op, err)
 }
 
-func (uc *UseCase) GetLogMatchesByTarget(ctx context.Context, targetID uuid.UUID) ([]*entity.LogMatch, error) {
-	const op = "UseCase.GetLogMatchesByTarget"
+func (uc *UseCase) FindLogMatches(ctx context.Context, f entity.ListFilter) ([]*entity.LogMatch, int, error) {
+	const op = "UseCase.FindLogMatches"
 
-	logMatches, err := uc.db.GetLogMatchesByTarget(ctx, targetID)
+	logMatches, total, err := uc.db.FindLogMatches(ctx, f)
 
-	return logMatches, wrapErr(op, err)
-}
-
-func (uc *UseCase) GetLogMatchesBySeverity(ctx context.Context, severity entity.Severity) ([]*entity.LogMatch, error) {
-	const op = "UseCase.GetLogMatchesBySeverity"
-
-	logMatches, err := uc.db.GetLogMatchesBySeverity(ctx, severity)
-
-	return logMatches, wrapErr(op, err)
-}
-
-func (uc *UseCase) GetAllLogMatches(ctx context.Context, limit uint64, offset int) ([]*entity.LogMatch, error) {
-	const op = "UseCase.GetAllLogMatches"
-
-	logMatches, err := uc.db.GetAllLogMatches(ctx, limit, offset)
-
-	return logMatches, wrapErr(op, err)
+	return logMatches, total, wrapErr(op, err)
 }

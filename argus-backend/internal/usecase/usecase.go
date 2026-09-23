@@ -35,10 +35,9 @@ type AlertRepository interface {
 	CreateAlert(ctx context.Context, alert *entity.Alert) (*entity.Alert, error)
 	DeleteAlert(ctx context.Context, id int) (int, error)
 	GetAlert(ctx context.Context, id int) (*entity.Alert, error)
-	GetAlertsBySeverity(ctx context.Context, severity entity.Severity) ([]*entity.Alert, error)
-	GetAlertsByNotification(ctx context.Context, flag bool) ([]*entity.Alert, error)
-	GetAllAlerts(ctx context.Context, limit uint64, offset int) ([]*entity.Alert, error)
-	MarkAlertNotified(ctx context.Context, id int) error
+	GetAlertsByNotification(ctx context.Context, flag bool, limit uint64) ([]*entity.Alert, error)
+	FindAlerts(ctx context.Context, f entity.ListFilter) ([]*entity.Alert, int, error)
+	MarkAlertsNotified(ctx context.Context, id []int) error
 }
 
 //nolint:dupl
@@ -58,9 +57,7 @@ type LogMatchRepository interface {
 	DeleteLogMatch(ctx context.Context, id int) (int, error)
 	DeleteLogMatchesOlderThan(ctx context.Context, before time.Time) error
 	GetLogMatch(ctx context.Context, id int) (*entity.LogMatch, error)
-	GetLogMatchesByTarget(ctx context.Context, targetID uuid.UUID) ([]*entity.LogMatch, error)
-	GetLogMatchesBySeverity(ctx context.Context, severity entity.Severity) ([]*entity.LogMatch, error)
-	GetAllLogMatches(ctx context.Context, limit uint64, offset int) ([]*entity.LogMatch, error)
+	FindLogMatches(ctx context.Context, f entity.ListFilter) ([]*entity.LogMatch, int, error)
 }
 
 type Storage interface {

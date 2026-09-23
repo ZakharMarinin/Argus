@@ -3,9 +3,11 @@ package handlers
 import (
 	"argus-collector/internal/domain/entity"
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -33,12 +35,14 @@ type UseCase interface {
 	GetEventsByType(ctx context.Context, eventType entity.EventType) ([]*entity.ContainerEvent, error)
 	GetAllEvents(ctx context.Context, limit uint64, offset int) ([]*entity.ContainerEvent, error)
 
+	GetLogMatch(ctx context.Context, id int) (*entity.LogMatch, error)
+	DeleteLogMatch(ctx context.Context, id int) (int, error)
+	FindLogMatches(ctx context.Context, f entity.ListFilter) ([]*entity.LogMatch, int, error)
+
 	CreateAlert(ctx context.Context, alert *entity.Alert) (*entity.Alert, error)
 	GetAlert(ctx context.Context, id int) (*entity.Alert, error)
 	DeleteAlert(ctx context.Context, id int) (int, error)
-	GetAlertsBySeverity(ctx context.Context, severity entity.Severity) ([]*entity.Alert, error)
-	GetAlertsByNotification(ctx context.Context, flag bool) ([]*entity.Alert, error)
-	GetAllAlerts(ctx context.Context, limit uint64, offset int) ([]*entity.Alert, error)
+	FindAlerts(ctx context.Context, f entity.ListFilter) ([]*entity.Alert, int, error)
 }
 
 type Handler struct {
@@ -90,4 +94,63 @@ func parseLimit(r *http.Request) uint64 {
 	}
 
 	return limit
+}
+
+var errInvalidOrder = errors.New("invalid order")
+
+func parseListFilter(r *http.Request) (entity.ListFilter, error) {
+	q := r.URL.Query()
+	limit, offset := parsePagination(r)
+	f := entity.ListFilter{Limit: limit, After: offset}
+
+	for _, raw := range q["target_id"] {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return entity.ListFilter{}, err
+		}
+
+		f.TargetIDs = append(f.TargetIDs, id)
+	}
+
+	if raw := q.Get("severity"); raw != "" {
+		level, err := strconv.Atoi(raw)
+		if err != nil {
+			return entity.ListFilter{}, err
+		}
+
+		severity := entity.Severity(level)
+		f.Severity = &severity
+	}
+
+	if raw := q.Get("since"); raw != "" {
+		since, err := time.Parse(time.RFC3339, raw)
+		if err != nil {
+			return entity.ListFilter{}, err
+		}
+
+		f.Since = &since
+	}
+
+	if raw := q.Get("skip"); raw != "" {
+		skip, err := strconv.ParseUint(raw, 10, 64)
+		if err != nil {
+			return entity.ListFilter{}, err
+		}
+
+		f.Skip = skip
+	}
+
+	switch q.Get("order") {
+	case "", "asc":
+	case "desc":
+		f.Desc = true
+	default:
+		return entity.ListFilter{}, errInvalidOrder
+	}
+
+	return f, nil
+}
+
+func setTotal(w http.ResponseWriter, total int) {
+	w.Header().Set("X-Total-Count", strconv.Itoa(total))
 }

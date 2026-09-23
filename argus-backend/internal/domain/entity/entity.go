@@ -29,6 +29,7 @@ const (
 	ContainerKill    EventType = "kill"
 	ContainerRestart EventType = "restart"
 	ContainerDestroy EventType = "destroy"
+	ContainerStart   EventType = "start"
 )
 
 func (s Severity) Valid() bool {
@@ -40,12 +41,46 @@ func (s Severity) Valid() bool {
 	}
 }
 
+func (s Severity) String() string {
+	switch s {
+	case SeverityCritical:
+		return "CRITICAL"
+	case SeverityError:
+		return "ERROR"
+	case SeverityWarning:
+		return "WARNING"
+	case SeverityInfo:
+		return "INFO"
+	case SeverityDebug:
+		return "DEBUG"
+	default:
+		return "UNKNOWN"
+	}
+}
+
 func (e EventType) Valid() bool {
 	switch e {
-	case ContainerDie, ContainerOOM, ContainerKill, ContainerRestart, ContainerDestroy:
+	case ContainerDie, ContainerOOM, ContainerKill, ContainerRestart, ContainerDestroy, ContainerStart:
 		return true
 	default:
 		return false
+	}
+}
+
+func (e EventType) AlertSeverity(exitCode string) (Severity, bool) {
+	switch e {
+	case ContainerOOM:
+		return SeverityCritical, true
+	case ContainerDie:
+		if exitCode == "0" {
+			return SeverityInfo, false
+		}
+
+		return SeverityError, true
+	case ContainerKill, ContainerRestart, ContainerDestroy, ContainerStart:
+		return SeverityInfo, false
+	default:
+		return SeverityInfo, false
 	}
 }
 
@@ -90,4 +125,15 @@ type Alert struct {
 	Details   string    `json:"details"`
 	Notified  bool      `json:"notified"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type ListFilter struct {
+	TargetIDs []uuid.UUID
+	Severity  *Severity
+	Notified  *bool
+	Since     *time.Time
+	After     int
+	Skip      uint64
+	Limit     uint64
+	Desc      bool
 }

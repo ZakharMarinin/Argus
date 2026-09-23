@@ -36,34 +36,32 @@ func (uc *UseCase) GetAlert(ctx context.Context, id int) (*entity.Alert, error) 
 	return alert, wrapErr(op, err)
 }
 
-func (uc *UseCase) GetAlertsBySeverity(ctx context.Context, severity entity.Severity) ([]*entity.Alert, error) {
-	const op = "UseCase.GetAlertsBySeverity"
-
-	alerts, err := uc.db.GetAlertsBySeverity(ctx, severity)
-
-	return alerts, wrapErr(op, err)
-}
-
-func (uc *UseCase) GetAlertsByNotification(ctx context.Context, flag bool) ([]*entity.Alert, error) {
+func (uc *UseCase) GetAlertsByNotification(ctx context.Context, flag bool, limit uint64) ([]*entity.Alert, error) {
 	const op = "UseCase.GetAlertsByNotification"
 
-	alerts, err := uc.db.GetAlertsByNotification(ctx, flag)
+	alerts, err := uc.db.GetAlertsByNotification(ctx, flag, limit)
 
 	return alerts, wrapErr(op, err)
 }
 
-func (uc *UseCase) MarkAlertNotified(ctx context.Context, id int) error {
-	const op = "UseCase.MarkAlertNotified"
+func (uc *UseCase) MarkAlertsNotified(ctx context.Context, alerts []*entity.Alert) error {
+	const op = "UseCase.MarkAlertsNotified"
 
-	err := uc.db.MarkAlertNotified(ctx, id)
+	ids := make([]int, 0, len(alerts))
+
+	for _, alert := range alerts {
+		ids = append(ids, alert.ID)
+	}
+
+	err := uc.db.MarkAlertsNotified(ctx, ids)
 
 	return wrapErr(op, err)
 }
 
-func (uc *UseCase) GetAllAlerts(ctx context.Context, limit uint64, offset int) ([]*entity.Alert, error) {
-	const op = "UseCase.GetAllAlerts"
+func (uc *UseCase) FindAlerts(ctx context.Context, f entity.ListFilter) ([]*entity.Alert, int, error) {
+	const op = "UseCase.FindAlerts"
 
-	alerts, err := uc.db.GetAllAlerts(ctx, limit, offset)
+	alerts, total, err := uc.db.FindAlerts(ctx, f)
 
-	return alerts, wrapErr(op, err)
+	return alerts, total, wrapErr(op, err)
 }

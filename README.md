@@ -9,8 +9,7 @@ Two small Go services, one Postgres, and a dashboard that refuses to make number
 
 </div>
 
-![Argus overview black](docs/media/overview_black.png)
-![Argus overview white](docs/media/overview_white.png)
+![Argus overview black](docs/media/overview.png)
 
 ## What it is
 
@@ -80,7 +79,7 @@ Argus doesn't store "incidents" — it reconstructs them on read from probe resu
 
 They live under *History → Outages*, with totals on top: how many outages there were, how much downtime was actually measured, and the longest one.
 
-![Outage history](docs/media/outages.png)
+![Outage history](docs/media/outages.svg)
 
 ### A per-container page that admits what it doesn't know
 
@@ -119,7 +118,7 @@ Only new lines are read: Argus doesn't rescan old logs on startup. If the log st
 
 The overview counts matched lines over the last 24 hours, and the count feeds the mascot: one or two matches and Argus is watching, five or more and it's angry. Each container's page shows its own matches. *History → Log matches* has hourly bars split by severity, a container filter, severity chips, and every matched line as it was written, 50 per page.
 
-![Log matches](docs/media/log_matches.png)
+![Log matches](docs/media/log-matches.svg)
 
 ### Charts that keep their gaps
 

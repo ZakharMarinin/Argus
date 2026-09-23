@@ -289,3 +289,7 @@ argus-frontend/    dashboard: read-only
 Ports are declared by the consumer, so dependencies point inward: the aggregation layer knows nothing about HTTP, and the domain layer knows nothing about HTTP or HTML. The dashboard connects over the API only — it has no database driver at all. Its only dependencies load the config file and `.env`; everything else is the standard library.
 
 Stack: Go, PostgreSQL 16, htmx, Alpine.js, Chart.js, raw CSS. No SPA framework, no build pipeline, no CDN.
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE).

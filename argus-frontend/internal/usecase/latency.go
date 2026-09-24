@@ -58,7 +58,7 @@ func (uc *UseCase) LatencySeries(ctx context.Context) ([]entity.LatencyPoint, er
 
 // hourBucket - накопитель одного часа графика.
 type hourBucket struct {
-	latencies []int
+	latencies []float64
 	total     int
 	ok        int
 }
@@ -89,9 +89,9 @@ func fillBuckets(buckets []hourBucket, probes []entity.ProbeOutcome, dayAgo time
 
 // percentileDisc95 - тот же percentile_disc(0.95), что считал Postgres:
 // сортировка и выбор ceil(0.95*n)-го (1-индексного) элемента.
-func percentileDisc95(values []int) int {
-	sorted := append([]int(nil), values...)
-	sort.Ints(sorted)
+func percentileDisc95(values []float64) float64 {
+	sorted := append([]float64(nil), values...)
+	sort.Float64s(sorted)
 
 	idx := min(max(int(math.Ceil(0.95*float64(len(sorted))))-1, 0), len(sorted)-1)
 

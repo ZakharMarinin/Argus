@@ -379,6 +379,40 @@ func TestLatencySeriesGapsHoursWithNoChecks(t *testing.T) {
 	}
 }
 
+func TestLatencySeriesKeepsSubMillisecondP95(t *testing.T) {
+	hourAgo := now.Add(-time.Hour).Truncate(time.Hour)
+	fb := fakeBackend{
+		targets: []targetJSON{
+			{ID: "t1", Name: "api", TargetType: "probe", Status: "up"},
+		},
+		probes: map[string][]probeJSON{
+			"t1": {
+				{ID: 1, TargetID: "t1", Success: true, Latency: 180, CreatedAt: hourAgo.Add(time.Minute)},
+				{ID: 2, TargetID: "t1", Success: true, Latency: 430, CreatedAt: hourAgo.Add(2 * time.Minute)},
+			},
+		},
+	}
+
+	series, err := newUseCase(t, fb).LatencySeries(context.Background())
+	if err != nil {
+		t.Fatalf("LatencySeries: %v", err)
+	}
+
+	for _, pt := range series {
+		if !pt.Hour.Equal(hourAgo) {
+			continue
+		}
+
+		if pt.P95MS == nil || *pt.P95MS != 0.43 {
+			t.Errorf("p95 = %v, хотели 0.43 мс (430 микросекунд)", pt.P95MS)
+		}
+
+		return
+	}
+
+	t.Fatalf("час %v не найден в ряду", hourAgo)
+}
+
 // TestPingUnreachableIsNotReady - недоступный бэкенд не должен всплывать как
 // сырая сетевая ошибка: дашборд должен уметь показать экран ожидания.
 func TestPingUnreachableIsNotReady(t *testing.T) {

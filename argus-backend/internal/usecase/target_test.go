@@ -8,7 +8,6 @@ import (
 	"argus-collector/internal/usecase"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -16,277 +15,102 @@ import (
 )
 
 func TestUseCase_CreateTarget(t *testing.T) {
-	type args struct{ target *entity.Target }
+	t.Parallel()
+
+	clientID := uuid.New()
+
 	cases := []struct {
-		name    string
-		setup   func(*mocks.MockStorage)
-		in      args
-		wantErr bool
+		name           string
+		in             *entity.Target
+		storeErr       error
+		wantValidation bool
 	}{
-		{name: "success", setup: func(m *mocks.MockStorage) {
-			m.On("CreateTarget", mock.Anything, mock.Anything).Return(&entity.Target{ID: uuid.New(), Source: "https://api.local/health", Name: "t1", Status: "unknown", TargetType: "probe"}, nil).Once()
-		}, in: args{target: &entity.Target{Source: "https://api.local/health", Name: "t1", TargetType: "probe"}}, wantErr: false},
-		{name: "error", setup: func(m *mocks.MockStorage) {
-			m.On("CreateTarget", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
-		}, in: args{target: &entity.Target{Source: "web", Name: "web", TargetType: "container"}}, wantErr: true},
-		{name: "empty name", setup: func(*mocks.MockStorage) {}, in: args{target: &entity.Target{Source: "https://api.local", Name: " ", TargetType: "probe"}}, wantErr: true},
-		{name: "probe without scheme", setup: func(*mocks.MockStorage) {}, in: args{target: &entity.Target{Source: "api.local/health", Name: "api", TargetType: "probe"}}, wantErr: true},
-		{name: "probe with other scheme", setup: func(*mocks.MockStorage) {}, in: args{target: &entity.Target{Source: "ftp://api.local", Name: "api", TargetType: "probe"}}, wantErr: true},
-		{name: "unknown type", setup: func(*mocks.MockStorage) {}, in: args{target: &entity.Target{Source: "https://api.local", Name: "api", TargetType: "svc"}}, wantErr: true},
-		{name: "container without name", setup: func(*mocks.MockStorage) {}, in: args{target: &entity.Target{Source: "", Name: "web", TargetType: "container"}}, wantErr: true},
+		{name: "probe", in: &entity.Target{Source: "https://api.local/health", Name: "api", TargetType: entity.TargetTypeProbe}},
+		{name: "container", in: &entity.Target{Source: "web", Name: "web", TargetType: entity.TargetTypeContainer}},
+		{name: "client cannot pick id or status", in: &entity.Target{ID: clientID, Status: "up", Source: "http://api.local", Name: "api", TargetType: entity.TargetTypeProbe}},
+		{name: "duplicate keeps its sentinel for 409", in: &entity.Target{Source: "web", Name: "web", TargetType: entity.TargetTypeContainer}, storeErr: entity.ErrTargetAlreadyExists},
+		{name: "blank name", in: &entity.Target{Source: "https://api.local", Name: " ", TargetType: entity.TargetTypeProbe}, wantValidation: true},
+		{name: "probe without scheme", in: &entity.Target{Source: "api.local/health", Name: "api", TargetType: entity.TargetTypeProbe}, wantValidation: true},
+		{name: "probe with other scheme", in: &entity.Target{Source: "ftp://api.local", Name: "api", TargetType: entity.TargetTypeProbe}, wantValidation: true},
+		{name: "probe without host", in: &entity.Target{Source: "http://", Name: "api", TargetType: entity.TargetTypeProbe}, wantValidation: true},
+		{name: "container without name", in: &entity.Target{Source: " ", Name: "web", TargetType: entity.TargetTypeContainer}, wantValidation: true},
+		{name: "unknown type", in: &entity.Target{Source: "https://api.local", Name: "api", TargetType: "svc"}, wantValidation: true},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			mockRepo := mocks.NewMockStorage(t)
-			tc.setup(mockRepo)
-			uc := usecase.NewUseCase(mockRepo)
-			res, err := uc.CreateTarget(context.Background(), tc.in.target)
-			if tc.wantErr {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "CreateTarget")
-			} else {
-				require.NoError(t, err)
-				require.NotNil(t, res)
-				require.NotEqual(t, uuid.Nil, res.ID)
-				require.Equal(t, "unknown", tc.in.target.Status)
+			t.Parallel()
+
+			db := mocks.NewMockStorage(t)
+
+			if !tc.wantValidation {
+				db.On("CreateTarget", mock.Anything, tc.in).Return(tc.in, tc.storeErr).Once()
 			}
+
+			got, err := usecase.NewUseCase(db).CreateTarget(t.Context(), tc.in)
+
+			if tc.wantValidation {
+				var verr *entity.ValidationError
+				require.ErrorAs(t, err, &verr, "validation errors map to 400")
+
+				return
+			}
+
+			if tc.storeErr != nil {
+				require.ErrorIs(t, err, tc.storeErr)
+				require.ErrorContains(t, err, "UseCase.CreateTarget")
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.Same(t, tc.in, got)
+			require.NotEqual(t, uuid.Nil, got.ID)
+			require.NotEqual(t, clientID, got.ID)
+			require.Equal(t, "unknown", got.Status)
 		})
 	}
 }
 
-func TestUseCase_UpdateTargetStatus(t *testing.T) {
-	type args struct {
-		id     uuid.UUID
-		status string
-	}
-	cases := []struct {
-		name    string
-		setup   func(*mocks.MockStorage)
-		in      args
-		wantErr bool
-	}{
-		{name: "success", setup: func(m *mocks.MockStorage) {
-			m.On("UpdateTargetStatus", mock.Anything, mock.Anything, "newstatus").Return(&entity.Target{ID: uuid.New(), Status: "newstatus"}, nil).Once()
-		}, in: args{id: uuid.New(), status: "newstatus"}, wantErr: false},
-		{name: "error", setup: func(m *mocks.MockStorage) {
-			m.On("UpdateTargetStatus", mock.Anything, mock.Anything, "errstatus").Return(nil, assert.AnError).Once()
-		}, in: args{id: uuid.New(), status: "errstatus"}, wantErr: true},
-	}
+func TestUseCase_TargetDelegation(t *testing.T) {
+	t.Parallel()
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			mockRepo := mocks.NewMockStorage(t)
-			tc.setup(mockRepo)
-			uc := usecase.NewUseCase(mockRepo)
-			res, err := uc.UpdateTargetStatus(context.Background(), tc.in.id, tc.in.status)
-			if tc.wantErr {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "UpdateTargetStatus")
-			} else {
-				require.NoError(t, err)
-				require.NotNil(t, res)
-				require.Equal(t, tc.in.status, res.Status)
-			}
-		})
-	}
-}
+	id := uuid.New()
 
-func TestUseCase_DeleteTarget(t *testing.T) {
-	cases := []struct {
-		name    string
-		setup   func(*mocks.MockStorage)
-		id      uuid.UUID
-		wantErr bool
-	}{
-		{name: "success", setup: func(m *mocks.MockStorage) {
-			m.On("DeleteTarget", mock.Anything, mock.Anything).Return(nil).Once()
-		}, id: uuid.New(), wantErr: false},
-		{name: "error", setup: func(m *mocks.MockStorage) {
-			m.On("DeleteTarget", mock.Anything, mock.Anything).Return(assert.AnError).Once()
-		}, id: uuid.New(), wantErr: true},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			mockRepo := mocks.NewMockStorage(t)
-			tc.setup(mockRepo)
-			uc := usecase.NewUseCase(mockRepo)
-			err := uc.DeleteTarget(context.Background(), tc.id)
-			if tc.wantErr {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "DeleteTarget")
-			} else {
-				require.NoError(t, err)
-			}
-		})
-	}
-}
-
-func TestUseCase_GetTarget(t *testing.T) {
-	cases := []struct {
-		name    string
-		setup   func(*mocks.MockStorage)
-		id      uuid.UUID
-		wantErr bool
-	}{
-		{name: "found", setup: func(m *mocks.MockStorage) {
-			m.On("GetTarget", mock.Anything, mock.Anything).Return(&entity.Target{ID: uuid.New()}, nil).Once()
-		}, id: uuid.New(), wantErr: false},
-		{name: "notfound", setup: func(m *mocks.MockStorage) {
-			m.On("GetTarget", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
-		}, id: uuid.New(), wantErr: true},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			mockRepo := mocks.NewMockStorage(t)
-			tc.setup(mockRepo)
-			uc := usecase.NewUseCase(mockRepo)
-			res, err := uc.GetTarget(context.Background(), tc.id)
-			if tc.wantErr {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "GetTarget")
-				require.Nil(t, res)
-			} else {
-				require.NoError(t, err)
-				require.NotNil(t, res)
-			}
-		})
-	}
-}
-
-func TestUseCase_GetTargetsByType(t *testing.T) {
-	cases := []struct {
-		name    string
-		setup   func(*mocks.MockStorage)
-		typ     string
-		wantErr bool
-	}{
-		{name: "found", setup: func(m *mocks.MockStorage) {
-			m.On("GetTargetsByType", mock.Anything, "web").Return([]*entity.Target{{ID: uuid.New()}}, nil).Once()
-		}, typ: "web", wantErr: false},
-		{name: "error", setup: func(m *mocks.MockStorage) {
-			m.On("GetTargetsByType", mock.Anything, "db").Return(nil, assert.AnError).Once()
-		}, typ: "db", wantErr: true},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			mockRepo := mocks.NewMockStorage(t)
-			tc.setup(mockRepo)
-			uc := usecase.NewUseCase(mockRepo)
-			res, err := uc.GetTargetsByType(context.Background(), tc.typ)
-			if tc.wantErr {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "GetTargetsByType")
-				require.Nil(t, res)
-			} else {
-				require.NoError(t, err)
-				require.NotNil(t, res)
-			}
-		})
-	}
-}
-
-func TestUseCase_GetTargetsByIDs(t *testing.T) {
-	ids := []uuid.UUID{uuid.New(), uuid.New()}
-
-	cases := []struct {
-		name    string
-		setup   func(*mocks.MockStorage)
-		wantErr bool
-	}{
-		{name: "ok", setup: func(m *mocks.MockStorage) {
-			m.On("GetTargetsByIDs", mock.Anything, ids).
-				Return([]*entity.Target{{ID: ids[0]}, {ID: ids[1]}}, nil).Once()
-		}, wantErr: false},
-		{name: "err", setup: func(m *mocks.MockStorage) {
-			m.On("GetTargetsByIDs", mock.Anything, ids).Return(nil, assert.AnError).Once()
-		}, wantErr: true},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			mockRepo := mocks.NewMockStorage(t)
-			tc.setup(mockRepo)
-			uc := usecase.NewUseCase(mockRepo)
-			res, err := uc.GetTargetsByIDs(context.Background(), ids)
-			if tc.wantErr {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "GetTargetsByIDs")
-				require.Nil(t, res)
-			} else {
-				require.NoError(t, err)
-				require.Len(t, res, 2)
-			}
-		})
-	}
-}
-
-func TestUseCase_GetTargetsByStatus(t *testing.T) {
-	cases := []struct {
-		name    string
-		setup   func(*mocks.MockStorage)
-		status  string
-		wantErr bool
-	}{
-		{name: "ok", setup: func(m *mocks.MockStorage) {
-			m.On("GetTargetsByStatus", mock.Anything, "up").Return([]*entity.Target{{ID: uuid.New()}}, nil).Once()
-		}, status: "up", wantErr: false},
-		{name: "err", setup: func(m *mocks.MockStorage) {
-			m.On("GetTargetsByStatus", mock.Anything, "down").Return(nil, assert.AnError).Once()
-		}, status: "down", wantErr: true},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			mockRepo := mocks.NewMockStorage(t)
-			tc.setup(mockRepo)
-			uc := usecase.NewUseCase(mockRepo)
-			res, err := uc.GetTargetsByStatus(context.Background(), tc.status)
-			if tc.wantErr {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "GetTargetsByStatus")
-				require.Nil(t, res)
-			} else {
-				require.NoError(t, err)
-				require.NotNil(t, res)
-			}
-		})
-	}
-}
-
-func TestUseCase_GetAllTargets(t *testing.T) {
-	cases := []struct {
-		name    string
-		setup   func(*mocks.MockStorage)
-		limit   uint64
-		offset  uint64
-		wantErr bool
-	}{
-		{name: "ok", setup: func(m *mocks.MockStorage) {
-			m.On("GetAllTargets", mock.Anything, uint64(10), uint64(0)).Return([]*entity.Target{{ID: uuid.New()}}, nil).Once()
-		}, limit: 10, offset: 0, wantErr: false},
-		{name: "err", setup: func(m *mocks.MockStorage) {
-			m.On("GetAllTargets", mock.Anything, uint64(5), uint64(1)).Return(nil, assert.AnError).Once()
-		}, limit: 5, offset: 1, wantErr: true},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			mockRepo := mocks.NewMockStorage(t)
-			tc.setup(mockRepo)
-			uc := usecase.NewUseCase(mockRepo)
-			res, err := uc.GetAllTargets(context.Background(), tc.limit, tc.offset)
-			if tc.wantErr {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "GetAllTargets")
-				require.Nil(t, res)
-			} else {
-				require.NoError(t, err)
-				require.NotNil(t, res)
-			}
-		})
-	}
+	assertDelegates(t, []delegation{
+		{
+			method: "UpdateTargetStatus", args: []any{id, "down"}, want: &entity.Target{ID: id, Status: "down"}, zero: (*entity.Target)(nil),
+			call: func(ctx context.Context, uc *usecase.UseCase) (any, error) {
+				return uc.UpdateTargetStatus(ctx, id, "down")
+			},
+		},
+		{
+			method: "DeleteTarget", args: []any{id},
+			call: func(ctx context.Context, uc *usecase.UseCase) (any, error) { return nil, uc.DeleteTarget(ctx, id) },
+		},
+		{
+			method: "GetTarget", args: []any{id}, want: &entity.Target{ID: id}, zero: (*entity.Target)(nil),
+			call: func(ctx context.Context, uc *usecase.UseCase) (any, error) { return uc.GetTarget(ctx, id) },
+		},
+		{
+			method: "GetTargetsByIDs", args: []any{[]uuid.UUID{id}}, want: []*entity.Target{{ID: id}}, zero: []*entity.Target(nil),
+			call: func(ctx context.Context, uc *usecase.UseCase) (any, error) {
+				return uc.GetTargetsByIDs(ctx, []uuid.UUID{id})
+			},
+		},
+		{
+			method: "GetTargetsByType", args: []any{entity.TargetTypeProbe}, want: []*entity.Target{{ID: id}}, zero: []*entity.Target(nil),
+			call: func(ctx context.Context, uc *usecase.UseCase) (any, error) {
+				return uc.GetTargetsByType(ctx, entity.TargetTypeProbe)
+			},
+		},
+		{
+			method: "GetTargetsByStatus", args: []any{"down"}, want: []*entity.Target{{ID: id}}, zero: []*entity.Target(nil),
+			call: func(ctx context.Context, uc *usecase.UseCase) (any, error) { return uc.GetTargetsByStatus(ctx, "down") },
+		},
+		{
+			method: "GetAllTargets", args: []any{uint64(50), uint64(10)}, want: []*entity.Target{{ID: id}}, zero: []*entity.Target(nil),
+			call: func(ctx context.Context, uc *usecase.UseCase) (any, error) { return uc.GetAllTargets(ctx, 50, 10) },
+		},
+	})
 }

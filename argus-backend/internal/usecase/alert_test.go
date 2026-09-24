@@ -3,6 +3,7 @@ package usecase_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"argus-collector/internal/domain/entity"
 	"argus-collector/internal/usecase"
@@ -14,38 +15,108 @@ import (
 	mocks "argus-collector/internal/usecase/mocks"
 )
 
-func TestUseCase_MarkAlertsNotified(t *testing.T) {
+func TestUseCase_CreateAlert(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
-		name    string
-		setup   func(*mocks.MockStorage)
-		id      []*entity.Alert
-		wantErr bool
+		name     string
+		severity entity.Severity
+		storeErr error
+		wantErr  error
 	}{
-		{name: "ok", setup: func(m *mocks.MockStorage) {
-			m.On("MarkAlertsNotified", mock.Anything, []int{1}).Return(nil).Once()
-		}, id: []*entity.Alert{{ID: 1}}, wantErr: false},
-		{name: "err", setup: func(m *mocks.MockStorage) {
-			m.On("MarkAlertsNotified", mock.Anything, []int{2}).Return(assert.AnError).Once()
-		}, id: []*entity.Alert{{ID: 2}}, wantErr: true},
+		{name: "valid severity is stored", severity: entity.SeverityWarning},
+		{name: "storage error is wrapped", severity: entity.SeverityCritical, storeErr: assert.AnError, wantErr: assert.AnError},
+		{name: "severity past debug is rejected", severity: entity.SeverityDebug + 1, wantErr: entity.ErrInvalidSeverity},
+		{name: "negative severity is rejected", severity: -1, wantErr: entity.ErrInvalidSeverity},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			mockRepo := mocks.NewMockStorage(t)
-			tc.setup(mockRepo)
-			uc := usecase.NewUseCase(mockRepo)
-			err := uc.MarkAlertsNotified(context.Background(), tc.id)
-			if tc.wantErr {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "MarkAlertsNotified")
-			} else {
-				require.NoError(t, err)
+			t.Parallel()
+
+			db := mocks.NewMockStorage(t)
+			alert := &entity.Alert{Severity: tc.severity, Details: "disk full", CreatedAt: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)}
+
+			if tc.wantErr != entity.ErrInvalidSeverity {
+				db.On("CreateAlert", mock.Anything, alert).Return(alert, tc.storeErr).Once()
 			}
+
+			before := time.Now()
+			got, err := usecase.NewUseCase(db).CreateAlert(t.Context(), alert)
+
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
+				require.ErrorContains(t, err, "UseCase.CreateAlert")
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.Same(t, alert, got)
+			require.False(t, alert.CreatedAt.Before(before), "the caller's CreatedAt is replaced with the creation time")
+		})
+	}
+}
+
+func TestUseCase_AlertDelegation(t *testing.T) {
+	t.Parallel()
+
+	assertDelegates(t, []delegation{
+		{
+			method: "DeleteAlert", args: []any{7}, want: 7, zero: 0,
+			call: func(ctx context.Context, uc *usecase.UseCase) (any, error) { return uc.DeleteAlert(ctx, 7) },
+		},
+		{
+			method: "GetAlert", args: []any{7}, want: &entity.Alert{ID: 7}, zero: (*entity.Alert)(nil),
+			call: func(ctx context.Context, uc *usecase.UseCase) (any, error) { return uc.GetAlert(ctx, 7) },
+		},
+		{
+			method: "GetAlertsByNotification", args: []any{false, uint64(50)}, want: []*entity.Alert{{ID: 7}}, zero: []*entity.Alert(nil),
+			call: func(ctx context.Context, uc *usecase.UseCase) (any, error) {
+				return uc.GetAlertsByNotification(ctx, false, 50)
+			},
+		},
+	})
+}
+
+func TestUseCase_MarkAlertsNotified(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		alerts   []*entity.Alert
+		wantIDs  []int
+		storeErr error
+	}{
+		{name: "passes ids in order", alerts: []*entity.Alert{{ID: 3}, {ID: 1}, {ID: 2}}, wantIDs: []int{3, 1, 2}},
+		{name: "no alerts", alerts: nil, wantIDs: []int{}},
+		{name: "storage error is wrapped", alerts: []*entity.Alert{{ID: 1}}, wantIDs: []int{1}, storeErr: assert.AnError},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := mocks.NewMockStorage(t)
+			db.On("MarkAlertsNotified", mock.Anything, tc.wantIDs).Return(tc.storeErr).Once()
+
+			err := usecase.NewUseCase(db).MarkAlertsNotified(t.Context(), tc.alerts)
+
+			if tc.storeErr != nil {
+				require.ErrorIs(t, err, tc.storeErr)
+				require.ErrorContains(t, err, "UseCase.MarkAlertsNotified")
+
+				return
+			}
+
+			require.NoError(t, err)
 		})
 	}
 }
 
 func TestUseCase_FindPassesFilterThrough(t *testing.T) {
+	t.Parallel()
+
 	severity := entity.SeverityError
 	f := entity.ListFilter{Severity: &severity, Limit: 50, Skip: 50, Desc: true}
 

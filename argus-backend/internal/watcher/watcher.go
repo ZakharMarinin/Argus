@@ -51,6 +51,7 @@ type Watcher struct {
 	starts chan<- string
 	dies   map[uuid.UUID][]time.Time
 	kills  map[uuid.UUID]time.Time
+	cursor time.Time
 }
 
 func NewWatcher(cfg *config.Config, log *slog.Logger, uc UseCase, client DockerClient, starts chan<- string) *Watcher {
@@ -62,7 +63,16 @@ func NewWatcher(cfg *config.Config, log *slog.Logger, uc UseCase, client DockerC
 		starts: starts,
 		dies:   make(map[uuid.UUID][]time.Time),
 		kills:  make(map[uuid.UUID]time.Time),
+		cursor: time.Now(),
 	}
+}
+
+func eventTime(message events.Message) time.Time {
+	if message.TimeNano == 0 {
+		return time.Now()
+	}
+
+	return time.Unix(0, message.TimeNano)
 }
 
 func buildDetails(message events.Message) string {
@@ -119,10 +129,13 @@ func (w *Watcher) createEvent(ctx context.Context, message events.Message) error
 		w.setStatus(ctx, &target, status)
 	}
 
+	at := eventTime(message)
+
 	event := &entity.ContainerEvent{
-		TargetID: target.ID,
-		Event:    eventType,
-		Details:  buildDetails(message),
+		TargetID:  target.ID,
+		Event:     eventType,
+		Details:   buildDetails(message),
+		CreatedAt: at,
 	}
 
 	_, err = w.uc.CreateEvent(ctx, event)
@@ -130,14 +143,13 @@ func (w *Watcher) createEvent(ctx context.Context, message events.Message) error
 		return err
 	}
 
-	now := time.Now()
-	if w.plannedStop(target.ID, eventType, now) {
+	if w.plannedStop(target.ID, eventType, at) {
 		return nil
 	}
 
 	w.createAlert(ctx, event, message.Actor.Attributes)
 
-	if eventType == entity.ContainerDie && w.recordDie(target.ID, now) {
+	if eventType == entity.ContainerDie && w.recordDie(target.ID, at) {
 		w.raiseCrashLoop(ctx, target.ID)
 	}
 
@@ -291,7 +303,7 @@ func (w *Watcher) registerFromLabels(ctx context.Context, name string, labels ma
 	return nil
 }
 
-func (w *Watcher) RegisterContainers(ctx context.Context) error {
+func (w *Watcher) RegisterContainers(ctx context.Context, notify bool) error {
 	result, err := w.client.ContainerList(ctx, client.ContainerListOptions{})
 	if err != nil {
 		return err
@@ -310,6 +322,12 @@ func (w *Watcher) RegisterContainers(ctx context.Context) error {
 		regErr := w.registerFromLabels(ctx, name, c.Labels)
 		if regErr != nil {
 			w.log.Error("failed to register container", "name", name, "error", regErr)
+
+			continue
+		}
+
+		if notify && c.Labels[labelMonitor] == "true" {
+			w.notifyStart(name)
 		}
 	}
 
@@ -328,6 +346,7 @@ func (w *Watcher) RunWatcher(ctx context.Context) {
 	log := w.log.With("op", op)
 
 	backoff := minBackoff
+	resync := false
 
 	for {
 		timer := time.NewTimer(backoff)
@@ -340,10 +359,12 @@ func (w *Watcher) RunWatcher(ctx context.Context) {
 		case <-timer.C:
 			start := time.Now()
 
-			err := w.startListening(ctx)
+			err := w.startListening(ctx, resync)
 			if err == nil {
 				return
 			}
+
+			resync = true
 
 			log.Error("failed to start stream", "error", err)
 
@@ -370,6 +391,10 @@ func (w *Watcher) handleStart(ctx context.Context, attrs map[string]string) {
 		return
 	}
 
+	w.notifyStart(name)
+}
+
+func (w *Watcher) notifyStart(name string) {
 	select {
 	case w.starts <- name:
 	default:
@@ -377,13 +402,21 @@ func (w *Watcher) handleStart(ctx context.Context, attrs map[string]string) {
 	}
 }
 
-func (w *Watcher) startListening(ctx context.Context) error {
+func (w *Watcher) startListening(ctx context.Context, resync bool) error {
 	stream := w.client.Events(ctx, client.EventsListOptions{
 		Filters: map[string]map[string]bool{
 			"type":  {"container": true},
 			"event": {"die": true, "oom": true, "kill": true, "restart": true, "destroy": true, "start": true},
 		},
+		Since: w.cursor.Add(time.Nanosecond).UTC().Format(time.RFC3339Nano),
 	})
+
+	if resync {
+		err := w.RegisterContainers(ctx, true)
+		if err != nil {
+			w.log.Error("failed to resync containers after reconnect", "error", err)
+		}
+	}
 
 	for {
 		select {
@@ -395,6 +428,10 @@ func (w *Watcher) startListening(ctx context.Context) error {
 			err := w.createEvent(ctx, event)
 			if err != nil {
 				w.log.Error("failed to process event", "error", err)
+			}
+
+			if at := eventTime(event); at.After(w.cursor) {
+				w.cursor = at
 			}
 		case err := <-stream.Err:
 			w.log.Error("event stream closed", "error", err)

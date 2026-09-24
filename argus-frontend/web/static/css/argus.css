@@ -497,15 +497,22 @@ img { max-width: 100%; display: block; }
    саму картинку в её 48px. */
 .summary-mood__img, .detail-hero__img {
   flex-shrink: 0; box-sizing: content-box; padding: 5px;
-  border-radius: var(--radius-sm); background: color-mix(in srgb, var(--s) 22%, var(--emphasis-tile));
+  border-radius: var(--radius-sm); background: color-mix(in srgb, var(--s) var(--mood-plate), var(--emphasis-tile));
 }
 
 /* Карточка состояния окрашивается настроением маскота - тем же --s, что и
    у остальных статусов: злой - красноватая, спокойный - зеленоватая. */
 #summary, .detail-hero {
-  background: color-mix(in srgb, var(--s) 10%, var(--emphasis-bg));
-  border-color: color-mix(in srgb, var(--s) 40%, var(--emphasis-border));
-  box-shadow: var(--shadow-card), inset 0 1px 0 color-mix(in srgb, var(--s) 25%, transparent);
+  --up: #4cbb7d; --warn: #f2a04f; --down: #e4685a; --idle: #8b8f94;
+  --mood-bg: 20%; --mood-plate: 35%; --mood-glow: 40%;
+  --mood-edge: oklch(from var(--s) calc(l - .1) calc(c + .03) h);
+  background: color-mix(in srgb, var(--s) var(--mood-bg), var(--emphasis-bg));
+  border-color: var(--mood-edge);
+  box-shadow: var(--shadow-card), inset 0 1px 0 color-mix(in srgb, var(--s) var(--mood-glow), transparent);
+}
+:root[data-theme="dark"] :is(#summary, .detail-hero) {
+  --mood-bg: 10%; --mood-plate: 22%; --mood-glow: 25%;
+  --mood-edge: color-mix(in srgb, var(--s) 40%, var(--emphasis-border));
 }
 .summary-mood__reason { margin: 2px 0 0; font-size: 12.5px; color: var(--emphasis-fg-soft); }
 #summary.is-fresh .summary-mood__img { animation: pop .7s var(--ease); }

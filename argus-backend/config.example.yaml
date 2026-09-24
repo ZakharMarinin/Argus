@@ -1,0 +1,33 @@
+env: "local"
+http_server:
+  addr: 0.0.0.0:8099
+  read_timeout: 4s
+  write_timeout: 4s
+  idle_timeout: 60s
+prober:
+  probe_timeout: 5s
+  probe_interval: 60s
+  failure_threshold: 2
+watcher:
+  crash_loop_restarts: 5
+  crash_loop_window: 5m
+retention:
+  keep: 336h
+  interval: 24h
+telegram:
+  notify_interval: 5s
+  cooldown: 5m
+matcher:
+  rules:
+    - pattern: "panic|FATAL"
+      severity: critical
+      container: "*"
+    - pattern: "(?i)connection refused"
+      severity: error
+      container: "argus-db"
+host:
+  interval: 15s
+  disk_path: /
+  warning: 90
+  critical: 95
+  consecutive: 3

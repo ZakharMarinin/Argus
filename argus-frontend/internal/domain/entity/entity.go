@@ -59,7 +59,7 @@ type TargetSummary struct {
 type ProbeStats struct {
 	// LastLatencyMS и LastCheckedAt - последняя проверка. nil, если проверок
 	// ещё не было: цель уже в конфиге, но коллектор до неё не дошёл.
-	LastLatencyMS *int
+	LastLatencyMS *float64
 	LastCheckedAt *time.Time
 
 	// Checks24h и Successes24h считаются за последние сутки. Ноль проверок -
@@ -84,7 +84,7 @@ func (p ProbeStats) Uptime24h() (float64, bool) {
 // ProbeOutcome - исход одной проверки.
 type ProbeOutcome struct {
 	Success   bool
-	LatencyMS *int
+	LatencyMS *float64
 	CheckedAt time.Time
 }
 
@@ -193,7 +193,7 @@ type LogMatchReport struct {
 // нарисованного нуля.
 type LatencyPoint struct {
 	Hour      time.Time
-	P95MS     *int
+	P95MS     *float64
 	UptimePct *float64
 }
 

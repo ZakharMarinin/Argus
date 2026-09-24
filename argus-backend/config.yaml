@@ -19,12 +19,33 @@ telegram:
   cooldown: 5m
 matcher:
   rules:
-    - pattern: "panic|FATAL"
+    - pattern: '^\s*panic: |^fatal error: '
       severity: critical
       container: "*"
-    - pattern: "(?i)connection refused"
+    - pattern: 'CONFIG env variable not set|cannot find the config|Redis config db value error'
+      severity: critical
+      container: "*"
+    - pattern: '"level":"ERROR","msg":"(failed to (listen|serve)|ListenAndServe( failed)?)"'
+      severity: critical
+      container: "*"
+    - pattern: '"level":"ERROR".*(connection refused|failed to connect|no such host|i/o timeout|context deadline exceeded|code = Unavailable|SQLSTATE (08|42|53|57|58|XX))'
       severity: error
-      container: "argus-db"
+      container: "*"
+    - pattern: '\bPANIC: '
+      severity: critical
+      container: "bernard-postgres"
+    - pattern: 'FATAL: +(password authentication failed|sorry, too many clients|remaining connection slots|could not|out of memory)'
+      severity: error
+      container: "bernard-postgres"
+    - pattern: 'ERROR: +(deadlock detected|could not extend file|No space left on device)'
+      severity: error
+      container: "bernard-postgres"
+    - pattern: '(?i)BUG REPORT START|Out Of Memory|Guru Meditation'
+      severity: critical
+      container: "bernard-valkey"
+    - pattern: 'Background saving error|Failed opening the temp RDB|Write error saving DB|MISCONF|Short read or OOM loading DB'
+      severity: error
+      container: "bernard-valkey"
 host:
   interval: 15s
   disk_path: /

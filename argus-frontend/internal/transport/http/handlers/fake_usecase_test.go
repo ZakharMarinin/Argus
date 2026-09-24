@@ -96,7 +96,7 @@ func filledUseCase() fakeUseCase {
 				ID: "probe:https://api.local/health", Kind: entity.KindProbe,
 				Label: "API health", Status: entity.StatusUp, UpdatedAt: testNow,
 				Probe: &entity.ProbeStats{
-					LastLatencyMS: new(42),
+					LastLatencyMS: new(42.0),
 					LastCheckedAt: new(testNow.Add(-30 * time.Second)),
 					Checks24h:     100, Successes24h: 99,
 					Recent: []entity.ProbeOutcome{
@@ -163,9 +163,9 @@ func filledUseCase() fakeUseCase {
 		},
 		stats: entity.IncidentStats{Count: 2, Total: 5 * time.Minute, Longest: 5 * time.Minute, Unclosed: 1},
 		latency: []entity.LatencyPoint{
-			{Hour: testNow.Add(-2 * time.Hour), P95MS: new(120), UptimePct: new(99.9)},
+			{Hour: testNow.Add(-2 * time.Hour), P95MS: new(120.0), UptimePct: new(99.9)},
 			{Hour: testNow.Add(-time.Hour)},
-			{Hour: testNow, P95MS: new(880), UptimePct: new(96.4)},
+			{Hour: testNow, P95MS: new(880.0), UptimePct: new(96.4)},
 		},
 		logs: entity.LogMatchReport{
 			Matches: []entity.LogMatch{

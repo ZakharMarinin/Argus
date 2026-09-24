@@ -163,7 +163,7 @@ func (c *Client) Probes(ctx context.Context, targetID string) ([]entity.ProbeOut
 
 	out := make([]entity.ProbeOutcome, 0, len(dto))
 	for _, p := range dto {
-		ms := int(p.Latency / 1000) // микросекунды -> миллисекунды
+		ms := float64(p.Latency) / 1000 // микросекунды -> миллисекунды
 		out = append(out, entity.ProbeOutcome{
 			Success:   p.Success,
 			LatencyMS: &ms,

@@ -658,7 +658,7 @@ func (p Presenter) LatencyChart(points []entity.LatencyPoint) ChartData {
 	empty := true
 	for _, pt := range points {
 		data.Labels = append(data.Labels, pt.Hour.Format("15:00"))
-		data.Series[0].Values = append(data.Series[0].Values, intPtrToFloat(pt.P95MS))
+		data.Series[0].Values = append(data.Series[0].Values, pt.P95MS)
 		data.Series[1].Values = append(data.Series[1].Values, pt.UptimePct)
 		if pt.P95MS != nil || pt.UptimePct != nil {
 			empty = false
@@ -914,12 +914,16 @@ func humanMinutes(minutes int) string {
 	return fmt.Sprintf("%d min", minutes)
 }
 
-func latencyOrDash(ms *int) string {
+func latencyOrDash(ms *float64) string {
 	if ms == nil {
 		return "—"
 	}
 
-	return fmt.Sprintf("%d ms", *ms)
+	if *ms < 10 {
+		return fmt.Sprintf("%.2g ms", *ms)
+	}
+
+	return fmt.Sprintf("%.0f ms", *ms)
 }
 
 func percentOrDash(value float64, ok bool) string {
@@ -940,15 +944,6 @@ func pct(part, total int) int {
 	}
 
 	return int(math.Round(100 * float64(part) / float64(total)))
-}
-
-func intPtrToFloat(v *int) *float64 {
-	if v == nil {
-		return nil
-	}
-	f := float64(*v)
-
-	return &f
 }
 
 func firstNonEmpty(values ...string) string {

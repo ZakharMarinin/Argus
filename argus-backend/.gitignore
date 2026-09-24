@@ -21,8 +21,9 @@ profile.cov
 go.work
 go.work.sum
 
-# env file
+# env and config file
 .env
+config.yaml
 
 # Editor/IDE
 .idea/

@@ -214,9 +214,12 @@ Asleep never means all is well. Next to the mood, the card says which signal cho
 ### 1. Start Argus
 
 ```bash
-cp argus-backend/.example.env argus-backend/.env   # Postgres credentials, BOT_TOKEN and CHAT_ID for Telegram
-docker compose up -d --build                       # Postgres 16 + migrations + collector on :8099 + dashboard on :8088
+cp argus-backend/.example.env argus-backend/.env                 # fill in Postgres credentials, BOT_TOKEN and CHAT_ID for Telegram
+cp argus-backend/config.example.yaml argus-backend/config.yaml   # write matcher.rules for your own containers
+docker compose up -d --build                                     # Postgres 16 + migrations + collector on :8099 + dashboard on :8088
 ```
+
+`.env` and `config.yaml` are git-ignored, so your secrets and rules stay local. `config.yaml` is copied into the collector image at build time: after you edit it, run `docker compose up -d --build` again.
 
 The collector needs `/var/run/docker.sock` mounted to watch containers and read their logs — the compose file does this. Without `BOT_TOKEN` and `CHAT_ID` the alerter doesn't start: everything is still recorded, and alerts stay `not sent`. Swagger UI for the collector's API is at `http://localhost:8099/swagger/index.html`.
 

@@ -15,7 +15,7 @@ test-db:
 	docker run -d --rm --name $(TEST_PG) -e POSTGRES_PASSWORD=test -p 127.0.0.1:$(TEST_PG_PORT):5432 postgres:16-alpine
 	@until docker exec $(TEST_PG) pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; do sleep 0.5; done
 	TEST_POSTGRES_URL=postgres://postgres:test@127.0.0.1:$(TEST_PG_PORT)/postgres?sslmode=disable \
-		go test -count=1 ./internal/storage/; status=$$?; docker rm -f $(TEST_PG) >/dev/null; exit $$status
+		go test -tags=integration -count=1 ./internal/storage/; status=$$?; docker rm -f $(TEST_PG) >/dev/null; exit $$status
 
 cover:
 	go test ./... -coverprofile=$(COVERAGE).tmp

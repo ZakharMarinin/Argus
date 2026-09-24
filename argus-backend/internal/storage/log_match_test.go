@@ -1,3 +1,5 @@
+//go:build integration
+
 package storage
 
 import (
@@ -14,7 +16,7 @@ import (
 func TestLogMatchKeepsLineVerbatim(t *testing.T) {
 	dsn := os.Getenv("TEST_POSTGRES_URL")
 	if dsn == "" {
-		t.Skip("TEST_POSTGRES_URL is not set, run `make test-db`")
+		t.Fatal("TEST_POSTGRES_URL is not set, run `make test-db`")
 	}
 
 	ctx := t.Context()

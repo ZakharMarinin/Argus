@@ -44,6 +44,10 @@ func NewStorage(ctx context.Context, cfg *config.Config) (*Storage, error) {
 	}, nil
 }
 
+func (s *Storage) Ping(ctx context.Context) error {
+	return s.db.Ping(ctx)
+}
+
 func (s *Storage) Close() {
 	if s == nil {
 		return

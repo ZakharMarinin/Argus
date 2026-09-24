@@ -23,6 +23,7 @@ Two small Go services, one Postgres, and a dashboard that refuses to make number
   - [Charts that keep their gaps](#charts-that-keep-their-gaps)
   - [Host resources in the sidebar](#host-resources-in-the-sidebar)
   - [Alerts](#alerts)
+  - [Who watches Argus](#who-watches-argus)
   - [A mascot that tells you the mood before you read a number](#a-mascot-that-tells-you-the-mood-before-you-read-a-number)
   - [Details that matter at 3am](#details-that-matter-at-3am)
 - [Getting started](#getting-started)
@@ -77,6 +78,7 @@ Everything it knows comes from four sources: HTTP health checks it performs itse
 - The *alerter* groups new alerts by target, sends one Telegram message per target, and marks them as sent.
 - The *cleaner* deletes probes, events and log matches older than 14 days, once a day. Alerts are kept.
 - The *host sampler* reads CPU, memory and root-disk usage every 15 seconds and raises an alert when memory or disk climbs past a threshold.
+- The *heartbeat* pings an outside URL every minute while the collector and its database are alive, so someone notices when Argus itself goes quiet. Optional.
 
 **The dashboard** is a separate process that talks to the collector over its own REST API. It reads everything it shows, and its only writes are creating and deleting uptime targets. It holds no state and can be restarted or rebuilt while the collector keeps recording. If the collector is down, the dashboard says so instead of showing stale numbers as if they were live.
 
@@ -179,6 +181,12 @@ Every alert goes to Telegram, whatever its severity. The alerter checks for new 
 
 Each row in the history shows its delivery state: `sent to Telegram` once the alerter has handled it, `not sent` while it's waiting or when Telegram isn't configured.
 
+### Who watches Argus
+
+A dead collector sends no alerts, and silence in Telegram looks exactly like a quiet night. Set `HEARTBEAT_URL` in `.env` to a dead man's switch — a [healthchecks.io](https://healthchecks.io) check, or anything that alerts when a URL stops being hit — and the collector sends it a `GET` every `heartbeat.interval` (1 minute). Before each ping it checks that Postgres answers: a collector that can't record anything stays quiet on purpose.
+
+That covers the collector crashing, the host going down, Docker stopping, and the database becoming unreachable. It doesn't cover Telegram itself failing to deliver.
+
 ### A mascot that tells you the mood before you read a number
 
 <p>
@@ -219,9 +227,9 @@ cp argus-backend/config.example.yaml argus-backend/config.yaml   # write matcher
 docker compose up -d --build                                     # Postgres 16 + migrations + collector on :8099 + dashboard on :8088
 ```
 
-`.env` and `config.yaml` are git-ignored, so your secrets and rules stay local. `config.yaml` is copied into the collector image at build time: after you edit it, run `docker compose up -d --build` again.
+`.env` and `config.yaml` are git-ignored, so your secrets and rules stay local. `config.yaml` is mounted into the collector read-only: after you edit it, `docker compose restart argus` picks it up.
 
-The collector needs `/var/run/docker.sock` mounted to watch containers and read their logs — the compose file does this. Without `BOT_TOKEN` and `CHAT_ID` the alerter doesn't start: everything is still recorded, and alerts stay `not sent`. Swagger UI for the collector's API is at `http://localhost:8099/swagger/index.html`.
+The collector needs `/var/run/docker.sock` mounted to watch containers and read their logs — the compose file does this. Without `BOT_TOKEN` and `CHAT_ID` the alerter doesn't start: everything is still recorded, and alerts stay `not sent`. Swagger UI for the collector's API is at `http://localhost:8099/swagger/index.html`. `GET /healthz` answers 200 while the collector is serving, and the dashboard waits for it before starting.
 
 Migrations are built into the collector and run on every start, before anything else. Each one runs in its own transaction under a Postgres advisory lock. If a migration fails, the collector exits instead of running on a half-migrated schema. If the database was migrated by a newer version of Argus, the collector refuses to start instead of running on a schema it doesn't know: upgrade, don't downgrade.
 
@@ -335,8 +343,9 @@ It also mounts the host's root filesystem read-only at `/hostfs`, to measure the
 | `host.warning` | `90` | memory or disk percentage that raises a warning |
 | `host.critical` | `95` | …and a critical alert |
 | `host.consecutive` | `3` | samples in a row a new level has to hold before it counts |
+| `heartbeat.interval` | `1m` | how often `HEARTBEAT_URL` is pinged |
 
-Secrets come from the environment or `.env`: `POSTGRES_URL`, `BOT_TOKEN`, `CHAT_ID`, and `CONFIG_PATH` for the config file itself.
+Secrets come from the environment or `.env`: `POSTGRES_URL`, `BOT_TOKEN`, `CHAT_ID`, `HEARTBEAT_URL`, and `CONFIG_PATH` for the config file itself.
 
 **Dashboard** — `argus-frontend/config.yaml`:
 

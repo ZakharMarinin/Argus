@@ -2,9 +2,11 @@ package app
 
 import (
 	"argus-collector/internal/config"
+	"argus-collector/internal/heartbeat"
 	"argus-collector/internal/retention"
 	"argus-collector/internal/storage"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -63,7 +65,7 @@ func (a *App) run(ctx context.Context) error {
 		a.log.Info("Run: server started")
 
 		err := a.server.ListenAndServe()
-		if err != nil {
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			a.log.Error("ListenAndServer failed", "error", err)
 		}
 	})
@@ -119,6 +121,7 @@ func (a *App) run(ctx context.Context) error {
 
 	a.startCleaner(ctx, workerCtx)
 	a.startAlerter(ctx, workerCtx)
+	a.startHeartbeat(ctx, workerCtx)
 
 	return nil
 }
@@ -164,6 +167,29 @@ func (a *App) startAlerter(ctx, workerCtx context.Context) {
 		a.log.Info("Run: alerter started")
 
 		alerter.StartAlerter(workerCtx)
+	})
+}
+
+func (a *App) startHeartbeat(ctx, workerCtx context.Context) {
+	if a.cfg.Heartbeat.URL == "" {
+		a.log.Info("heartbeat not started, HEARTBEAT_URL is not set")
+
+		return
+	}
+
+	db, err := a.di.DB(ctx)
+	if err != nil {
+		a.log.Error("heartbeat not started", "error", err)
+
+		return
+	}
+
+	hb := heartbeat.NewHeartbeat(a.cfg.Heartbeat, a.log, db)
+
+	a.wg.Go(func() {
+		a.log.Info("Run: heartbeat started")
+
+		hb.RunHeartbeat(workerCtx)
 	})
 }
 

@@ -22,7 +22,7 @@ services:
     env_file: .env
     environment:
       HOST_DISK_PATH: /hostfs
-    container_name: argus-coolector
+    container_name: argus-collector
     restart: unless-stopped
     ports:
       - "127.0.0.1:8099:8099"
@@ -36,6 +36,13 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /:/hostfs:ro
+      - ./config.yaml:/app/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8099/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
     depends_on:
       argus-postgres:
         condition: service_healthy

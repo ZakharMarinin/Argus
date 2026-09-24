@@ -21,6 +21,12 @@ type Config struct {
 	Retention Retention `yaml:"retention"`
 	Watcher   Watcher   `yaml:"watcher"`
 	Host      Host      `yaml:"host"`
+	Heartbeat Heartbeat `yaml:"heartbeat"`
+}
+
+type Heartbeat struct {
+	URL      string        `yaml:"-"`
+	Interval time.Duration `yaml:"interval" env-default:"1m"`
 }
 
 type Host struct {
@@ -89,6 +95,7 @@ func MustParseConfig() *Config {
 
 	cfg.Postgres = os.Getenv("POSTGRES_URL")
 	cfg.Telegram.BotToken = os.Getenv("BOT_TOKEN")
+	cfg.Heartbeat.URL = os.Getenv("HEARTBEAT_URL")
 
 	if chatID := os.Getenv("CHAT_ID"); chatID != "" {
 		cfg.Telegram.ChatID, err = strconv.ParseInt(chatID, 10, 64)
@@ -124,6 +131,10 @@ func (c *Config) ValidateConfig() error {
 
 	if c.Watcher.CrashLoopRestarts < 2 || c.Watcher.CrashLoopWindow <= 0 {
 		return errors.New("watcher.crash_loop_restarts must be >= 2 and watcher.crash_loop_window positive")
+	}
+
+	if c.Heartbeat.URL != "" && c.Heartbeat.Interval <= 0 {
+		return errors.New("heartbeat.interval must be positive")
 	}
 
 	h := c.Host

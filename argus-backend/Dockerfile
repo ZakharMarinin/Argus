@@ -15,7 +15,6 @@ RUN apk add --no-cache ca-certificates
 WORKDIR /app
 
 COPY --from=builder /out/argus ./argus
-COPY config.yaml ./config.yaml
 
 EXPOSE 8099
 

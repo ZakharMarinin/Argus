@@ -31,3 +31,5 @@ host:
   warning: 90
   critical: 95
   consecutive: 3
+heartbeat:
+  interval: 1m

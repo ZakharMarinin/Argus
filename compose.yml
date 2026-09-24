@@ -13,4 +13,5 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
     depends_on:
-      - argus
+      argus:
+        condition: service_healthy

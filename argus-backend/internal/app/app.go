@@ -83,7 +83,7 @@ func (a *App) run(ctx context.Context) error {
 	if err != nil {
 		a.log.Error("watcher not started, Docker client unavailable", "error", err)
 	} else {
-		err = watcherSvc.RegisterContainers(workerCtx)
+		err = watcherSvc.RegisterContainers(workerCtx, false)
 		if err != nil {
 			a.log.Error("failed to register existing containers", "error", err)
 		}

@@ -17,6 +17,7 @@ import (
 	cerrdefs "github.com/containerd/errdefs"
 	"github.com/google/uuid"
 	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 )
 
@@ -86,6 +87,10 @@ func (m *Matcher) follow(ctx context.Context, source string, id uuid.UUID, since
 	info, err := m.client.ContainerInspect(ctx, source, client.ContainerInspectOptions{})
 	if err != nil {
 		return since, err
+	}
+
+	if since.IsZero() {
+		since = startedAt(info.Container)
 	}
 
 	rc, err := m.client.ContainerLogs(ctx, source, client.ContainerLogsOptions{
@@ -198,12 +203,23 @@ func (m *Matcher) gone(ctx context.Context, source string) bool {
 	return info.Container.State == nil || !info.Container.State.Running
 }
 
-func (m *Matcher) startMatching(ctx context.Context, source string, id uuid.UUID) {
+func startedAt(c container.InspectResponse) time.Time {
+	if c.State != nil {
+		t, err := time.Parse(time.RFC3339Nano, c.State.StartedAt)
+		if err == nil && !t.IsZero() {
+			return t
+		}
+	}
+
+	return time.Now()
+}
+
+func (m *Matcher) startMatching(ctx context.Context, source string, id uuid.UUID, since time.Time) {
 	const op = "Matcher.startMatching"
 
 	log := m.log.With("op", op, "container", source)
 
-	last := time.Now()
+	last := since
 	backoff := minBackoff
 
 	for {
@@ -239,7 +255,7 @@ func (m *Matcher) startMatching(ctx context.Context, source string, id uuid.UUID
 	}
 }
 
-func (m *Matcher) spawn(ctx context.Context, wg *sync.WaitGroup, source string, id uuid.UUID) {
+func (m *Matcher) spawn(ctx context.Context, wg *sync.WaitGroup, source string, id uuid.UUID, since time.Time) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -256,7 +272,7 @@ func (m *Matcher) spawn(ctx context.Context, wg *sync.WaitGroup, source string, 
 			m.mu.Unlock()
 		}()
 
-		m.startMatching(ctx, source, id)
+		m.startMatching(ctx, source, id, since)
 	})
 }
 
@@ -288,7 +304,7 @@ func (m *Matcher) RunMatcher(ctx context.Context) {
 	}
 
 	for _, t := range targets {
-		m.spawn(ctx, &wg, t.Source, t.ID)
+		m.spawn(ctx, &wg, t.Source, t.ID, time.Now())
 	}
 
 	for {
@@ -301,7 +317,7 @@ func (m *Matcher) RunMatcher(ctx context.Context) {
 				continue
 			}
 
-			m.spawn(ctx, &wg, t.Source, t.ID)
+			m.spawn(ctx, &wg, t.Source, t.ID, time.Time{})
 		case <-ctx.Done():
 			wg.Wait()
 

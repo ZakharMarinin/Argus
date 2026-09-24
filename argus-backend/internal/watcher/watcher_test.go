@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"testing"
 	"time"
@@ -10,6 +11,9 @@ import (
 	"argus-collector/internal/domain/entity"
 
 	"github.com/google/uuid"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/events"
+	"github.com/moby/moby/client"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -66,6 +70,107 @@ func TestSyncStatuses(t *testing.T) {
 
 	err := w.syncStatuses(context.Background(), map[string]bool{"api": true, "db": true})
 	require.NoError(t, err)
+}
+
+type fakeDocker struct {
+	running []container.Summary
+	stream  []events.Message
+	lists   int
+	since   []string
+}
+
+func (d *fakeDocker) ContainerList(context.Context, client.ContainerListOptions) (client.ContainerListResult, error) {
+	d.lists++
+
+	return client.ContainerListResult{Items: d.running}, nil
+}
+
+func (d *fakeDocker) Events(_ context.Context, opts client.EventsListOptions) client.EventsResult {
+	d.since = append(d.since, opts.Since)
+
+	msgs := make(chan events.Message)
+	errs := make(chan error, 1)
+	stream := d.stream
+	d.stream = nil
+
+	go func() {
+		for _, m := range stream {
+			msgs <- m
+		}
+
+		errs <- errors.New("daemon restarted")
+	}()
+
+	return client.EventsResult{Messages: msgs, Err: errs}
+}
+
+func TestStartListeningResyncsAfterReconnect(t *testing.T) {
+	diedDuringGap := &entity.Target{ID: uuid.New(), Source: "worker", Status: statusUp}
+	startedDuringGap := &entity.Target{ID: uuid.New(), Source: "web", Status: statusUp}
+
+	uc := mocks.NewMockStorage(t)
+	uc.On("CreateTarget", mock.Anything, mock.Anything).Return(nil, entity.ErrTargetAlreadyExists).Once()
+	uc.On("GetTargetsByType", mock.Anything, watcherTargetType).
+		Return([]*entity.Target{diedDuringGap, startedDuringGap}, nil).Once()
+	uc.On("UpdateTargetStatus", mock.Anything, diedDuringGap.ID, statusDown).Return(diedDuringGap, nil).Once()
+
+	starts := make(chan string, 2)
+	docker := &fakeDocker{running: []container.Summary{
+		{Names: []string{"/web"}, Labels: map[string]string{labelMonitor: "true"}},
+		{Names: []string{"/unwatched"}},
+	}}
+	w := &Watcher{log: slog.New(slog.DiscardHandler), uc: uc, client: docker, starts: starts}
+
+	require.Error(t, w.startListening(t.Context(), false))
+	require.Zero(t, docker.lists, "the first connection relies on RegisterContainers from app startup")
+
+	require.Error(t, w.startListening(t.Context(), true))
+	require.Equal(t, 1, docker.lists)
+	require.Len(t, starts, 1, "only labelled containers wake the matcher")
+	require.Equal(t, "web", <-starts)
+}
+
+func TestReconnectReplaysFromLastEvent(t *testing.T) {
+	web := &entity.Target{ID: uuid.New(), Source: "web", Status: statusDown}
+	killedAt := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
+	diedAt := killedAt.Add(40 * time.Second)
+
+	message := func(action events.Action, at time.Time) events.Message {
+		return events.Message{
+			Action:   action,
+			Actor:    events.Actor{Attributes: map[string]string{"name": "web", "exitCode": "143"}},
+			TimeNano: at.UnixNano(),
+		}
+	}
+
+	uc := mocks.NewMockStorage(t)
+	uc.On("GetTargetsByType", mock.Anything, watcherTargetType).Return([]*entity.Target{web}, nil)
+
+	for _, at := range []time.Time{killedAt, diedAt} {
+		uc.On("CreateEvent", mock.Anything, mock.MatchedBy(func(e *entity.ContainerEvent) bool {
+			return e.CreatedAt.Equal(at)
+		})).Return(&entity.ContainerEvent{}, nil).Once()
+	}
+
+	uc.On("CreateAlert", mock.Anything, mock.MatchedBy(func(a *entity.Alert) bool {
+		return a.Details == "Container exited unexpectedly with code 143 (image: )"
+	})).Return(&entity.Alert{}, nil).Once()
+
+	docker := &fakeDocker{stream: []events.Message{
+		message(events.ActionKill, killedAt),
+		message(events.ActionDie, diedAt),
+	}}
+	w := NewWatcher(&config.Config{Watcher: config.Watcher{CrashLoopRestarts: 5, CrashLoopWindow: time.Minute}},
+		slog.New(slog.DiscardHandler), uc, docker, nil)
+	w.cursor = killedAt.Add(-time.Minute)
+
+	require.Error(t, w.startListening(t.Context(), false), "a die 40s after the kill by Docker time is a crash, even when replayed instantly")
+	require.Error(t, w.startListening(t.Context(), false))
+
+	require.Equal(t, []string{
+		killedAt.Add(-time.Minute + time.Nanosecond).Format(time.RFC3339Nano),
+		diedAt.Add(time.Nanosecond).Format(time.RFC3339Nano),
+	}, docker.since)
 }
 
 func TestAlertDetails(t *testing.T) {

@@ -1,234 +1,252 @@
 # argus-frontend
 
-Веб-дашборд Argus: Go-шаблоны, raw CSS, htmx и Alpine.js. Без SPA-фреймворка и
-без build pipeline — как зафиксировано в ТЗ §4.4.
+The Argus web dashboard: Go templates, raw CSS, htmx and Alpine.js. No SPA
+framework and no build pipeline, as set in the spec, §4.4.
 
-Дашборд ходит только в HTTP API `argus-backend`: читает всё, что показывает,
-а пишет единственное — создаёт и удаляет uptime-таргеты. Своего состояния и
-базы у него нет, поэтому его можно останавливать, пересобирать и перезапускать
-независимо от `collector`.
+The dashboard talks only to the `argus-backend` HTTP API: it reads everything
+it shows, and the only thing it writes is creating and deleting uptime
+targets. It has no state or database of its own, so it can be stopped,
+rebuilt and restarted independently of the `collector`.
 
-## Запуск
+## Running
 
 ```bash
 cp config.example.yaml config.yaml
 echo 'ARGUS_BACKEND_URL=http://localhost:8099' > .env
 
-go run ./cmd/web     # конфиг по умолчанию - config.yaml, другой: -config path
+go run ./cmd/web     # default config is config.yaml; use -config path for another one
 ```
 
-`.env` в текущем каталоге читается при старте, но уже заданные переменные
-окружения не перекрывает. Любое значение из окружения важнее значения из
-`config.yaml`. Обязательна только `ARGUS_BACKEND_URL`.
+`.env` in the current directory is read on startup, but it doesn't override
+environment variables that are already set. Any value from the environment
+takes precedence over the value in `config.yaml`. Only `ARGUS_BACKEND_URL` is
+required.
 
-Дашборд поднимется, даже если argus-backend сейчас недоступен: он покажет
-экран ожидания и оживёт сам, когда бэкенд ответит.
+The dashboard starts even if argus-backend is unavailable at the moment: it
+shows a waiting screen and comes back to life on its own once the backend
+answers.
 
-Для разработки задайте `web.template_dir: "./web"` — шаблоны и статика будут
-читаться с диска, и правки в CSS видны после обычного F5. В проде поле пустое,
-и всё берётся из `go:embed`.
+For development, set `web.template_dir: "./web"`: templates and static files
+are then read from disk, and CSS changes show up after a plain F5. In
+production the field is empty, and everything comes from `go:embed`.
 
-## Бэкенд для разработки
+## Backend for development
 
-Дашборду нужен живой argus-backend: своей базы у него нет, всё он читает из
-`/v1/api` коллектора. Проще всего поднять коллектор с Postgres из корня
-репозитория, а сам дашборд запускать через `go run`:
+The dashboard needs a live argus-backend: it has no database of its own and
+reads everything from the collector's `/v1/api`. The simplest setup is to start
+the collector with Postgres from the repository root and run the dashboard
+itself with `go run`:
 
 ```bash
-# из корня репозитория; argus-backend/.env и argus-backend/config.yaml
-# подготовлены по argus-backend/README.md
-docker compose up -d --build argus     # Postgres + collector на 127.0.0.1:8099
+# from the repository root; argus-backend/.env and argus-backend/config.yaml
+# prepared as described in argus-backend/README.md
+docker compose up -d --build argus     # Postgres + collector on 127.0.0.1:8099
 
 cd argus-frontend
-go run ./cmd/web                       # ARGUS_BACKEND_URL=http://localhost:8099 в .env
+go run ./cmd/web                       # ARGUS_BACKEND_URL=http://localhost:8099 in .env
 ```
 
-Контейнер `argus-web` из того же compose слушает тот же `:8088`, поэтому
-при разработке его не поднимают (или останавливают `docker compose stop argus-web`).
+The `argus-web` container from the same compose file listens on the same
+`:8088`, so don't start it during development (or stop it with
+`docker compose stop argus-web`).
 
-Проверить крайние состояния:
+Checking the edge states:
 
-- **экран ожидания** - `docker compose stop argus`: дашборд покажет экран
-  ожидания и оживёт сам после `docker compose start argus`;
-- **пустые состояния** - свежая база без целей и контейнеров с лейблом;
-- **данные** - добавьте uptime-таргет через «New target» и повесьте лейбл на
-  любой контейнер (как - написано в той же модалке).
+- **waiting screen** - `docker compose stop argus`: the dashboard shows the
+  waiting screen and comes back on its own after `docker compose start argus`;
+- **empty states** - a fresh database with no targets and no labelled
+  containers;
+- **data** - add an uptime target through "New target" and put the label on
+  any container (the same modal explains how).
 
-## Тесты
+## Tests
 
 ```bash
-go test ./...            # конфиг, рендер, пустые состояния, роуты
-go test ./internal/usecase/...   # агрегаты поверх httptest-сервера /v1/api
+go test ./...            # config, rendering, empty states, routes
+go test ./internal/usecase/...   # aggregates on top of an httptest server for /v1/api
 ```
 
-Ни Postgres, ни живой argus-backend для тестов не нужны.
+The tests need neither Postgres nor a live argus-backend.
 
-## Структура
+## Structure
 
 ```
-cmd/web/main.go                     # флаги, логгер, сигналы, graceful shutdown
+cmd/web/main.go                     # flags, logger, signals, graceful shutdown
 internal/
-├── app/                            # App (сервер, остановка) + сборка зависимостей
-├── config/config.go                # YAML + ${ENV} + .env, валидация на старте
-├── domain/entity/                  # доменные типы, ErrNotReady / ErrNotFound / ErrBackendTooOld
-├── usecase/                        # агрегаты: аптайм, простои, p95, рестарты; порт Backend
-├── gateway/backend/                # HTTP-клиент argus-backend (/v1/api): DTO → entity
+├── app/                            # App (server, shutdown) + dependency wiring
+├── config/config.go                # YAML + ${ENV} + .env, validated on startup
+├── domain/entity/                  # domain types, ErrNotReady / ErrNotFound / ErrBackendTooOld
+├── usecase/                        # aggregates: uptime, outages, p95, restarts; Backend port
+├── gateway/backend/                # HTTP client for argus-backend (/v1/api): DTO → entity
 └── transport/http/
-    ├── router/                     # маршруты и раздача статики
-    ├── handlers/                   # страницы, партиалы, JSON для графиков, таргеты
-    └── view/                       # Presenter, модели представления, рендер шаблонов
+    ├── router/                     # routes and static file serving
+    ├── handlers/                   # pages, partials, JSON for charts, targets
+    └── view/                       # Presenter, view models, template rendering
 web/
-├── embed.go                        # go:embed шаблонов и статики
-├── templates/                      # layout, страницы и партиалы под hx-get
-└── static/                         # CSS, вендоренные htmx/Alpine/Chart.js, шрифты, гифки
+├── embed.go                        # go:embed for templates and static files
+├── templates/                      # layout, pages and partials for hx-get
+└── static/                         # CSS, vendored htmx/Alpine/Chart.js, fonts, GIFs
 ```
 
-Зависимости смотрят внутрь: `usecase` не знает про HTTP, `entity` не знает ни
-про HTTP, ни про HTML, а JSON бэкенда не выходит за `internal/gateway/backend`.
+Dependencies point inward: `usecase` knows nothing about HTTP, `entity` knows
+nothing about HTTP or HTML, and the backend's JSON never leaves
+`internal/gateway/backend`.
 
-## Роуты
+## Routes
 
-| Роут | Отдаёт |
+| Route | Serves |
 |---|---|
-| `GET /` | сводка: «что-то сломалось?» с одного взгляда |
-| `GET /history/alerts?type=&sev=&page=` | история алертов |
-| `GET /history/logs?target=&sev=&page=` | история совпадений в логах + график за сутки |
-| `GET /history/outages?page=` | простои за сутки |
-| `GET /alerts` | 301 на `/history/alerts` (старые закладки) |
-| `GET /containers/{name}` | детали контейнера |
-| `GET /partials/summary` | общее состояние + маскот с причиной |
-| `GET /partials/logs` | карточка совпадений за сутки со столбиками по часам |
-| `GET /partials/targets` | список uptime-таргетов |
-| `GET /partials/containers` | сетка контейнеров, проблемные первыми |
-| `GET /partials/host` | CPU, RAM и диск хоста для сайдбара (последний замер из `/v1/api/host`) |
-| `GET /partials/recent` | 8 последних событий: простои, алерты и совпадения от warning |
-| `GET /partials/history/{alerts,logs,outages}` | тело вкладки истории с фильтрами и страницей |
-| `GET /partials/container/{name}/meta` | плитки состояния |
-| `GET /partials/container/{name}/events` | события Docker |
-| `GET /partials/container/{name}/timeline` | полоса простоев за сутки |
-| `GET /partials/container/{name}/logs` | последние 20 совпадений контейнера |
-| `GET /api/latency` | точки графика сводки, JSON |
-| `GET /api/log-matches?target=` | совпадения по часам и важности, JSON |
-| `GET /api/container/{name}/activity` | события Docker и совпадения контейнера по часам, JSON |
-| `GET /healthz` | 200, только если argus-backend отвечает |
-| `GET /static/…` | вшитая статика |
-| `POST /targets` | создать uptime-таргет: имя и URL уходят в `POST /v1/api/targets` |
-| `DELETE /targets/{id}` | удалить таргет через `/v1/api` |
+| `GET /` | overview: "is something broken?" at a glance |
+| `GET /history/alerts?type=&sev=&page=` | alert history |
+| `GET /history/logs?target=&sev=&page=` | log match history + chart for the last 24 hours |
+| `GET /history/outages?page=` | outages over the last 24 hours |
+| `GET /alerts` | 301 to `/history/alerts` (old bookmarks) |
+| `GET /containers/{name}` | container details |
+| `GET /partials/summary` | overall state + mascot with the reason |
+| `GET /partials/logs` | card with matches over the last 24 hours, with hourly bars |
+| `GET /partials/targets` | list of uptime targets |
+| `GET /partials/containers` | container grid, problem containers first |
+| `GET /partials/host` | host CPU, RAM and disk for the sidebar (latest sample from `/v1/api/host`) |
+| `GET /partials/recent` | 8 most recent events: outages, alerts and matches of warning and above |
+| `GET /partials/history/{alerts,logs,outages}` | history tab body with filters and page |
+| `GET /partials/container/{name}/meta` | state tiles |
+| `GET /partials/container/{name}/events` | Docker events |
+| `GET /partials/container/{name}/timeline` | outage bar for the last 24 hours |
+| `GET /partials/container/{name}/logs` | the container's 20 most recent matches |
+| `GET /api/latency` | overview chart points, JSON |
+| `GET /api/log-matches?target=` | matches by hour and severity, JSON |
+| `GET /api/container/{name}/activity` | the container's Docker events and matches by hour, JSON |
+| `GET /healthz` | 200, only if argus-backend answers |
+| `GET /static/…` | embedded static files |
+| `POST /targets` | create an uptime target: name and URL go to `POST /v1/api/targets` |
+| `DELETE /targets/{id}` | delete a target through `/v1/api` |
 
-Пишущих ручек ровно две, обе только про uptime-таргеты. Всё остальное - чтение.
+There are exactly two write endpoints, and both are only about uptime targets.
+Everything else is read-only.
 
-## Как это устроено
+## How it works
 
-**Партиалы подменяют сами себя.** Каждый рендерит собственный корневой элемент
-вместе с его `hx-get`/`hx-trigger` и меняется через `outerHTML`. Страница просто
-вызывает `{{template "targets" .Targets}}`, а после свапа партиал продолжает
-поллиться по тому же адресу — включая текущие фильтры истории.
+**Partials replace themselves.** Each one renders its own root element
+together with its `hx-get`/`hx-trigger` and is swapped via `outerHTML`. A page
+just calls `{{template "targets" .Targets}}`, and after the swap the partial
+keeps polling the same address, including the current history filters.
 
-**Сводка — триаж, история — на `/history`.** На сводке только то, что отвечает
-на вопрос «что-то сломалось?»: состояние с маскотом, latency, карточка логов,
-цели, контейнеры и 8 последних заметных событий. Всё длинное — алерты,
-совпадения, простои — постранично на вкладках истории, по 50 строк.
-Поллится только первая страница: на старых строки съезжали бы под курсором,
-и чип в шапке там честно пишет «not auto-refreshing».
+**The overview is triage; history lives under `/history`.** The overview has
+only what answers the question "is something broken?": the state with the
+mascot, latency, the log card, targets, containers and the 8 most recent
+notable events. Everything long (alerts, matches, outages) is paged on the
+history tabs, 50 rows per page. Only the first page polls: on older pages rows
+would slide away under the cursor, and the chip in the header honestly says
+"not auto-refreshing" there.
 
-**График живёт отдельно от поллинга.** Карточку с графиком htmx не трогает:
-иначе `canvas` пересоздавался бы каждые 10 секунд, убивая анимацию и подсказки.
-Точки приходят отдельным JSON-запросом раз в минуту.
+**The chart lives apart from polling.** htmx doesn't touch the chart card:
+otherwise the `canvas` would be recreated every 10 seconds, killing the
+animation and the tooltips. The points arrive in a separate JSON request once a
+minute.
 
-**Статусы — через CSS-переменную.** Класс `is-up`/`is-warn`/`is-down`/`is-idle`
-задаёт `--s`, а точка, пилюля, полоска и подсвеченная метрика читают её и не
-знают, какой именно статус на них висит. Цветов в шаблонах нет. На тёмных
-панелях (`.card--dark`, `.ctn-card--dark`, `.alert-row--dark`) тот же `--s`
-подмешивается к белому через `color-mix`, иначе статусный цвет теряет контраст.
+**Statuses go through a CSS variable.** The class `is-up`/`is-warn`/`is-down`/`is-idle`
+sets `--s`, and the dot, the pill, the bar and the highlighted metric read it
+without knowing which status they carry. There are no colours in the
+templates. On dark panels (`.card--dark`, `.ctn-card--dark`, `.alert-row--dark`)
+the same `--s` is mixed with white via `color-mix`, otherwise the status
+colour loses contrast.
 
-**Alpine отвечает только за локальные интеракции** — паузу автообновления,
-счётчик свежести, модалку, сворачивание сайдбара и переключатель темы. Данные
-приносит htmx; состояния приложения в JS нет.
+**Alpine handles only local interactions**: pausing auto-refresh, the
+freshness counter, the modal, collapsing the sidebar and the theme switcher.
+Data is brought in by htmx; there is no application state in JS.
 
-**Маскот один на весь дашборд** — в карточке состояния и в сайдбаре. Его
-настроение — самый тревожный из сигналов: упавшая цель или critical-алерт →
-angry, предупреждения → scared, совпадения в логах за сутки по порогам
-0 / 1–2 / 3–4 / 5+ → happy / watching / scared / angry (`view.LogMood`). Строка
-под ним называет именно тот сигнал, что победил (`TestMoodTakesWorstSignal`).
-Что значит каждое настроение — в легенде по клику на полоску внизу сайдбара.
+**There is one mascot for the whole dashboard**, in the state card and in the
+sidebar. Its mood is the most alarming of the signals: a down target or a
+critical alert → angry, warnings → scared, log matches over 24 hours by
+thresholds 0 / 1-2 / 3-4 / 5+ → happy / watching / scared / angry
+(`view.LogMood`). The line under it names exactly the signal that won
+(`TestMoodTakesWorstSignal`). What each mood means is in the legend that opens
+when you click the strip at the bottom of the sidebar.
 
-**История требует свежего argus-backend.** Дашборд запрашивает
-`/v1/api/alerts` и `/v1/api/log-matches` с `order=desc`, `skip`, `since` и
-читает общее число из `X-Total-Count`. Старый бэкенд эти параметры молча
-игнорирует и вернул бы самые старые записи как новые, поэтому такой ответ —
-ошибка «argus-backend устарел» (500 и строка в логе), а не тихая неправда.
+**History requires an up-to-date argus-backend.** The dashboard requests
+`/v1/api/alerts` and `/v1/api/log-matches` with `order=desc`, `skip`, `since`
+and reads the total count from `X-Total-Count`. An old backend silently
+ignores these parameters and would return the oldest records as the newest, so
+such a response is an "argus-backend is outdated" error (500 and a log line),
+not a quiet lie.
 
-## Тема
+## Theme
 
-По умолчанию дашборд следует системной теме. Кнопка в шапке сайдбара
-переключает по кругу: **как в системе → светлая → тёмная**. Выбор пишется в
-`localStorage` и переживает перезагрузку.
+By default the dashboard follows the system theme. The button in the sidebar
+header cycles through: **system → light → dark**. The choice is saved to
+`localStorage` and survives a reload.
 
-Реализация — атрибут `data-theme` на `<html>` и те же дизайн-токены, что уже
-использовались. Системную тему в конкретное значение разрешает маленький
-синхронный скрипт в `<head>`: он ставит атрибут до первой отрисовки, иначе
-страница мигала бы светлым. Благодаря этому тёмная палитра описана в CSS ровно
-один раз, без дубля под `prefers-color-scheme`.
+It is implemented with a `data-theme` attribute on `<html>` and the same design
+tokens that were already in use. A small synchronous script in `<head>`
+resolves the system theme to a concrete value: it sets the attribute before the
+first paint, otherwise the page would flash light. Thanks to this, the dark
+palette is described in CSS exactly once, with no duplicate under
+`prefers-color-scheme`.
 
-## Что дашборд показывает и чего не показывает
+## What the dashboard shows and what it doesn't
 
-Правило одно: на экране только то, что отдал коллектор. Там, где значения нет,
-стоит прочерк или пустое состояние — мониторинг, подставляющий правдоподобное
-число вместо отсутствующего, хуже неработающего.
+There is one rule: the screen shows only what the collector returned. Where
+there is no value, there is a dash or an empty state. A monitor that fills in
+a plausible number in place of a missing one is worse than one that doesn't
+work.
 
-- **Пустая база** — сводка пишет, что argus-backend ещё не записал ни одной
-  цели, в каждом блоке пустое состояние, вместо графика «No data for the last
-  24 hours».
-- **Час без проверок** приезжает в график как `null` и рисуется разрывом,
-  а не нулевой задержкой.
-- **Цель без единой проверки** показывает `—`, а не «100% аптайма».
-- **argus-backend не отвечает или ещё не готов** — экран ожидания и 503, а
-  не 500 (ТЗ §9, §11). Страница оживает сама, без перезагрузки руками.
-- **Связь потеряна на ходу** — партиалы отвечают 503 без тела, htmx оставляет
-  последние живые данные, а чип в шапке через полминуты пишет «lost connection
-  to server».
+- **Empty database**: the overview says that argus-backend hasn't recorded a
+  single target yet, every block shows its empty state, and the chart is
+  replaced by "No data for the last 24 hours".
+- **An hour without checks** arrives in the chart as `null` and is drawn as a
+  gap, not as zero latency.
+- **A target with no checks at all** shows a dash, not "100% uptime".
+- **argus-backend isn't answering or isn't ready yet**: a waiting screen and
+  503, not 500 (spec §9, §11). The page comes back on its own, without a
+  manual reload.
+- **Connection lost mid-session**: partials answer 503 with no body, htmx keeps
+  the last live data, and after half a minute the chip in the header says
+  "lost connection to server".
 
-Чего нет в данных коллектора (схема ТЗ §7), и поэтому нет на экране:
+What isn't in the collector's data (spec §7, schema), and therefore isn't on
+the screen:
 
-| Чего нет | Что вместо этого |
+| Missing | What's shown instead |
 |---|---|
-| CPU/RAM/диск контейнера | на карточках — сбои за 15 минут, совпадения за сутки; ресурсы есть только у хоста, в сайдбаре (последний замер из `/v1/api/host`) |
-| образ контейнера | строка не выводится, пока значения нет |
-| тип алерта | выводится из вида цели: `uptime` или `container` |
-| статус алерта «активен/закрыт» | единственный реальный признак — ушёл ли он в Telegram (`sent_to_tg`) |
-| latency у контейнера | его никто не пингует: на его странице график совпадений в логах и событий Docker |
-| порог «degraded» | у целей только `up`/`down`/`unknown`; жёлтый статус ставится по факту: у таргета - хоть одна неудачная проверка за сутки, у контейнера - сбой (ненулевой exit или OOM) за последние 15 минут. Совпадения в логах влияют только на порядок карточек и маскота |
+| Container CPU/RAM/disk | the cards show failures over 15 minutes and matches over 24 hours; resources exist only for the host, in the sidebar (latest sample from `/v1/api/host`) |
+| Container image | the line isn't shown while there is no value |
+| Alert type | derived from the kind of target: `uptime` or `container` |
+| "Active/closed" alert status | the only real indicator is whether it was sent to Telegram (`sent_to_tg`) |
+| Container latency | nothing pings it: its page shows a chart of log matches and Docker events instead |
+| A "degraded" threshold | targets have only `up`/`down`/`unknown`; the yellow status is set from facts: for a target, at least one failed check in 24 hours; for a container, a failure (non-zero exit or OOM) in the last 15 minutes. Log matches affect only the card order and the mascot |
 
-## Отличия от макета
+## Differences from the mockup
 
-**Шрифты заменены.** В макете стоят Bricolage Grotesque и Plus Jakarta Sans — ни
-в одном из них нет кириллицы (у Jakarta есть только `cyrillic-ext`, это
-историческая кириллица, не А-Я), и в самом макете весь русский текст молча падал
-на системный fallback. Взяты ближайшие по характеру шрифты с полной кириллицей:
+**The fonts were replaced.** The mockup uses Bricolage Grotesque and Plus
+Jakarta Sans. Neither has Cyrillic (Jakarta only has `cyrillic-ext`, which is
+historical Cyrillic, not the modern Russian alphabet), and in the mockup itself
+all Russian text silently fell back to the system font. The closest fonts in
+character with full Cyrillic were chosen instead.
 
-Семейств осталось два — отдельный display-шрифт для заголовков на такой
-плотности экрана только добавлял шума:
+Only two families remain: a separate display font for headings only added
+noise at this screen density:
 
-| Роль | Было в макете | Стало |
+| Role | In the mockup | Now |
 |---|---|---|
-| Заголовки, крупные числа | Bricolage Grotesque | Inter |
-| Основной текст | Plus Jakarta Sans | Inter |
-| Данные, логи, код | DM Mono | JetBrains Mono |
+| Headings, large numbers | Bricolage Grotesque | Inter |
+| Body text | Plus Jakarta Sans | Inter |
+| Data, logs, code | DM Mono | JetBrains Mono |
 
-**«Новый таргет» — форма для uptime-таргета.** Имя и URL уходят в
-`POST /v1/api/targets` коллектора; ниже в той же модалке — как подключить
-контейнер лейблом. Удаление — крестик в строке таргета.
+**"New target" is a form for an uptime target.** The name and URL go to the
+collector's `POST /v1/api/targets`; below it, the same modal explains how to
+connect a container with a label. Deleting is the × in the target's row.
 
-**Тёмная тема добавлена.** Макет только светлый. В тёмной теме «тревожная»
-карточка перестала выделяться одной лишь чернотой, поэтому у неё появилась
-полоса статуса слева — она работает в обеих темах.
+**A dark theme was added.** The mockup is light only. In the dark theme the
+"alarming" card no longer stood out by being black alone, so it got a status
+stripe on the left, which works in both themes.
 
-## Работа без интернета
+## Working offline
 
-htmx, Alpine, Chart.js и все шрифты лежат в `web/static/` и вшиты в бинарник.
-Внешних ссылок в разметке нет — проверяется тестом `TestStaticAssetsEmbedded`.
+htmx, Alpine, Chart.js and all fonts live in `web/static/` and are embedded in
+the binary. There are no external links in the markup, which is checked by the
+`TestStaticAssetsEmbedded` test.
 
-| Файл | Версия |
+| File | Version |
 |---|---|
 | htmx | 2.0.4 |
 | Alpine.js | 3.14.8 |

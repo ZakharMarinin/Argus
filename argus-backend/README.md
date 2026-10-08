@@ -1,81 +1,81 @@
 # argus-backend
 
-Коллектор Argus (Go-модуль `argus-collector`): следит за Docker-контейнерами и HTTP-таргетами одного хоста, ищет совпадения в логах, хранит всё в Postgres и шлёт алерты в Telegram. Наружу отдаёт HTTP API под `/v1/api`, его использует дашборд `../argus-frontend`.
+The Argus collector (Go module `argus-collector`): it watches the Docker containers and HTTP targets of a single host, looks for matching lines in container logs, stores everything in Postgres and sends alerts to Telegram. It serves an HTTP API under `/v1/api`, which the `../argus-frontend` dashboard uses.
 
-## Что внутри
+## What's inside
 
-- **watcher** - события Docker (start/die/oom/kill/restart/destroy), статусы контейнеров, обнаружение crash-loop.
-- **prober** - HTTP-проверки таргетов типа `probe`, переход в `down` после `prober.failure_threshold` неудач подряд.
-- **matcher** - regex-правила по логам контейнеров.
-- **alerter** - отправка алертов в Telegram с группировкой и cooldown.
-- **host** - CPU, память и диск хоста (`GET /v1/api/host`), алерты по порогам.
-- **retention** - чистка старых probes, events и log matches.
-- **heartbeat** - dead man's switch: пока коллектор и база живы, раз в `heartbeat.interval` дёргает `HEARTBEAT_URL`.
+- **watcher** - Docker events (start/die/oom/kill/restart/destroy), container statuses, crash-loop detection.
+- **prober** - HTTP checks for targets of type `probe`; a target goes `down` after `prober.failure_threshold` failures in a row.
+- **matcher** - regex rules over container logs.
+- **alerter** - sends alerts to Telegram, with grouping and a cooldown.
+- **host** - host CPU, memory and disk (`GET /v1/api/host`), with threshold alerts.
+- **retention** - cleans up old probes, events and log matches.
+- **heartbeat** - dead man's switch: while the collector and the database are alive, it hits `HEARTBEAT_URL` once every `heartbeat.interval`.
 
-Контейнеры попадают в мониторинг по лейблу `argus.monitor=true`. Если дополнительно задан `argus.probe.url`, для контейнера создаётся ещё и HTTP-таргет.
+Containers are monitored when they carry the label `argus.monitor=true`. If `argus.probe.url` is set as well, an HTTP target is also created for the container.
 
-## Быстрый старт (Docker Compose)
+## Quick start (Docker Compose)
 
 ```bash
-cp .example.env .env              # заполнить POSTGRES_*, при желании BOT_TOKEN, CHAT_ID, HEARTBEAT_URL
+cp .example.env .env              # fill in POSTGRES_*, and optionally BOT_TOKEN, CHAT_ID, HEARTBEAT_URL
 cp config.example.yaml config.yaml
 docker compose up -d --build
 ```
 
-Коллектор слушает `127.0.0.1:8099`, Postgres доступен только во внутренней сети compose. Чтобы поднять вместе с дашбордом, запускайте `docker compose up -d --build` из корня репозитория: корневой `compose.yml` подключает этот файл.
+The collector listens on `127.0.0.1:8099`; Postgres is reachable only from the internal compose network. To start it together with the dashboard, run `docker compose up -d --build` from the repository root: the root `compose.yml` includes this file.
 
-Внутри контейнера `POSTGRES_URL` должен указывать на сервис `argus-postgres`, например `postgres://user:pass@argus-postgres:5432/argus?sslmode=disable`.
+Inside the container, `POSTGRES_URL` must point at the `argus-postgres` service, for example `postgres://user:pass@argus-postgres:5432/argus?sslmode=disable`.
 
-## Локальный запуск
+## Running locally
 
-Нужны Go 1.27+ и доступный Postgres.
+You need Go 1.27+ and a reachable Postgres.
 
 ```bash
-cp .example.env .env              # POSTGRES_URL на локальный Postgres
+cp .example.env .env              # POSTGRES_URL pointing at your local Postgres
 cp config.example.yaml config.yaml
 go run ./cmd/argus
 ```
 
-Для watcher и matcher нужен доступ к Docker socket. Если Docker недоступен, они не стартуют, но остальной сервис работает.
+The watcher and the matcher need access to the Docker socket. If Docker isn't available, they don't start, but the rest of the service keeps working.
 
-## Конфигурация
+## Configuration
 
-Секреты и пути берутся из окружения (или из `.env`, он подхватывается автоматически):
+Secrets and paths come from the environment (or from `.env`, which is loaded automatically):
 
-| Переменная | Обязательна | Назначение |
+| Variable | Required | Purpose |
 |---|---|---|
-| `CONFIG_PATH` | да | путь к `config.yaml` |
-| `POSTGRES_URL` | да | строка подключения к Postgres |
-| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | для compose | учётные данные контейнера Postgres |
-| `BOT_TOKEN`, `CHAT_ID` | нет | Telegram. Без них alerter не запускается |
-| `HEARTBEAT_URL` | нет | URL для dead man's switch. Без него heartbeat не запускается |
-| `HOST_DISK_PATH` | нет | переопределяет `host.disk_path` (в compose это `/hostfs`) |
+| `CONFIG_PATH` | yes | path to `config.yaml` |
+| `POSTGRES_URL` | yes | Postgres connection string |
+| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | for compose | credentials for the Postgres container |
+| `BOT_TOKEN`, `CHAT_ID` | no | Telegram. Without them the alerter doesn't start |
+| `HEARTBEAT_URL` | no | URL for the dead man's switch. Without it the heartbeat doesn't start |
+| `HOST_DISK_PATH` | no | overrides `host.disk_path` (in compose it is `/hostfs`) |
 
-Остальное настраивается в `config.yaml`, пример в `config.example.yaml`: адрес и таймауты HTTP-сервера, интервалы prober, crash-loop в watcher, retention, Telegram (`notify_interval`, `cooldown`), правила matcher, пороги host и `heartbeat.interval`. Длительности пишутся в формате Go (`336h`, `5m`), суффикса `d` нет. Severity в правилах matcher: `critical|error|warning|info|debug`.
+Everything else is set in `config.yaml`, with an example in `config.example.yaml`: the HTTP server address and timeouts, prober intervals, crash-loop settings for the watcher, retention, Telegram (`notify_interval`, `cooldown`), matcher rules, host thresholds and `heartbeat.interval`. Durations use Go's format (`336h`, `5m`); there is no `d` suffix. Severity in matcher rules is one of `critical|error|warning|info|debug`.
 
-При старте конфиг валидируется, с невалидным сервис не поднимется.
+The config is validated on startup, and the service won't start with an invalid one.
 
-## Миграции
+## Migrations
 
-Миграции goose лежат в `migrations/`, вшиты в бинарник и применяются автоматически при старте (по транзакции на файл, под advisory lock Postgres). Отдельный CLI не нужен.
+Goose migrations live in `migrations/`. They are embedded in the binary and applied automatically on startup (one transaction per file, under a Postgres advisory lock). No separate CLI is needed.
 
-Новая миграция - следующий по номеру файл `migrations/0000N_name.sql` с секциями `-- +goose Up` / `-- +goose Down`. Если версия базы новее последней вшитой миграции, сервис откажется стартовать (защита от даунгрейда). После правки миграции или storage-запроса прогоните `make test-db`.
+A new migration is the next numbered file, `migrations/0000N_name.sql`, with `-- +goose Up` / `-- +goose Down` sections. If the database version is newer than the latest embedded migration, the service refuses to start (downgrade protection). After changing a migration or a storage query, run `make test-db`.
 
 ## API
 
 - `GET /healthz` - healthcheck.
-- `/v1/api` - targets (CRUD + `PATCH /{id}/status`), probes, events, log-matches (чтение и удаление), alerts (CRUD), host.
+- `/v1/api` - targets (CRUD + `PATCH /{id}/status`), probes, events, log-matches (read and delete), alerts (CRUD), host.
 - Swagger UI: `http://127.0.0.1:8099/swagger/index.html`.
 
-## Разработка
+## Development
 
 ```bash
 make test        # go test ./...
-make test-db     # интеграционные тесты storage на временном postgres:16-alpine
-make cover       # покрытие без сгенерированного кода
+make test-db     # storage integration tests against a throwaway postgres:16-alpine
+make cover       # coverage without generated code
 go vet ./...
 golangci-lint run
 ```
 
-- Моки: `mockery` после изменения интерфейсов в `internal/usecase/usecase.go`.
-- Swagger: `swag init -g cmd/argus/main.go -d ./ -o ./docs` после изменения аннотаций хендлеров.
+- Mocks: run `mockery` after changing the interfaces in `internal/usecase/usecase.go`.
+- Swagger: run `swag init -g cmd/argus/main.go -d ./ -o ./docs` after changing handler annotations.

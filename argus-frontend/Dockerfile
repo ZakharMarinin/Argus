@@ -6,7 +6,9 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 go build -o /out/argus-web ./cmd/web
+
+ARG VERSION=dev
+RUN CGO_ENABLED=0 go build -ldflags "-X argus-frontend/internal/app.version=${VERSION}" -o /out/argus-web ./cmd/web
 
 FROM alpine:3.20
 

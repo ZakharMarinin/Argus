@@ -97,11 +97,21 @@ func (a *App) checkBackend(ctx context.Context) {
 	a.log.Info("argus-backend is responding")
 }
 
-// Version takes the version from the build info: no separate flag is needed for it.
+// version is set at build time:
+//
+//	go build -ldflags "-X argus-frontend/internal/app.version=v1.0.0" ./cmd/web
+var version string
+
+// Version returns the dashboard version. A version set through ldflags wins;
+// without it, a local build from a git checkout falls back to the commit hash.
 func Version() string {
+	if version != "" && version != "dev" {
+		return "argus-web " + version
+	}
+
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
-		return "argus-web"
+		return "argus-web dev"
 	}
 
 	for _, setting := range info.Settings {

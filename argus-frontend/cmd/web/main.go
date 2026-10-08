@@ -24,7 +24,14 @@ import (
 
 func main() {
 	configPath := flag.String("config", "config.yaml", "path to the YAML config")
+	showVersion := flag.Bool("version", false, "print the version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(app.Version())
+
+		return
+	}
 
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 

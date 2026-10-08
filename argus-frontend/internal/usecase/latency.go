@@ -9,8 +9,8 @@ import (
 	"argus-frontend/internal/domain/entity"
 )
 
-// LatencySeries отдаёт почасовой ряд p95 и доступности по всем
-// uptime-таргетам за последние 24 часа.
+// LatencySeries returns the hourly series of p95 and availability across all
+// uptime targets for the last 24 hours.
 func (uc *UseCase) LatencySeries(ctx context.Context) ([]entity.LatencyPoint, error) {
 	targets, err := uc.backend.Targets(ctx)
 	if err != nil {
@@ -41,7 +41,7 @@ func (uc *UseCase) LatencySeries(ctx context.Context) ([]entity.LatencyPoint, er
 
 		b := buckets[i]
 		if b.total == 0 {
-			continue // разрыв: в этот час проверок не было
+			continue // gap: there were no checks in this hour
 		}
 
 		pct := 100 * float64(b.ok) / float64(b.total)
@@ -56,7 +56,7 @@ func (uc *UseCase) LatencySeries(ctx context.Context) ([]entity.LatencyPoint, er
 	return out, nil
 }
 
-// hourBucket - накопитель одного часа графика.
+// hourBucket accumulates one hour of the chart.
 type hourBucket struct {
 	latencies []float64
 	total     int
@@ -87,8 +87,8 @@ func fillBuckets(buckets []hourBucket, probes []entity.ProbeOutcome, dayAgo time
 	}
 }
 
-// percentileDisc95 - тот же percentile_disc(0.95), что считал Postgres:
-// сортировка и выбор ceil(0.95*n)-го (1-индексного) элемента.
+// percentileDisc95 is the same percentile_disc(0.95) that Postgres computed:
+// sort and pick the ceil(0.95*n)-th (1-based) element.
 func percentileDisc95(values []float64) float64 {
 	sorted := append([]float64(nil), values...)
 	sort.Float64s(sorted)

@@ -1,8 +1,8 @@
-// Package handlers - HTTP-слой дашборда: страницы, htmx-партиалы и точки
-// графиков.
+// Package handlers is the dashboard's HTTP layer: pages, htmx partials and
+// chart points.
 //
-// Он работает через порт UseCase и отдаёт готовую разметку. Ни Docker, ни
-// Telegram здесь нет.
+// It works through the UseCase port and returns ready markup. There is no
+// Docker and no Telegram here.
 package handlers
 
 import (
@@ -17,15 +17,15 @@ import (
 	"argus-frontend/internal/transport/http/view"
 )
 
-// queryTimeout ограничивает поход в бэкенд. Дашборд опрашивается по таймеру,
-// и висящий запрос копил бы соединения вместо того, чтобы честно отвалиться.
+// queryTimeout limits a trip to the backend. The dashboard is polled on a timer,
+// and a hanging request would pile up connections instead of honestly failing.
 const queryTimeout = 5 * time.Second
 
-// UseCase - всё, что дашборд читает о состоянии мониторинга.
+// UseCase is everything the dashboard reads about the monitoring state.
 //
-// ТЗ §6.2 задаёт три метода; здесь их больше. История (алерты, совпадения,
-// простои) постранична и живёт на /history, сводка берёт только сутки;
-// интервалы простоя выводятся на чтении - в схеме их нет.
+// Spec §6.2 defines three methods; there are more here. History (alerts, matches,
+// outages) is paged and lives under /history, the overview takes only 24 hours;
+// outage intervals are derived on read, the schema doesn't have them.
 type UseCase interface {
 	TargetStatus(ctx context.Context) ([]entity.TargetSummary, error)
 	AlertCounts(ctx context.Context) (entity.AlertCounts, error)
@@ -42,7 +42,7 @@ type UseCase interface {
 	Ping(ctx context.Context) error
 }
 
-// Handler держит зависимости всех ручек дашборда.
+// Handler holds the dependencies of all dashboard endpoints.
 type Handler struct {
 	uc      UseCase
 	tpl     *view.Templates
@@ -50,19 +50,19 @@ type Handler struct {
 	log     *slog.Logger
 }
 
-// NewHandler собирает обработчики.
+// NewHandler builds the handlers.
 func NewHandler(log *slog.Logger, uc UseCase, tpl *view.Templates, present view.Presenter) *Handler {
 	return &Handler{uc: uc, tpl: tpl, present: present, log: log}
 }
 
-// Templates отдаёт набор шаблонов - роутеру он нужен под раздачу статики.
+// Templates returns the template set; the router needs it to serve static files.
 func (h *Handler) Templates() *view.Templates { return h.tpl }
 
 // ---------------------------------------------------------------------------
-// Снимок состояния
+// State snapshot
 // ---------------------------------------------------------------------------
 
-// snapshot - то, что нужно любой странице: список целей и счётчики алертов.
+// snapshot is what every page needs: the list of targets and the alert counters.
 type snapshot struct {
 	targets []entity.TargetSummary
 	counts  entity.AlertCounts
@@ -91,7 +91,7 @@ func (h *Handler) snapshot(ctx context.Context) (snapshot, error) {
 	return snapshot{targets: targets, counts: counts, logs: logs, host: h.present.HostPanel(host, err)}, nil
 }
 
-// layout собирает обвязку страницы вокруг готовой модели содержимого.
+// layout builds the page scaffolding around a ready content model.
 func (h *Handler) layout(snap snapshot, active, title, sub, partial string, content any) view.Layout {
 	return view.Layout{
 		Title:       title,
@@ -105,56 +105,56 @@ func (h *Handler) layout(snap snapshot, active, title, sub, partial string, cont
 }
 
 // ---------------------------------------------------------------------------
-// Ошибки и рендер
+// Errors and rendering
 // ---------------------------------------------------------------------------
 
-// pageError отвечает на ошибку чтения из бэкенда.
+// pageError responds to an error reading from the backend.
 //
-// «Бэкенд ещё не готов» и «бэкенд недоступен» - штатные состояния при первом
-// запуске или рестарте: показываем экран ожидания, а не 500. Всё остальное -
-// настоящая ошибка, и прятать её нельзя.
+// "Backend not ready yet" and "backend unavailable" are normal states on first
+// start or restart: we show the waiting screen, not a 500. Everything else is a
+// real error, and it must not be hidden.
 func (h *Handler) pageError(w http.ResponseWriter, r *http.Request, err error) {
 	if !errors.Is(err, entity.ErrNotReady) {
-		h.log.Error("запрос к бэкенду", "path", r.URL.Path, "err", err)
+		h.log.Error("backend request", "path", r.URL.Path, "err", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 
 		return
 	}
 
-	h.log.Warn("данные ещё не готовы", "path", r.URL.Path, "err", err)
+	h.log.Warn("data not ready yet", "path", r.URL.Path, "err", err)
 	w.WriteHeader(http.StatusServiceUnavailable)
 	h.page(w, "waiting", h.present.WaitingLayout())
 }
 
-// partialError отвечает на ошибку внутри партиала.
+// partialError responds to an error inside a partial.
 //
-// Тела нет намеренно: htmx не подменяет содержимое при не-2xx, поэтому на
-// экране остаются последние известные данные, а чип в шапке через полминуты
-// сам напишет «нет связи с сервером». Это честнее, чем подсунуть пустой блок
-// вместо живых данных.
+// There is no body on purpose: htmx doesn't swap content on a non-2xx, so the
+// last known data stays on screen, and after half a minute the chip in the header
+// says "lost connection to server" by itself. That's more honest than slipping
+// in an empty block instead of live data.
 func (h *Handler) partialError(w http.ResponseWriter, r *http.Request, err error) {
 	if errors.Is(err, entity.ErrNotReady) {
-		h.log.Warn("партиал: данных нет", "path", r.URL.Path, "err", err)
+		h.log.Warn("partial: no data", "path", r.URL.Path, "err", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 
 		return
 	}
 
-	h.log.Error("партиал", "path", r.URL.Path, "err", err)
+	h.log.Error("partial", "path", r.URL.Path, "err", err)
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
 func (h *Handler) page(w http.ResponseWriter, name string, data view.Layout) {
 	err := h.tpl.Page(w, name, data)
 	if err != nil {
-		h.log.Error("рендер страницы", "page", name, "err", err)
+		h.log.Error("page render", "page", name, "err", err)
 	}
 }
 
 func (h *Handler) partial(w http.ResponseWriter, name string, data any) {
 	err := h.tpl.Partial(w, name, data)
 	if err != nil {
-		h.log.Error("рендер партиала", "partial", name, "err", err)
+		h.log.Error("partial render", "partial", name, "err", err)
 	}
 }
 
@@ -164,11 +164,11 @@ func (h *Handler) json(w http.ResponseWriter, payload any) {
 
 	err := json.NewEncoder(w).Encode(payload)
 	if err != nil {
-		h.log.Error("кодирование JSON", "err", err)
+		h.log.Error("JSON encoding", "err", err)
 	}
 }
 
-// Healthz отвечает 200, только если бэкенд отвечает.
+// Healthz answers 200 only if the backend responds.
 func (h *Handler) Healthz(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), queryTimeout)
 	defer cancel()

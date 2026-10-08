@@ -9,11 +9,11 @@ import (
 	"argus-frontend/internal/domain/entity"
 )
 
-// incidentWindow - за какой период дашборд показывает инциденты.
+// incidentWindow is the period over which the dashboard shows incidents.
 const incidentWindow = 24 * time.Hour
 
-// opensDowntime - событие, с которого начинается простой контейнера.
-// "restart" сюда не входит: он простой закрывает, а не открывает.
+// opensDowntime reports whether an event starts a container outage.
+// "restart" isn't included: it closes an outage, it doesn't open one.
 func opensDowntime(event string) bool {
 	switch event {
 	case "die", "oom", "kill":
@@ -23,16 +23,16 @@ func opensDowntime(event string) bool {
 	}
 }
 
-// closesDowntime - событие, закрывающее простой.
+// closesDowntime reports whether an event closes an outage.
 //
-// "start" - основной случай: им argus-backend отмечает возврат контейнера и
-// после restart-политики, и после ручного docker start. "destroy" закрывает
-// простой тоже, только иначе: контейнера больше нет, и считать дальше не по
-// чему.
+// "start" is the main case: argus-backend uses it to mark a container's return
+// both after a restart policy and after a manual docker start. "destroy" also
+// closes an outage, just differently: the container is gone, and there is
+// nothing left to count.
 //
-// Пока в этом списке не было "start", любая пара die -> start оставалась
-// незакрытой, и дашборд писал «return not recorded» у вернувшегося
-// контейнера (TestContainerDieWithStartIsMeasured).
+// While "start" wasn't in this list, every die -> start pair stayed
+// unclosed, and the dashboard said "return not recorded" for a container that
+// had come back (TestContainerDieWithStartIsMeasured).
 func closesDowntime(event string) bool {
 	switch event {
 	case "start", "restart", "destroy":
@@ -42,13 +42,14 @@ func closesDowntime(event string) bool {
 	}
 }
 
-// Incidents отдаёт интервалы простоя по всем целям за последние сутки, новые
-// сверху, вместе со сводкой.
+// Incidents returns outage intervals across all targets over the last 24 hours,
+// newest first, together with a summary.
 //
-// ponytail: цели, пробы и события тянутся по одной цели за запрос - тот же
-// N+1, что уже делает TargetStatus. Партиал инцидентов поллится в три раза
-// реже страницы, чтобы это не удваивало трафик к бэкенду; если целей станет
-// много, сюда нужен один общий запрос на бэкенде, а не кеш здесь.
+// ponytail: targets, probes and events are fetched one target per request, the
+// same N+1 that TargetStatus already does. The incidents partial polls three
+// times less often than the page so this doesn't double the traffic to the
+// backend; if there are many targets, this needs one combined request on the
+// backend, not a cache here.
 func (uc *UseCase) Incidents(ctx context.Context) ([]entity.Incident, entity.IncidentStats, error) {
 	targets, err := uc.backend.Targets(ctx)
 	if err != nil {
@@ -97,11 +98,11 @@ func (uc *UseCase) incidentsFor(ctx context.Context, t entity.Target) ([]entity.
 	return nil, nil
 }
 
-// probeIncidents собирает интервалы из серий неудачных проб.
+// probeIncidents builds intervals from runs of failed probes.
 //
-// Серия считается по всей истории, а не по окну: интервал, начавшийся до
-// полуночи и закрытый утром, должен иметь настоящее начало, а не обрезанное
-// границей периода.
+// A run is computed over the whole history, not the window: an interval that
+// started before midnight and closed in the morning must have its real start,
+// not one cut off at the period boundary.
 func probeIncidents(t entity.Target, probes []entity.ProbeOutcome) []entity.Incident {
 	probes = sortedByTime(probes, func(p entity.ProbeOutcome) time.Time { return p.CheckedAt })
 
@@ -137,8 +138,8 @@ func probeIncidents(t entity.Target, probes []entity.ProbeOutcome) []entity.Inci
 		}
 	}
 
-	// Серия, дошедшая до последней пробы, продолжается: проверки идут, и
-	// длительность считается до последней неудачи - не до "сейчас".
+	// A run that reaches the latest probe is ongoing: checks continue, and the
+	// duration is counted up to the latest failure, not up to "now".
 	if current != nil {
 		out = append(out, *current)
 	}
@@ -146,13 +147,13 @@ func probeIncidents(t entity.Target, probes []entity.ProbeOutcome) []entity.Inci
 	return out
 }
 
-// containerIncidents собирает интервалы из событий Docker.
+// containerIncidents builds intervals from Docker events.
 //
-// Событие падения при уже открытом интервале ничего нового не открывает:
-// упасть, не вернувшись, нельзя. Это не мелочь - на одну остановку Docker
-// присылает пару kill + die, и считать её двумя простоями значит выдумать
-// второй (TestKillAndDiePairIsOneOutage). Новый интервал начинается только
-// после записи о возврате.
+// A failure event while an interval is already open doesn't open anything new:
+// you can't go down without having come back. This isn't a detail: for a single
+// stop Docker sends a kill + die pair, and counting it as two outages would make
+// up the second one (TestKillAndDiePairIsOneOutage). A new interval starts only
+// after a recovery record.
 func containerIncidents(t entity.Target, events []entity.ContainerEvent) []entity.Incident {
 	events = sortedByTime(events, func(e entity.ContainerEvent) time.Time { return e.OccurredAt })
 
@@ -164,8 +165,8 @@ func containerIncidents(t entity.Target, events []entity.ContainerEvent) []entit
 	for _, e := range events {
 		switch {
 		case opensDowntime(e.Event):
-			// Уже лежит: это второе событие той же остановки, у неё остаётся
-			// первая причина. Двигаем только последнее наблюдение.
+			// Already down: this is the second event of the same stop, it keeps
+			// the first cause. Only the latest observation moves.
 			if current != nil {
 				current.LastKnownAt = e.OccurredAt
 
@@ -241,8 +242,8 @@ func exitCode(detail string) string {
 	return ""
 }
 
-// withinWindow оставляет интервалы, которые пересекаются с периодом:
-// начались в нём или в нём же закончились.
+// withinWindow keeps the intervals that overlap the period: those that
+// started in it or ended in it.
 func withinWindow(incidents []entity.Incident, since time.Time) []entity.Incident {
 	out := make([]entity.Incident, 0, len(incidents))
 
@@ -260,14 +261,14 @@ func withinWindow(incidents []entity.Incident, since time.Time) []entity.Inciden
 	return out
 }
 
-// sortedByTime возвращает копию, отсортированную по возрастанию времени.
+// sortedByTime returns a copy sorted by ascending time.
 //
-// Копию - потому что тот же слайс событий уже разложен для ленты на странице
-// контейнера, и сортировка на месте перетряхнула бы её у вызывающего: лента
-// показывала бы самые старые события вместо новых
-// (TestIncidentDerivationKeepsEventOrder). Сортировка устойчивая: у событий
-// одной остановки метки времени различаются на доли секунды, и переставлять
-// совпавшие местами незачем.
+// A copy, because the same slice of events is already laid out for the feed on
+// the container page, and sorting in place would shuffle it for the caller: the
+// feed would show the oldest events instead of the newest
+// (TestIncidentDerivationKeepsEventOrder). The sort is stable: events of a
+// single stop have timestamps a fraction of a second apart, and there is no
+// reason to swap equal ones.
 func sortedByTime[T any](items []T, at func(T) time.Time) []T {
 	out := append([]T(nil), items...)
 	sort.SliceStable(out, func(i, j int) bool { return at(out[i]).Before(at(out[j])) })

@@ -112,8 +112,8 @@
 
   --shadow-card: 0 1px 0 rgba(23, 24, 27, .03), 0 10px 24px -16px rgba(23, 24, 27, .16);
 
-  /* Статус компонента приходит одной переменной: точка и пилюля читают --s и
-     не знают, какой именно статус на них висит. По умолчанию - «нет данных». */
+  /* A component's status arrives as a single variable: the dot and the pill read --s and
+     don't know which status they carry. The default is "no data". */
   --s: var(--idle);
 }
 
@@ -217,15 +217,15 @@ img { max-width: 100%; display: block; }
   }
 }
 
-/* --- Движение ---------------------------------------------------------------
-   Правило одно: анимируем только то, чем управляет пользователь (наведение,
-   нажатие), и то, что действительно изменилось на сервере. Данные внутри
-   партиалов htmx подменяет целиком каждые 10 секунд - переход на новом
-   элементе всё равно не сыграет, а мигать раз в тик значит приучить не
-   смотреть на экран. */
+/* --- Motion -------------------------------------------------------------------
+   There is one rule: animate only what the user controls (hover, press) and
+   what actually changed on the server. htmx swaps the data inside partials
+   wholesale every 10 seconds: a transition on the new element wouldn't play
+   anyway, and blinking on every tick teaches people not to look at the
+   screen. */
 
-/* Партиал приехал с новым содержимым: короткая обводка на месте изменения.
-   Класс вешает app.js и только когда текст действительно стал другим. */
+/* A partial arrived with new content: a short outline where it changed.
+   app.js sets the class, and only when the text actually became different. */
 .is-fresh {
   outline: 2px solid transparent; outline-offset: 3px; border-radius: inherit;
   animation: fresh 1.5s var(--ease);
@@ -235,8 +235,8 @@ img { max-width: 100%; display: block; }
   to { outline-color: transparent; }
 }
 
-/* Цель лежит - точка «дышит». Только у down: если пульсирует всё подряд,
-   не пульсирует ничего. */
+/* A target is down: the dot "breathes". Only for down: if everything pulses,
+   nothing pulses. */
 .is-down .dot { animation: ping 1.9s var(--ease) infinite; }
 @keyframes ping {
   from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--s) 55%, transparent); }
@@ -251,13 +251,13 @@ img { max-width: 100%; display: block; }
 
 .main {
   flex: 1; min-width: 0;
-  /* Страховка от горизонтальной прокрутки: clip, а не hidden - hidden сделал
-     бы .main скролл-контейнером и сломал sticky-сайдбар рядом. */
+  /* Guard against horizontal scrolling: clip, not hidden, since hidden would make
+     .main a scroll container and break the sticky sidebar next to it. */
   overflow-x: clip;
-  /* Колонка ограничена по ширине ради читаемости, но остаток уходит в поля с
-     обеих сторон, а не копится справа. Центруем полями, а не `margin: auto`:
-     авто-поля отключают растягивание флекс-элемента, и на узком экране .main
-     переставал сжиматься до ширины окна. */
+  /* The column's width is limited for readability, but the remainder goes into
+     margins on both sides instead of piling up on the right. We centre with
+     margins, not `margin: auto`: auto margins disable flex item stretching, and
+     on a narrow screen .main stopped shrinking to the window width. */
   padding: 24px max(32px, calc((100% - 1320px) / 2)) 64px;
 }
 
@@ -265,10 +265,10 @@ img { max-width: 100%; display: block; }
 
 /* --- 5. Sidebar -------------------------------------------------------------- */
 
-/* Сайдбар прибит к экрану, а не к документу: без height/sticky флекс тянет
-   его на всю высоту страницы, и нижний блок с настроением уезжает под конец
-   длинной ленты. Своя прокрутка - на случай, когда контейнеров больше, чем
-   помещается в экран. */
+/* The sidebar is pinned to the screen, not the document: without height/sticky
+   flex stretches it to the full page height, and the mood block at the bottom
+   slides down to the end of a long feed. It scrolls on its own for when there
+   are more containers than fit on the screen. */
 .sidebar {
   width: 248px; flex: 0 0 248px;
   position: sticky; top: 0; align-self: flex-start;
@@ -277,8 +277,8 @@ img { max-width: 100%; display: block; }
   border-right: 1px solid var(--border);
   padding: 20px 16px;
   display: flex; flex-direction: column; gap: 24px;
-  /* Сайдбар - навигация, а не текст: выделение здесь только мешает промахнуться
-     мимо ссылки и потянуть за собой полстраницы. */
+  /* The sidebar is navigation, not text: selection here only makes it easier to
+     miss a link and drag half the page along with it. */
   user-select: none;
 }
 
@@ -298,8 +298,8 @@ img { max-width: 100%; display: block; }
 .nav__item.is-active { background: var(--emphasis-bg); color: var(--emphasis-fg); }
 .nav__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border-strong); flex-shrink: 0; transition: background .16s ease; }
 .nav__item.is-active .nav__dot { background: var(--accent); }
-/* Имя контейнера приходит из Docker и бывает длиннее колонки - режем
-   многоточием, иначе пункт меню распирает сайдбар. */
+/* The container name comes from Docker and can be longer than the column: cut
+   it with an ellipsis, otherwise the menu item stretches the sidebar. */
 .nav__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav__badge {
   font-family: var(--font-mono); font-size: 11px; font-weight: 600;
@@ -308,9 +308,9 @@ img { max-width: 100%; display: block; }
 }
 .nav__item.is-active .nav__badge { background: rgba(255, 255, 255, .16); color: var(--emphasis-fg); }
 
-/* Сворачиваемая группа контейнеров. Заголовок повторяет .side-label: в
-   сайдбаре один вид заголовка секции, чтобы «CONTAINERS» и «HOST RESOURCES»
-   читались как один уровень, а не как два разных элемента. */
+/* Collapsible container group. The heading repeats .side-label: the sidebar
+   has one kind of section heading, so that "CONTAINERS" and "HOST RESOURCES"
+   read as one level rather than as two different elements. */
 .side-group { margin-top: 2px; }
 .side-group__head {
   display: flex; align-items: center; gap: 6px;
@@ -327,13 +327,13 @@ img { max-width: 100%; display: block; }
 }
 .side-group[open] .side-group__chevron { transform: rotate(90deg); }
 
-/* Вложенный список: отступ выравнивает точки контейнеров под текст пунктов
-   верхнего меню, а не под их точки - иначе два уровня сливаются. */
+/* Nested list: the indent aligns the container dots under the text of the
+   top menu items, not under their dots, otherwise the two levels blend together. */
 .nav--sub { margin-top: 2px; padding-left: 10px; }
 .nav--sub .nav__item { font-weight: 500; font-size: 13.5px; padding: 7px 10px; }
 .nav--sub .nav__dot { width: 5px; height: 5px; }
 
-/* Восклицательный знак - не счётчик, а флаг: круглый и всегда одного размера. */
+/* The exclamation mark isn't a counter but a flag: round and always the same size. */
 .nav__badge--alert {
   width: 18px; padding: 1px 0; border-radius: 50%;
   background: var(--accent-tint); color: var(--accent-deep);
@@ -486,22 +486,22 @@ img { max-width: 100%; display: block; }
 .tile__label { display: block; font-size: 10.5px; color: var(--emphasis-fg-soft); margin-top: 2px; line-height: 1.25; }
 
 /* --- 8. Status mascot ----------------------------------------------------------
-   Единственный маскот на странице: настроение - самый тревожный сигнал из
-   всех (упавшие цели, алерты, пороги совпадений в логах), а строка под ним
-   называет именно этот сигнал. */
+   The only mascot on the page: its mood is the most alarming signal of all
+   (down targets, alerts, log match thresholds), and the line under it
+   names exactly that signal. */
 
 #summary > .card__head { flex-wrap: nowrap; }
 .summary-mood { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1 1 auto; }
-/* Гифка рисует до самого края кадра: скругление на ней срезало бы углы
-   рисунка. Подложка и скругление - на полях вокруг, content-box держит
-   саму картинку в её 48px. */
+/* The GIF draws right up to the edge of the frame: rounding on it would cut off
+   the corners of the drawing. The backing and the rounding are on the padding
+   around it, and content-box keeps the picture itself at its 48px. */
 .summary-mood__img, .detail-hero__img {
   flex-shrink: 0; box-sizing: content-box; padding: 5px;
   border-radius: var(--radius-sm); background: color-mix(in srgb, var(--s) var(--mood-plate), var(--emphasis-tile));
 }
 
-/* Карточка состояния окрашивается настроением маскота - тем же --s, что и
-   у остальных статусов: злой - красноватая, спокойный - зеленоватая. */
+/* The state card is tinted by the mascot's mood, with the same --s as the
+   other statuses: angry is reddish, calm is greenish. */
 #summary, .detail-hero {
   --up: #4cbb7d; --warn: #f2a04f; --down: #e4685a; --idle: #8b8f94;
   --mood-bg: 20%; --mood-plate: 35%; --mood-glow: 40%;
@@ -552,15 +552,15 @@ img { max-width: 100%; display: block; }
 
 .target-row__id { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--s); flex-shrink: 0; }
-/* Блок цели двухстрочный (имя + адрес), и точка по центру блока оказывалась
-   напротив пустоты между строк. Смещаем её на середину строки с именем. */
+/* The target block has two lines (name + address), and a dot centred on the
+   block ended up opposite the gap between the lines. Move it to the middle of the name line. */
 .target-row__name { font-weight: 700; font-size: 14px; }
 .target-row__url { font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* Тег статуса. Сплошная заливка насыщенным цветом кричала громче самих
-   данных, поэтому здесь тонкая рамка, приглушённая подложка и цветной текст:
-   статус читается, но не спорит с числами рядом. Цвет берётся из --s, так что
-   правило одно на все четыре состояния. */
+/* Status tag. A solid fill in a saturated colour shouted louder than the data
+   itself, so here it is a thin border, a muted backing and coloured text: the
+   status is readable but doesn't compete with the numbers next to it. The colour
+   comes from --s, so one rule covers all four states. */
 .pill {
   display: inline-flex; align-items: center; gap: 6px;
   font-family: var(--font-mono); font-size: 11px; font-weight: 500;
@@ -574,7 +574,7 @@ img { max-width: 100%; display: block; }
   content: ''; width: 5px; height: 5px; border-radius: 50%;
   background: currentColor; flex-shrink: 0;
 }
-/* На тёмной панели тот же цвет теряет контраст - подмешиваем белого. */
+/* On a dark panel the same colour loses contrast, so mix in some white. */
 .card--dark .pill, .ctn-card--dark .pill, .alert-row--dark .pill {
   color: color-mix(in srgb, var(--s) 70%, #fff);
   border-color: color-mix(in srgb, var(--s) 45%, transparent);
@@ -689,8 +689,8 @@ img { max-width: 100%; display: block; }
 .alert-row:not(.alert-row--dark).is-warn { border: 1px solid var(--warn); background-color: color-mix(in srgb, var(--warn), transparent 80%); }
 /* --- 12a. Outages ------------------------------------------------------------ */
 
-/* Строка простоя повторяет геометрию .target-row: тот же ритм, что у целей
-   выше, - блок имени, причина, пилюля, цифры справа. */
+/* An outage row repeats the geometry of .target-row: the same rhythm as the
+   targets above: name block, cause, pill, numbers on the right. */
 .incident-row {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) auto auto auto;
@@ -715,8 +715,8 @@ img { max-width: 100%; display: block; }
 
 .incident-row + .meta-grid, .meta-grid + .incident-row { margin-top: 14px; }
 
-/* Полоса суток. Фон - idle: отсутствие событий не доказывает, что контейнер
-   работал, поэтому пустое место здесь означает «неизвестно», а не «up». */
+/* The 24-hour bar. The background is idle: no events doesn't prove the container
+   was running, so empty space here means "unknown", not "up". */
 .timeline {
   position: relative; height: 26px; margin-top: 4px;
   border-radius: var(--radius-sm); overflow: hidden;
@@ -748,9 +748,9 @@ img { max-width: 100%; display: block; }
 .outage .pill::before { display: none; }
 
 /* --- 12b. Log matches --------------------------------------------------------
-   Карточка логов на сводке: счётчик за сутки, почасовые столбики на CSS
-   (живут внутри партиала - Chart.js тут не нужен) и плитки по важности.
-   Цвет уровня приходит через --s от класса is-*. */
+   The log card on the overview: the 24-hour counter, hourly bars in CSS
+   (they live inside the partial, Chart.js isn't needed here) and tiles by severity.
+   The level colour comes through --s from the is-* class. */
 
 .logs-card { display: flex; flex-direction: column; }
 .logs-card .card__title { display: inline-flex; align-items: center; gap: 8px; }
@@ -965,12 +965,12 @@ a.log-row__target:hover { color: var(--accent-deep); text-decoration: underline;
   .recent-row { grid-template-columns: 14px 118px minmax(0, 1fr) 64px; }
   .recent-row__text { grid-column: 2 / -1; }
   .detail-top { grid-template-columns: minmax(0, 1fr); }
-  /* Полоска проверок - иллюстрация к цифре аптайма рядом; когда строка
-     перестаёт помещаться, первой уходит она, а не сами данные. */
+  /* The check strip illustrates the uptime figure next to it; when the row
+     no longer fits, it goes first, not the data itself. */
   .target-row { grid-template-columns: minmax(0, 1fr) auto auto auto; }
   .strip { display: none; }
-  /* Причина простоя уезжает первой: она дублируется подсказкой на полосе и
-     самим статусом, а время и длительность - это и есть данные. */
+  /* The outage cause goes first: it is duplicated by the tooltip on the bar and
+     by the status itself, while time and duration are the actual data. */
   .incident-row { grid-template-columns: minmax(0, 1fr) auto auto; }
   .incident-row__cause { display: none; }
 }

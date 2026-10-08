@@ -6,7 +6,7 @@
   </div>
 
   <div class="page-head__actions">
-    {{/* Чип показывает возраст данных и одним кликом ставит поллинг на паузу. */}}
+    {{/* The chip shows the age of the data and pauses polling with a single click. */}}
     <button type="button" class="status-chip"
             :class="{ 'is-paused': $store.argus.paused, 'is-stale': $store.argus.stale }"
             @click="$store.argus.toggle()"

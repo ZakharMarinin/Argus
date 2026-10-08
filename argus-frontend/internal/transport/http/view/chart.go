@@ -1,37 +1,37 @@
 package view
 
-// ChartData - ответ для графика.
+// ChartData is the response for a chart.
 //
-// Точки отдаются JSON'ом, а не HTML: карточка с графиком не участвует в
-// htmx-поллинге, иначе Chart.js пересоздавался бы каждые 10 секунд.
+// Points are returned as JSON, not HTML: the chart card doesn't take part in
+// htmx polling, otherwise Chart.js would be recreated every 10 seconds.
 //
-// Формат намеренно общий. На сводке это latency и доступность uptime-таргетов,
-// на странице контейнера - события Docker и совпадения в логах, на сводке
-// ещё и совпадения по важности: контейнер
-// никто не пингует, и рисовать ему latency было бы выдумкой.
+// The format is deliberately generic. On the overview it is latency and
+// availability of uptime targets, on the container page it is Docker events
+// and log matches, and on the overview also matches by severity: nothing
+// pings a container, and drawing latency for it would be made up.
 type ChartData struct {
 	Labels []string      `json:"labels"`
 	Series []ChartSeries `json:"series"`
-	// Empty говорит фронтенду, что данных за период нет вовсе, и вместо
-	// пустых осей надо показать сообщение.
+	// Empty tells the frontend that there is no data for the period at all, and
+	// a message should be shown instead of empty axes.
 	Empty   bool `json:"empty"`
 	Stacked bool `json:"stacked"`
 }
 
-// ChartSeries - один ряд графика.
+// ChartSeries is a single chart series.
 //
-// Values допускает null: час без проверок - это разрыв линии, а не ноль.
+// Values may contain null: an hour without checks is a gap in the line, not zero.
 type ChartSeries struct {
 	Label string `json:"label"`
-	// Color - имя токена из палитры (accent, up, warn, down), а не сам цвет:
-	// график должен перекрашиваться вместе с темой.
+	// Color is the name of a palette token (accent, up, warn, down), not the colour
+	// itself: the chart must change colour together with the theme.
 	Color string `json:"color"`
-	// Axis - "left" или "right"; второй ряд обычно живёт на своей шкале.
+	// Axis is "left" or "right"; the second series usually lives on its own scale.
 	Axis string `json:"axis"`
-	// Style - "area" для заливки под линией, "line" для простой линии,
-	// "bar" для счётчика событий: дискретную величину линией рисовать нельзя.
+	// Style is "area" for a fill under the line, "line" for a plain line,
+	// "bar" for an event counter: a discrete quantity must not be drawn as a line.
 	Style string `json:"style"`
-	// Unit подписывает деления шкалы: " ms", "%", "".
+	// Unit labels the scale ticks: " ms", "%", "".
 	Unit   string     `json:"unit"`
 	Values []*float64 `json:"values"`
 }

@@ -1,15 +1,15 @@
-// Package backend - HTTP-клиент к argus-backend (собственному REST API
-// коллектора под /v1/api). Дашборд больше не читает Postgres напрямую:
-// вся правда о целях, пробах, событиях и алертах приходит отсюда.
+// Package backend is the HTTP client for argus-backend (the collector's own
+// REST API under /v1/api). The dashboard no longer reads Postgres directly:
+// the whole truth about targets, probes, events and alerts comes from here.
 //
-// Пакет - адаптер: DTO с JSON-тегами живут только внутри него, наружу он
-// отдаёт доменные типы entity. Поэтому usecase ничего не знает ни про
-// /v1/api, ни про то, что latency бэкенд считает в микросекундах.
+// The package is an adapter: DTOs with JSON tags live only inside it, and it
+// returns entity domain types. So usecase knows nothing about /v1/api, or
+// about the backend measuring latency in microseconds.
 //
-// DTO ниже - копии полей entity.* из argus-backend, а не импорт самого
-// модуля: два бинарника развёртываются независимо (ТЗ §8), и жёсткая
-// компиляционная связь через go.mod им не нужна - достаточно совпадения
-// JSON-тегов.
+// The DTOs below are copies of the entity.* fields from argus-backend, not an
+// import of that module: the two binaries are deployed independently (spec §8)
+// and don't need a hard compile-time link through go.mod; matching JSON tags
+// are enough.
 package backend
 
 import (
@@ -27,20 +27,20 @@ import (
 	"argus-frontend/internal/domain/entity"
 )
 
-// listLimit - размер страницы, которой fetch догружает все записи под
-// фильтром (alerts, log-matches с order=desc и since).
+// listLimit is the page size fetch uses to load all records matching the
+// filter (alerts, log-matches with order=desc and since).
 //
-// ponytail: цели по-прежнему одним запросом до listLimit - поднять до
-// цикла, если их станет больше.
+// ponytail: targets are still fetched in a single request up to listLimit;
+// switch to a loop if there are ever more of them.
 const listLimit = 5000
 
-// Client - тонкая обёртка над http.Client с базовым адресом бэкенда.
+// Client is a thin wrapper over http.Client with the backend's base address.
 type Client struct {
 	baseURL string
 	http    *http.Client
 }
 
-// NewClient создаёт клиент. baseURL - адрес вида "http://localhost:8081".
+// NewClient creates a client. baseURL is an address like "http://localhost:8081".
 func NewClient(baseURL string, timeout time.Duration) *Client {
 	return &Client{
 		baseURL: baseURL,
@@ -48,7 +48,7 @@ func NewClient(baseURL string, timeout time.Duration) *Client {
 	}
 }
 
-// targetDTO - DTO под entity.Target бэкенда.
+// targetDTO is the DTO for the backend's entity.Target.
 type targetDTO struct {
 	ID         string    `json:"id"`
 	Source     string    `json:"source"`
@@ -59,7 +59,7 @@ type targetDTO struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
-// probeDTO - DTO под entity.Probe бэкенда. Latency там в микросекундах.
+// probeDTO is the DTO for the backend's entity.Probe. Latency there is in microseconds.
 type probeDTO struct {
 	ID        int       `json:"id"`
 	TargetID  string    `json:"target_id"`
@@ -68,7 +68,7 @@ type probeDTO struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// eventDTO - DTO под entity.ContainerEvent бэкенда.
+// eventDTO is the DTO for the backend's entity.ContainerEvent.
 type eventDTO struct {
 	ID        int       `json:"id"`
 	TargetID  string    `json:"target_id"`
@@ -77,8 +77,8 @@ type eventDTO struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// alertDTO - DTO под entity.Alert бэкенда. Severity - число
-// (0=Critical..4=Debug), как в entity.Severity коллектора.
+// alertDTO is the DTO for the backend's entity.Alert. Severity is a number
+// (0=Critical..4=Debug), as in the collector's entity.Severity.
 type alertDTO struct {
 	ID        int       `json:"id"`
 	TargetID  string    `json:"target_id"`
@@ -106,8 +106,8 @@ func severityLevel(name string) (int, bool) {
 	return 0, false
 }
 
-// severityName переводит Severity коллектора (0=Critical..4=Debug) в строку.
-// Незнакомое число - info: молча ронять алерт хуже, чем показать его тихим.
+// severityName turns the collector's Severity (0=Critical..4=Debug) into a string.
+// An unknown number becomes info: silently dropping an alert is worse than showing it as quiet.
 func severityName(level int) string {
 	switch level {
 	case 0:
@@ -123,7 +123,7 @@ func severityName(level int) string {
 	}
 }
 
-// Targets отдаёт все цели (до listLimit).
+// Targets returns all targets (up to listLimit).
 func (c *Client) Targets(ctx context.Context) ([]entity.Target, error) {
 	var dto []targetDTO
 
@@ -149,8 +149,8 @@ func (c *Client) Targets(ctx context.Context) ([]entity.Target, error) {
 	return out, nil
 }
 
-// Probes отдаёт все пробы цели, от старых к новым. Ручка бэкенда не
-// постраничная - лимит здесь не нужен.
+// Probes returns all probes of a target, from oldest to newest. The backend
+// endpoint isn't paged, so no limit is needed here.
 func (c *Client) Probes(ctx context.Context, targetID string) ([]entity.ProbeOutcome, error) {
 	var dto []probeDTO
 
@@ -163,7 +163,7 @@ func (c *Client) Probes(ctx context.Context, targetID string) ([]entity.ProbeOut
 
 	out := make([]entity.ProbeOutcome, 0, len(dto))
 	for _, p := range dto {
-		ms := float64(p.Latency) / 1000 // микросекунды -> миллисекунды
+		ms := float64(p.Latency) / 1000 // microseconds -> milliseconds
 		out = append(out, entity.ProbeOutcome{
 			Success:   p.Success,
 			LatencyMS: &ms,
@@ -174,7 +174,7 @@ func (c *Client) Probes(ctx context.Context, targetID string) ([]entity.ProbeOut
 	return out, nil
 }
 
-// Events отдаёт все события контейнера-цели.
+// Events returns all events of a container target.
 func (c *Client) Events(ctx context.Context, targetID string) ([]entity.ContainerEvent, error) {
 	var dto []eventDTO
 
@@ -258,7 +258,7 @@ func fetch[T any](ctx context.Context, c *Client, path string, q entity.ListQuer
 
 		for i := 1; i < len(items); i++ {
 			if id(items[i]) >= id(items[i-1]) {
-				return entity.Page[T]{}, fmt.Errorf("%w: %s: id идут по возрастанию", entity.ErrBackendTooOld, path)
+				return entity.Page[T]{}, fmt.Errorf("%w: %s: ids come in ascending order", entity.ErrBackendTooOld, path)
 			}
 		}
 
@@ -353,7 +353,7 @@ func (c *Client) CreateTarget(ctx context.Context, t entity.Target) error {
 		"target_type": string(t.Kind),
 	})
 	if err != nil {
-		return fmt.Errorf("запрос %s: %w", path, err)
+		return fmt.Errorf("request %s: %w", path, err)
 	}
 
 	status, resp, err := c.send(ctx, http.MethodPost, path, bytes.NewReader(body))
@@ -398,7 +398,7 @@ func (c *Client) DeleteTarget(ctx context.Context, id string) error {
 func (c *Client) send(ctx context.Context, method, path string, body io.Reader) (int, []byte, error) {
 	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, body)
 	if err != nil {
-		return 0, nil, fmt.Errorf("запрос %s: %w", path, err)
+		return 0, nil, fmt.Errorf("request %s: %w", path, err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -416,7 +416,7 @@ func (c *Client) send(ctx context.Context, method, path string, body io.Reader) 
 	return resp.StatusCode, data, nil
 }
 
-// Ping проверяет, что бэкенд отвечает.
+// Ping checks that the backend is responding.
 func (c *Client) Ping(ctx context.Context) error {
 	return c.getJSON(ctx, "/v1/api/targets", url.Values{"limit": {"1"}}, &[]targetDTO{})
 }
@@ -435,7 +435,7 @@ func (c *Client) getPage(ctx context.Context, path string, query url.Values, out
 
 	total, err := strconv.Atoi(header.Get("X-Total-Count"))
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s: нет X-Total-Count", entity.ErrBackendTooOld, path)
+		return 0, fmt.Errorf("%w: %s: no X-Total-Count", entity.ErrBackendTooOld, path)
 	}
 
 	return total, nil
@@ -449,7 +449,7 @@ func (c *Client) do(ctx context.Context, path string, query url.Values, out any)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, http.NoBody)
 	if err != nil {
-		return nil, fmt.Errorf("запрос %s: %w", path, err)
+		return nil, fmt.Errorf("request %s: %w", path, err)
 	}
 
 	resp, err := c.http.Do(req)
@@ -470,7 +470,7 @@ func (c *Client) do(ctx context.Context, path string, query url.Values, out any)
 
 	err = json.NewDecoder(resp.Body).Decode(out)
 	if err != nil {
-		return nil, fmt.Errorf("разбор ответа %s: %w", path, err)
+		return nil, fmt.Errorf("decoding response %s: %w", path, err)
 	}
 
 	return resp.Header, nil

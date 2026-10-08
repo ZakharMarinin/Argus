@@ -1,7 +1,7 @@
 {{define "history-outages" -}}
-{{/* Интервалы простоя не хранятся - они выведены из проб и событий Docker,
-     поэтому у строки нет ни id, ни ссылки на «карточку инцидента».
-     Опрос реже, чем у остальных партиалов: сборка обходит все цели. */}}
+{{/* Outage intervals aren't stored: they are derived from probes and Docker events,
+     so a row has neither an id nor a link to an "incident card".
+     It polls less often than the other partials: building it walks all targets. */}}
 <section class="card card--roomy" id="history-outages"
          {{if .Pager.Live}}hx-get="/partials/history/outages{{.Query}}" hx-trigger="every 30s, refreshNow from:body" hx-swap="outerHTML"{{end}}
          aria-label="Outages in the last 24 hours">

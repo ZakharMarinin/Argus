@@ -1,7 +1,7 @@
 {{define "chart-card" -}}
-{{/* Карточку намеренно не трогает htmx: пересоздавать canvas каждые 10 секунд
-     значит убивать анимацию и подсказки. Точки тянет app.js отдельным
-     JSON-запросом и обновляет датасеты на месте. */}}
+{{/* htmx deliberately doesn't touch this card: recreating the canvas every 10 seconds
+     would kill the animation and tooltips. app.js fetches the points with a separate
+     JSON request and updates the datasets in place. */}}
 <section class="card card--dark" aria-label="{{.Title}}">
   <div class="card__head">
     <h2 class="card__title">{{.Title}}</h2>
@@ -16,7 +16,7 @@
   {{if .Hint}}<p class="card__note">{{.Hint}}</p>{{end}}
   <div class="chart-box">
     <canvas data-chart="{{.DataURL}}" role="img" aria-label="{{.Title}}"></canvas>
-    {{/* app.js показывает это вместо пустых осей, когда за период нет данных. */}}
+    {{/* app.js shows this instead of empty axes when there is no data for the period. */}}
     <p class="chart-empty" data-chart-empty hidden>{{or .EmptyNote "No data for the last 24 hours"}}</p>
   </div>
 </section>

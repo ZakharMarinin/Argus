@@ -5,8 +5,8 @@
     <img class="brand__logo pixel" src="/static/img/argus-logo-128.png" alt="" width="30" height="30">
     <span class="brand__name">Argus</span>
 
-    {{/* Три состояния по кругу: как в системе → светлая → тёмная.
-         Выбор запоминается в localStorage и переживает перезагрузку. */}}
+    {{/* Three states in a cycle: system → light → dark.
+         The choice is remembered in localStorage and survives a reload. */}}
     <button type="button" class="theme-toggle" x-data="themeToggle"
             @click="cycle()" :title="title" :aria-label="title">
       <template x-if="mode === 'auto'">
@@ -43,9 +43,9 @@
     {{end}}
   </nav>
 
-  {{/* Контейнеров на хосте может быть много, и это единственный список в
-       сайдбаре, который растёт. Сворачивание - на <details>: состояние,
-       клавиатура и aria-expanded достаются от браузера, JS не нужен. */}}
+  {{/* There can be many containers on a host, and this is the only list in
+       the sidebar that grows. Collapsing uses <details>: state, keyboard and
+       aria-expanded come from the browser, no JS needed. */}}
   {{with .Sidebar.Containers}}
   <details class="side-group" open data-remember="argus:containers">
     <summary class="side-group__head">
@@ -73,8 +73,8 @@
 
   <div class="sidebar__spacer"></div>
 
-  {{/* Легенда настроений: что значит каждая гифка. <details>, чтобы
-       состояние, клавиатура и aria достались от браузера. */}}
+  {{/* Mood legend: what each GIF means. <details>, so that state,
+       keyboard and aria come from the browser. */}}
   {{with .Sidebar}}
   <details class="mood-legend" data-remember="argus:legend">
     <summary class="mood-strip" title="What the moods mean">

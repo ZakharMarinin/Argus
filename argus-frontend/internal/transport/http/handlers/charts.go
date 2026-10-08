@@ -8,11 +8,11 @@ import (
 	"argus-frontend/internal/domain/entity"
 )
 
-// Точки графиков отдаются JSON'ом, а не HTML: карточка с графиком не
-// участвует в htmx-поллинге, иначе Chart.js пересоздавался бы каждые 10
-// секунд вместе с анимацией и подсказками.
+// Chart points are returned as JSON, not HTML: the chart card doesn't take
+// part in htmx polling, otherwise Chart.js would be recreated every 10
+// seconds along with its animation and tooltips.
 
-// LatencyChart - почасовые p95 и доступность по всем uptime-таргетам.
+// LatencyChart serves hourly p95 and availability across all uptime targets.
 func (h *Handler) LatencyChart(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), queryTimeout)
 	defer cancel()
@@ -27,7 +27,7 @@ func (h *Handler) LatencyChart(w http.ResponseWriter, r *http.Request) {
 	h.json(w, h.present.LatencyChart(points))
 }
 
-// ActivityChart - почасовые события Docker одного контейнера.
+// ActivityChart serves a single container's hourly Docker events.
 func (h *Handler) ActivityChart(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), queryTimeout)
 	defer cancel()

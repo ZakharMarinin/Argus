@@ -103,8 +103,8 @@ func (uc *UseCase) targetsByID(ctx context.Context) (map[string]entity.Target, e
 	return byID, nil
 }
 
-// enrichAlert подшивает к алерту цель. Цели может не быть - тогда вместо
-// имени остаётся её id, а не выдуманная подпись.
+// enrichAlert attaches the target to an alert. The target may be missing; then
+// its id stays in place of the name, rather than a made-up label.
 func enrichAlert(a entity.Alert, targetByID map[string]entity.Target, hostLabel string) entity.Alert {
 	if a.TargetID == "" {
 		a.TargetLabel = hostLabel

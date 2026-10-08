@@ -1,7 +1,7 @@
 {{define "history-alerts" -}}
-{{/* Фильтры, список и пагинатор - один партиал: после клика перерисовывается
-     и активный чип. Поллинг только на первой странице - на старых строки
-     съезжали бы под курсором. */}}
+{{/* Filters, list and pager are one partial: after a click the active chip
+     is redrawn too. Only the first page polls: on older pages rows
+     would slide away under the cursor. */}}
 <div class="card card--roomy" id="history-alerts"
      {{if .Pager.Live}}hx-get="/partials/history/alerts{{.Query}}" hx-trigger="every 10s, refreshNow from:body" hx-swap="outerHTML"{{end}}>
 

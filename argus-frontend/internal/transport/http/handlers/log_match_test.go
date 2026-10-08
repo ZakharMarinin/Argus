@@ -17,7 +17,7 @@ func TestLogMoodThresholds(t *testing.T) {
 	for n, want := range cases {
 		mood, _ := view.LogMood(n)
 		if mood.Key != want {
-			t.Errorf("%d совпадений: настроение %q, хотели %q", n, mood.Key, want)
+			t.Errorf("%d matches: mood %q, wanted %q", n, mood.Key, want)
 		}
 	}
 }
@@ -31,11 +31,11 @@ func TestLogChartIsStacked(t *testing.T) {
 
 		err := json.Unmarshal(get(t, newServer(t, c.uc), "/api/log-matches").Body.Bytes(), &data)
 		if err != nil {
-			t.Fatalf("ответ не разобрался: %v", err)
+			t.Fatalf("response did not decode: %v", err)
 		}
 
 		if !data.Stacked || data.Empty != c.empty {
-			t.Errorf("stacked=%v empty=%v, хотели stacked и empty=%v", data.Stacked, data.Empty, c.empty)
+			t.Errorf("stacked=%v empty=%v, wanted stacked and empty=%v", data.Stacked, data.Empty, c.empty)
 		}
 	}
 }
@@ -47,7 +47,7 @@ func TestFutureDatedMatchesAreFlagged(t *testing.T) {
 	body := get(t, newServer(t, uc), "/partials/logs").Body.String()
 
 	if !strings.Contains(body, "10 matches are dated in the future") || !strings.Contains(body, `data-count="0"`) {
-		t.Error("совпадения из будущего должны быть вне счётчика, но названы на карточке")
+		t.Error("matches from the future must be outside the counter, but named on the card")
 	}
 }
 
@@ -69,17 +69,17 @@ func TestHistoryPagerPausesPollingOnOlderPages(t *testing.T) {
 		`hx-get="/partials/history/logs?page=3&amp;target=app-worker"`,
 	} {
 		if !strings.Contains(older, want) {
-			t.Errorf("вторая страница: нет %q", want)
+			t.Errorf("second page: missing %q", want)
 		}
 	}
 
 	if strings.Contains(older, "every 10s") {
-		t.Error("вторая страница поллится - строки будут съезжать под курсором")
+		t.Error("second page polls: rows will slide away under the cursor")
 	}
 
 	first := get(t, handler, "/partials/history/logs").Body.String()
 	if !strings.Contains(first, "every 10s") || strings.Contains(first, "auto-refresh paused") {
-		t.Error("первая страница должна поллиться")
+		t.Error("first page must poll")
 	}
 }
 
@@ -87,13 +87,13 @@ func TestAlertsRedirectsToHistory(t *testing.T) {
 	w := get(t, newServer(t, filledUseCase()), "/alerts?sev=error")
 
 	if w.Code != http.StatusMovedPermanently || w.Header().Get("Location") != "/history/alerts?sev=error" {
-		t.Errorf("код %d, Location %q", w.Code, w.Header().Get("Location"))
+		t.Errorf("code %d, Location %q", w.Code, w.Header().Get("Location"))
 	}
 }
 
 func TestUnknownHistoryTabIs404(t *testing.T) {
 	if w := get(t, newServer(t, filledUseCase()), "/history/nope"); w.Code != http.StatusNotFound {
-		t.Errorf("код ответа %d, ожидали 404", w.Code)
+		t.Errorf("response code %d, expected 404", w.Code)
 	}
 }
 
@@ -109,11 +109,11 @@ func TestMoodTakesWorstSignal(t *testing.T) {
 		mood    string
 		reason  string
 	}{
-		{"всё чисто", up, 0, "happy", "logs are clean"},
-		{"пара совпадений", up, 2, "watching", "2 log matches in 24h"},
-		{"много совпадений при живых целях", up, 6, "angry", "6 log matches in 24h"},
-		{"лежит цель без логов", down, 0, "angry", "api is down"},
-		{"лежит цель и шумят логи", down, 3, "angry", "api is down"},
+		{"all clean", up, 0, "happy", "logs are clean"},
+		{"a couple of matches", up, 2, "watching", "2 log matches in 24h"},
+		{"many matches with live targets", up, 6, "angry", "6 log matches in 24h"},
+		{"target down with no logs", down, 0, "angry", "api is down"},
+		{"target down and noisy logs", down, 3, "angry", "api is down"},
 	}
 
 	for _, c := range cases {
@@ -121,7 +121,7 @@ func TestMoodTakesWorstSignal(t *testing.T) {
 		h := p.Overview(c.targets, entity.AlertCounts{}, report).Health
 
 		if h.Mood.Key != c.mood || !strings.Contains(h.Reason, c.reason) {
-			t.Errorf("%s: %s / %q, хотели %s / %q", c.name, h.Mood.Key, h.Reason, c.mood, c.reason)
+			t.Errorf("%s: %s / %q, wanted %s / %q", c.name, h.Mood.Key, h.Reason, c.mood, c.reason)
 		}
 	}
 }
@@ -143,7 +143,7 @@ func TestContainersNeedingAttentionComeFirst(t *testing.T) {
 	}
 
 	if strings.Join(order, ",") != "ccc-down,bbb-noisy,aaa-calm" {
-		t.Errorf("порядок %v", order)
+		t.Errorf("order %v", order)
 	}
 }
 
@@ -164,10 +164,10 @@ func TestRecentActivityDropsQuietAndMerges(t *testing.T) {
 	}
 
 	if strings.Join(kinds, ",") != "alert,log,outage" {
-		t.Errorf("строки %v, хотели alert,log,outage без debug", kinds)
+		t.Errorf("rows %v, wanted alert,log,outage without debug", kinds)
 	}
 
 	if panel.Rows[1].Href != "/containers/worker" || panel.Rows[1].TabHref != "/history/logs" {
-		t.Errorf("ссылки строки лога: %+v", panel.Rows[1])
+		t.Errorf("log row links: %+v", panel.Rows[1])
 	}
 }

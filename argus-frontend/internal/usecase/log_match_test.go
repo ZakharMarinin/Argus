@@ -23,7 +23,7 @@ func TestAlertsPageBeyondListLimit(t *testing.T) {
 	}
 
 	if counts.Day != 5001 || counts.Critical != 1 {
-		t.Errorf("counts = %+v, хотели Day=5001 Critical=1", counts)
+		t.Errorf("counts = %+v, wanted Day=5001 Critical=1", counts)
 	}
 }
 
@@ -35,7 +35,7 @@ func TestOldBackendIsARealError(t *testing.T) {
 
 	_, err := newUseCase(t, fb).AlertCounts(context.Background())
 	if !errors.Is(err, entity.ErrBackendTooOld) || errors.Is(err, entity.ErrNotReady) {
-		t.Errorf("err = %v, хотели ErrBackendTooOld, а не экран ожидания", err)
+		t.Errorf("err = %v, wanted ErrBackendTooOld, not the waiting screen", err)
 	}
 }
 
@@ -57,15 +57,15 @@ func TestLogMatchesWindowAndHourly(t *testing.T) {
 	}
 
 	if len(report.Matches) != 3 || report.Future != 1 {
-		t.Fatalf("matches = %+v, future = %d, хотели 3 за сутки и 1 из будущего", report.Matches, report.Future)
+		t.Fatalf("matches = %+v, future = %d, wanted 3 within 24 hours and 1 from the future", report.Matches, report.Future)
 	}
 
 	if report.Matches[0].Message != "warn" || report.Matches[2].Message != "err" {
-		t.Errorf("порядок = %q..%q, хотели новые сверху", report.Matches[0].Message, report.Matches[2].Message)
+		t.Errorf("order = %q..%q, wanted newest first", report.Matches[0].Message, report.Matches[2].Message)
 	}
 
 	if report.Matches[0].TargetLabel != "nginx" || report.Matches[1].TargetLabel != "gone" {
-		t.Errorf("подписи = %q/%q", report.Matches[0].TargetLabel, report.Matches[1].TargetLabel)
+		t.Errorf("labels = %q/%q", report.Matches[0].TargetLabel, report.Matches[1].TargetLabel)
 	}
 
 	var urgent, warning, quiet int
@@ -76,13 +76,13 @@ func TestLogMatchesWindowAndHourly(t *testing.T) {
 	}
 
 	if len(report.Hourly) != 24 || urgent != 1 || warning != 1 || quiet != 1 {
-		t.Errorf("hourly: %d точек, urgent=%d warning=%d quiet=%d", len(report.Hourly), urgent, warning, quiet)
+		t.Errorf("hourly: %d points, urgent=%d warning=%d quiet=%d", len(report.Hourly), urgent, warning, quiet)
 	}
 
 	hour := now.Add(-time.Minute).Truncate(time.Hour)
 	for _, p := range report.Hourly {
 		if p.Hour.Equal(hour) && p.Warning != 1 {
-			t.Errorf("час %s: warning=%d, хотели 1", hour.Format("15:04"), p.Warning)
+			t.Errorf("hour %s: warning=%d, wanted 1", hour.Format("15:04"), p.Warning)
 		}
 	}
 }

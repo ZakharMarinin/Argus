@@ -8,8 +8,8 @@ import (
 	"argus-frontend/internal/domain/entity"
 )
 
-// TestProbeIncidentMeasuresClosedDowntime - серия неудачных проб между двумя
-// удачными должна стать одним интервалом с измеренной длительностью.
+// TestProbeIncidentMeasuresClosedDowntime: a run of failed probes between two
+// successful ones must become one interval with a measured duration.
 func TestProbeIncidentMeasuresClosedDowntime(t *testing.T) {
 	start := now.Add(-3 * time.Hour)
 	fb := fakeBackend{
@@ -31,26 +31,26 @@ func TestProbeIncidentMeasuresClosedDowntime(t *testing.T) {
 		t.Fatalf("Incidents: %v", err)
 	}
 	if len(incidents) != 1 {
-		t.Fatalf("incidents = %+v, хотели один интервал", incidents)
+		t.Fatalf("incidents = %+v, wanted one interval", incidents)
 	}
 
 	i := incidents[0]
 	if i.State != entity.IncidentClosed {
-		t.Errorf("State = %q, хотели closed", i.State)
+		t.Errorf("State = %q, wanted closed", i.State)
 	}
 
 	d, ok := i.Duration()
 	if !ok || d != 5*time.Minute {
-		t.Errorf("Duration = %v (ok=%v), хотели 5m: от первой неудачи до первой удачной пробы", d, ok)
+		t.Errorf("Duration = %v (ok=%v), wanted 5m: from the first failure to the first successful probe", d, ok)
 	}
 	if stats.Total != 5*time.Minute || stats.Longest != 5*time.Minute || stats.Unclosed != 0 {
-		t.Errorf("stats = %+v, хотели 5m суммарно и ни одного незакрытого", stats)
+		t.Errorf("stats = %+v, wanted 5m in total and no unclosed ones", stats)
 	}
 }
 
-// TestProbeIncidentStaysOpenUntilLastFailure - продолжающийся простой считается
-// до последней неудачной пробы, а не до time.Now(): если collector перестал
-// проверять, счётчик не должен расти сам по себе.
+// TestProbeIncidentStaysOpenUntilLastFailure: an ongoing outage is counted up
+// to the latest failed probe, not up to time.Now(): if the collector stopped
+// checking, the counter must not keep growing on its own.
 func TestProbeIncidentStaysOpenUntilLastFailure(t *testing.T) {
 	start := now.Add(-2 * time.Hour)
 	fb := fakeBackend{
@@ -70,20 +70,20 @@ func TestProbeIncidentStaysOpenUntilLastFailure(t *testing.T) {
 		t.Fatalf("Incidents: %v", err)
 	}
 	if len(incidents) != 1 || incidents[0].State != entity.IncidentOpen {
-		t.Fatalf("incidents = %+v, хотели один open", incidents)
+		t.Fatalf("incidents = %+v, wanted one open", incidents)
 	}
 	if incidents[0].EndedAt != nil {
-		t.Error("у продолжающегося простоя не должно быть конца")
+		t.Error("an ongoing outage must not have an end")
 	}
 
 	d, ok := i0Duration(t, incidents)
 	if !ok || d != 10*time.Minute {
-		t.Errorf("Duration = %v (ok=%v), хотели 10m - до последней неудачной пробы", d, ok)
+		t.Errorf("Duration = %v (ok=%v), wanted 10m, up to the latest failed probe", d, ok)
 	}
 }
 
-// TestContainerDieWithRestartIsMeasured - die, закрытый restart'ом, даёт
-// точную длительность простоя контейнера.
+// TestContainerDieWithRestartIsMeasured: a die closed by a restart gives the
+// exact duration of the container outage.
 func TestContainerDieWithRestartIsMeasured(t *testing.T) {
 	died := now.Add(-90 * time.Minute)
 	fb := fakeBackend{
@@ -106,21 +106,21 @@ func TestContainerDieWithRestartIsMeasured(t *testing.T) {
 		t.Fatalf("incidents = %+v", incidents)
 	}
 	if incidents[0].State != entity.IncidentClosed || incidents[0].Cause != "die" {
-		t.Errorf("incident = %+v, хотели closed с причиной die", incidents[0])
+		t.Errorf("incident = %+v, wanted closed with cause die", incidents[0])
 	}
 
 	d, ok := i0Duration(t, incidents)
 	if !ok || d != 4*time.Minute {
-		t.Errorf("Duration = %v (ok=%v), хотели 4m", d, ok)
+		t.Errorf("Duration = %v (ok=%v), wanted 4m", d, ok)
 	}
 	if stats.Total != 4*time.Minute || stats.Unclosed != 0 {
 		t.Errorf("stats = %+v", stats)
 	}
 }
 
-// TestContainerDieWithStartIsMeasured - argus-backend пишет "start" как
-// событие, и именно оно закрывает простой при возврате контейнера: и после
-// restart-политики, и после ручного docker start.
+// TestContainerDieWithStartIsMeasured: argus-backend records "start" as an
+// event, and that is what closes the outage when the container comes back,
+// both after a restart policy and after a manual docker start.
 func TestContainerDieWithStartIsMeasured(t *testing.T) {
 	died := now.Add(-2 * time.Hour)
 	fb := fakeBackend{
@@ -143,21 +143,21 @@ func TestContainerDieWithStartIsMeasured(t *testing.T) {
 		t.Fatalf("incidents = %+v", incidents)
 	}
 	if incidents[0].State != entity.IncidentClosed {
-		t.Errorf("State = %q, хотели closed: start - это и есть запись о возврате", incidents[0].State)
+		t.Errorf("State = %q, wanted closed: start is the recovery record", incidents[0].State)
 	}
 
 	d, ok := i0Duration(t, incidents)
 	if !ok || d != 3*time.Minute {
-		t.Errorf("Duration = %v (ok=%v), хотели 3m", d, ok)
+		t.Errorf("Duration = %v (ok=%v), wanted 3m", d, ok)
 	}
 	if stats.Unclosed != 0 {
-		t.Errorf("stats = %+v, незакрытых быть не должно", stats)
+		t.Errorf("stats = %+v, there must be no unclosed ones", stats)
 	}
 }
 
-// TestContainerDieWithoutReturnHasNoDuration - главный честный случай: возврат
-// контейнера argus-backend не записывает, поэтому длительность неизвестна и
-// её нельзя ни посчитать, ни подмешать в сумму.
+// TestContainerDieWithoutReturnHasNoDuration: the main honest case: argus-backend
+// doesn't record the container's return, so the duration is unknown and can
+// be neither computed nor mixed into the total.
 func TestContainerDieWithoutReturnHasNoDuration(t *testing.T) {
 	fb := fakeBackend{
 		targets: []targetJSON{
@@ -175,24 +175,24 @@ func TestContainerDieWithoutReturnHasNoDuration(t *testing.T) {
 		t.Fatalf("Incidents: %v", err)
 	}
 	if len(incidents) != 1 || incidents[0].State != entity.IncidentUnclosed {
-		t.Fatalf("incidents = %+v, хотели один unclosed", incidents)
+		t.Fatalf("incidents = %+v, wanted one unclosed", incidents)
 	}
 
 	_, ok := incidents[0].Duration()
 	if ok {
-		t.Error("у незакрытого интервала не должно быть длительности")
+		t.Error("an unclosed interval must not have a duration")
 	}
 	if stats.Total != 0 || stats.Longest != 0 {
-		t.Errorf("stats = %+v, незакрытый интервал не должен попадать в сумму", stats)
+		t.Errorf("stats = %+v, an unclosed interval must not be included in the total", stats)
 	}
 	if stats.Count != 1 || stats.Unclosed != 1 {
-		t.Errorf("stats = %+v, хотели один интервал и один незакрытый", stats)
+		t.Errorf("stats = %+v, wanted one interval and one unclosed", stats)
 	}
 }
 
-// TestKillAndDiePairIsOneOutage - Docker на одну остановку присылает два
-// события, kill и die. Это один простой, а не два, и первый из них не должен
-// оставаться незакрытым.
+// TestKillAndDiePairIsOneOutage: for a single stop Docker sends two
+// events, kill and die. That's one outage, not two, and the first of them must
+// not stay unclosed.
 func TestKillAndDiePairIsOneOutage(t *testing.T) {
 	stopped := now.Add(-30 * time.Minute)
 	fb := fakeBackend{
@@ -213,27 +213,27 @@ func TestKillAndDiePairIsOneOutage(t *testing.T) {
 		t.Fatalf("Incidents: %v", err)
 	}
 	if len(incidents) != 1 {
-		t.Fatalf("incidents = %+v, хотели один простой на пару kill+die", incidents)
+		t.Fatalf("incidents = %+v, wanted one outage for the kill+die pair", incidents)
 	}
 	if incidents[0].State != entity.IncidentClosed {
-		t.Errorf("State = %q, хотели closed", incidents[0].State)
+		t.Errorf("State = %q, wanted closed", incidents[0].State)
 	}
 	if incidents[0].Cause != "kill" {
-		t.Errorf("Cause = %q, хотели первую причину падения - kill", incidents[0].Cause)
+		t.Errorf("Cause = %q, wanted the first failure cause, kill", incidents[0].Cause)
 	}
 
 	d, ok := i0Duration(t, incidents)
 	if !ok || d != 7*time.Minute {
-		t.Errorf("Duration = %v (ok=%v), хотели 7m от первого события падения", d, ok)
+		t.Errorf("Duration = %v (ok=%v), wanted 7m from the first failure event", d, ok)
 	}
 	if stats.Unclosed != 0 {
-		t.Errorf("stats = %+v, незакрытых быть не должно", stats)
+		t.Errorf("stats = %+v, there must be no unclosed ones", stats)
 	}
 }
 
-// TestIncidentDerivationKeepsEventOrder - сборка инцидентов не имеет права
-// переупорядочивать события страницы: лента показывает новые сверху, и
-// сортировка внутри вывода интервалов не должна её перетряхивать.
+// TestIncidentDerivationKeepsEventOrder: building incidents must not
+// reorder the page's events: the feed shows the newest first, and sorting
+// inside interval derivation must not shuffle it.
 func TestIncidentDerivationKeepsEventOrder(t *testing.T) {
 	base := now.Add(-3 * time.Hour)
 	fb := fakeBackend{
@@ -242,10 +242,10 @@ func TestIncidentDerivationKeepsEventOrder(t *testing.T) {
 		},
 		events: map[string][]eventJSON{
 			"c1": {
-				{ID: 1, TargetID: "c1", Event: "kill", Details: "первое", CreatedAt: base},
-				{ID: 2, TargetID: "c1", Event: "die", Details: "второе", CreatedAt: base.Add(time.Minute)},
-				{ID: 3, TargetID: "c1", Event: "start", Details: "третье", CreatedAt: base.Add(2 * time.Minute)},
-				{ID: 4, TargetID: "c1", Event: "kill", Details: "последнее", CreatedAt: base.Add(time.Hour)},
+				{ID: 1, TargetID: "c1", Event: "kill", Details: "first", CreatedAt: base},
+				{ID: 2, TargetID: "c1", Event: "die", Details: "second", CreatedAt: base.Add(time.Minute)},
+				{ID: 3, TargetID: "c1", Event: "start", Details: "third", CreatedAt: base.Add(2 * time.Minute)},
+				{ID: 4, TargetID: "c1", Event: "kill", Details: "last", CreatedAt: base.Add(time.Hour)},
 			},
 		},
 	}
@@ -257,16 +257,16 @@ func TestIncidentDerivationKeepsEventOrder(t *testing.T) {
 	if len(detail.Events) != 4 {
 		t.Fatalf("Events = %+v", detail.Events)
 	}
-	if detail.Events[0].Detail != "последнее" {
-		t.Errorf("первым идёт %q, ожидали самое новое событие", detail.Events[0].Detail)
+	if detail.Events[0].Detail != "last" {
+		t.Errorf("first entry is %q, expected the newest event", detail.Events[0].Detail)
 	}
-	if detail.Events[3].Detail != "первое" {
-		t.Errorf("последним идёт %q, ожидали самое старое событие", detail.Events[3].Detail)
+	if detail.Events[3].Detail != "first" {
+		t.Errorf("last entry is %q, expected the oldest event", detail.Events[3].Detail)
 	}
 }
 
-// TestDieAfterStartOpensNewIncident - после записи о возврате следующее
-// падение начинает новый простой, а не продолжает прежний.
+// TestDieAfterStartOpensNewIncident: after a recovery record the next
+// failure starts a new outage rather than continuing the previous one.
 func TestDieAfterStartOpensNewIncident(t *testing.T) {
 	first := now.Add(-5 * time.Hour)
 	fb := fakeBackend{
@@ -287,18 +287,18 @@ func TestDieAfterStartOpensNewIncident(t *testing.T) {
 		t.Fatalf("Incidents: %v", err)
 	}
 	if len(incidents) != 2 {
-		t.Fatalf("incidents = %+v, хотели два интервала", incidents)
+		t.Fatalf("incidents = %+v, wanted two intervals", incidents)
 	}
 	if stats.Unclosed != 1 {
-		t.Errorf("stats = %+v, хотели один незакрытый - последнее падение без возврата", stats)
+		t.Errorf("stats = %+v, wanted one unclosed: the last failure without a return", stats)
 	}
 	if !incidents[0].StartedAt.After(incidents[1].StartedAt) {
-		t.Error("интервалы должны идти новыми сверху")
+		t.Error("intervals must be ordered newest first")
 	}
 }
 
-// TestContainerDetailCarriesIncidents - страница контейнера получает те же
-// интервалы, без отдельного запроса к бэкенду.
+// TestContainerDetailCarriesIncidents: the container page gets the same
+// intervals, without a separate request to the backend.
 func TestContainerDetailCarriesIncidents(t *testing.T) {
 	died := now.Add(-time.Hour)
 	fb := fakeBackend{
@@ -323,7 +323,7 @@ func TestContainerDetailCarriesIncidents(t *testing.T) {
 
 	d, ok := detail.Incidents[0].Duration()
 	if !ok || d != time.Minute {
-		t.Errorf("Duration = %v (ok=%v), хотели 1m", d, ok)
+		t.Errorf("Duration = %v (ok=%v), wanted 1m", d, ok)
 	}
 }
 

@@ -11,18 +11,18 @@ import (
 	"argus-frontend/internal/domain/entity"
 )
 
-// Presenter раскладывает доменные структуры store по моделям представления.
+// Presenter lays out store domain structures as view models.
 //
-// Правило одно: показывать только то, что действительно есть в бэкенде. Там,
-// где значения нет, стоит прочерк или пустое состояние - подставлять
-// правдоподобное число вместо отсутствующего нельзя, иначе дашборд мониторинга
-// начинает врать.
+// There is one rule: show only what the backend actually has. Where there is
+// no value, there is a dash or an empty state. Substituting a plausible number
+// for a missing one is not allowed, otherwise the monitoring dashboard starts
+// lying.
 type Presenter struct {
-	// Build - строка версии в подвале сайдбара.
+	// Build is the version string in the sidebar footer.
 	Build string
-	// Retention - срок хранения из конфига, объясняет пустую историю.
+	// Retention is the retention period from the config; it explains an empty history.
 	Retention time.Duration
-	// Now подменяется в тестах.
+	// Now is replaced in tests.
 	Now func() time.Time
 }
 
@@ -35,15 +35,15 @@ func (p Presenter) now() time.Time {
 }
 
 // ---------------------------------------------------------------------------
-// Статусы
+// Statuses
 // ---------------------------------------------------------------------------
 
-// statusOf переводит состояние цели из бэкенда в состояние представления.
+// statusOf turns a target's backend state into a view state.
 //
-// В бэкенде есть только up/down/unknown. Жёлтый warn не выдумывается из
-// порогов - он появляется там, где под него есть факт, посчитанный в
-// internal/store: контейнер, который рестартовал за последний час, или
-// проба, у которой за сутки была хоть одна неудача.
+// The backend has only up/down/unknown. The yellow warn isn't made up from
+// thresholds: it appears where there is a fact behind it, computed in
+// internal/store: a container that restarted within the last hour, or a
+// probe that had at least one failure in 24 hours.
 func statusOf(s entity.Status) Status {
 	switch s {
 	case entity.StatusUp:
@@ -53,8 +53,8 @@ func statusOf(s entity.Status) Status {
 	case entity.StatusUnknown:
 		return StatusIdle
 	default:
-		// Неизвестное значение из бэкенда - тоже «состояние неизвестно»,
-		// а не молчаливое «всё хорошо».
+		// An unknown value from the backend is also "state unknown",
+		// not a silent "all good".
 
 		return StatusIdle
 	}
@@ -69,11 +69,11 @@ func labelOf(s entity.Status) string {
 }
 
 // ---------------------------------------------------------------------------
-// Сводка
+// Overview
 // ---------------------------------------------------------------------------
 
-// Overview собирает главную страницу из целей, счётчиков алертов и
-// совпадений в логах за сутки.
+// Overview builds the main page from targets, alert counters and
+// log matches over 24 hours.
 func (p Presenter) Overview(targets []entity.TargetSummary, counts entity.AlertCounts, logs entity.LogMatchReport) Overview {
 	probes, containers := split(targets)
 
@@ -203,9 +203,9 @@ func containerCount(running, total int) string {
 	return fmt.Sprintf("%d/%d", running, total)
 }
 
-// aggregateUptime считает доступность по всем uptime-таргетам сразу: суммой
-// проверок, а не средним из средних - иначе редко опрашиваемая цель весила бы
-// столько же, сколько частая.
+// aggregateUptime computes availability across all uptime targets at once: as a
+// sum of checks, not an average of averages, otherwise a rarely checked target
+// would weigh as much as a frequently checked one.
 func aggregateUptime(probes []entity.TargetSummary) (float64, bool) {
 	var checks, ok int
 	for _, t := range probes {
@@ -241,9 +241,9 @@ func downtimeStatus(uptime float64, ok bool) Status {
 	return StatusDown
 }
 
-// downtimeOrDash пересчитывает долю неудачных проверок в минуты простоя.
-// Это простая оценка по истории проверок, поэтому и подпись на плитке
-// говорит «оценка».
+// downtimeOrDash converts the share of failed checks into minutes of downtime.
+// It is a simple estimate from the check history, so the tile caption also
+// says "estimate".
 func downtimeOrDash(uptime float64, ok bool) string {
 	if !ok {
 		return "—"
@@ -291,7 +291,7 @@ func (p Presenter) containerNote(containers []entity.TargetSummary) string {
 }
 
 // ---------------------------------------------------------------------------
-// Uptime-таргеты
+// Uptime targets
 // ---------------------------------------------------------------------------
 
 func (p Presenter) targets(probes []entity.TargetSummary) []Target {
@@ -303,8 +303,8 @@ func (p Presenter) targets(probes []entity.TargetSummary) []Target {
 			stats = &entity.ProbeStats{}
 		}
 
-		// Флаки - хоть одна неудача за сутки при формально живой цели - тоже
-		// повод подсветить строку, хотя бэкенд числит её up.
+		// Flaky (at least one failure in 24 hours for a formally live target) is also
+		// a reason to highlight the row, even though the backend counts it as up.
 		if status == StatusUp && stats.Checks24h > 0 && stats.Successes24h < stats.Checks24h {
 			status = StatusWarn
 		}
@@ -339,8 +339,8 @@ func warnAwareLabel(status Status, base string) string {
 	return base
 }
 
-// strip переводит исходы проверок в столбики полоски. Длина полоски равна
-// числу реальных проверок: недостающие столбики не дорисовываются.
+// strip turns check outcomes into the bars of the strip. The strip's length equals
+// the number of real checks: missing bars aren't filled in.
 func strip(outcomes []entity.ProbeOutcome) []Status {
 	out := make([]Status, 0, len(outcomes))
 	for _, o := range outcomes {
@@ -355,7 +355,7 @@ func strip(outcomes []entity.ProbeOutcome) []Status {
 }
 
 // ---------------------------------------------------------------------------
-// Контейнеры
+// Containers
 // ---------------------------------------------------------------------------
 
 func (p Presenter) containers(containers []entity.TargetSummary, logs map[string]int) []Container {
@@ -431,13 +431,13 @@ func (p Presenter) containerCardNote(s entity.ContainerStats) string {
 }
 
 // ---------------------------------------------------------------------------
-// Алерты
+// Alerts
 // ---------------------------------------------------------------------------
 
-// AlertTypes и AlertSeverities - значения фильтров.
+// AlertTypes and AlertSeverities are the filter values.
 //
-// Тип - это вид цели: своей колонки под тип алерта в бэкенде нет. Важности -
-// все пять уровней entity.Severity бэкенда, от срочного к тихому.
+// The type is the kind of target: the backend has no column for an alert type.
+// The severities are all five levels of the backend's entity.Severity, from urgent to quiet.
 var (
 	AlertTypes      = []string{"all", "uptime", "container", "host"}
 	AlertSeverities = []string{
@@ -447,7 +447,7 @@ var (
 	}
 )
 
-// alertKind переводит значение фильтра в вид цели.
+// alertKind turns a filter value into a kind of target.
 func alertKind(filter string) entity.Kind {
 	switch filter {
 	case "uptime":
@@ -461,7 +461,7 @@ func alertKind(filter string) entity.Kind {
 	}
 }
 
-// alertStatus переводит важность алерта в статус и настроение маскота.
+// alertStatus turns an alert's severity into a status and a mascot mood.
 func alertStatus(severity string) (Status, string) {
 	switch severity {
 	case entity.SeverityCritical, entity.SeverityError:
@@ -490,8 +490,8 @@ func alertType(kind entity.Kind) string {
 	}
 }
 
-// telegramState показывает единственный признак жизненного цикла, который
-// есть у алерта: дошло ли сообщение до Telegram.
+// telegramState shows the only lifecycle indicator an alert has:
+// whether the message reached Telegram.
 func telegramState(sent bool) string {
 	if sent {
 		return "sent to Telegram"
@@ -501,10 +501,10 @@ func telegramState(sent bool) string {
 }
 
 // ---------------------------------------------------------------------------
-// Детали контейнера
+// Container details
 // ---------------------------------------------------------------------------
 
-// Detail собирает страницу одного контейнера.
+// Detail builds the page of a single container.
 func (p Presenter) Detail(d entity.ContainerDetail) Detail {
 	name := d.Target.Label
 	base := "/partials/container/" + url.PathEscape(name)
@@ -528,7 +528,7 @@ func (p Presenter) Detail(d entity.ContainerDetail) Detail {
 	}
 }
 
-// hero описывает словами то же, что показывают плитки рядом.
+// hero describes in words the same thing the tiles next to it show.
 func (p Presenter) hero(t entity.TargetSummary, s entity.ContainerStats) Hero {
 	switch {
 	case t.Status == entity.StatusDown:
@@ -588,8 +588,8 @@ func (p Presenter) detailMeta(t entity.TargetSummary, s entity.ContainerStats, l
 	}
 }
 
-// events - история событий Docker. Смерть красная, возврат зелёный, рестарт
-// жёлтый, остальное нейтрально.
+// events is the history of Docker events. A death is red, a return is green, a
+// restart is yellow, everything else is neutral.
 func (p Presenter) events(events []entity.ContainerEvent) []EventRow {
 	out := make([]EventRow, 0, len(events))
 	for _, e := range events {
@@ -614,10 +614,10 @@ func (p Presenter) events(events []entity.ContainerEvent) []EventRow {
 }
 
 // ---------------------------------------------------------------------------
-// Графики
+// Charts
 // ---------------------------------------------------------------------------
 
-// LatencyChartCard - карточка графика на сводке.
+// LatencyChartCard is the chart card on the overview.
 func LatencyChartCard() Chart {
 	return Chart{
 		Title:   "Latency and uptime · 24h",
@@ -629,10 +629,10 @@ func LatencyChartCard() Chart {
 	}
 }
 
-// ActivityChartCard - карточка графика на странице контейнера.
+// ActivityChartCard is the chart card on the container page.
 //
-// Контейнер никто не пингует, latency у него нет и быть не может - поэтому
-// здесь события Docker и совпадения в логах.
+// Nothing pings a container, it has no latency and can't have any, so this
+// shows Docker events and log matches.
 func ActivityChartCard(name string) Chart {
 	return Chart{
 		Title:   "Container activity · 24h",
@@ -645,7 +645,7 @@ func ActivityChartCard(name string) Chart {
 	}
 }
 
-// LatencyChart переводит почасовой ряд в данные для Chart.js.
+// LatencyChart turns the hourly series into data for Chart.js.
 func (p Presenter) LatencyChart(points []entity.LatencyPoint) ChartData {
 	data := ChartData{
 		Labels: make([]string, 0, len(points)),
@@ -669,7 +669,7 @@ func (p Presenter) LatencyChart(points []entity.LatencyPoint) ChartData {
 	return data
 }
 
-// ActivityChart переводит почасовую активность контейнера в данные графика.
+// ActivityChart turns a container's hourly activity into chart data.
 func (p Presenter) ActivityChart(points []entity.ActivityPoint) ChartData {
 	data := ChartData{
 		Labels: make([]string, 0, len(points)),
@@ -695,11 +695,11 @@ func (p Presenter) ActivityChart(points []entity.ActivityPoint) ChartData {
 }
 
 // ---------------------------------------------------------------------------
-// Обвязка страницы
+// Page scaffolding
 // ---------------------------------------------------------------------------
 
-// Nav строит верхнее меню сайдбара. Контейнеры сюда не попадают: их список
-// живёт отдельным сворачиваемым блоком (см. containerNav).
+// Nav builds the top menu of the sidebar. Containers don't go here: their list
+// lives in a separate collapsible block (see containerNav).
 func (p Presenter) Nav(targets []entity.TargetSummary, counts entity.AlertCounts) []NavItem {
 	return []NavItem{
 		{Key: "overview", Label: "Overview", Href: "/", Badge: badge(len(targets))},
@@ -707,10 +707,10 @@ func (p Presenter) Nav(targets []entity.TargetSummary, counts entity.AlertCounts
 	}
 }
 
-// containerNav - список наблюдаемых контейнеров для сайдбара.
+// containerNav is the list of watched containers for the sidebar.
 //
-// Требующие внимания идут первыми: в сайдбаре важен не алфавит, а то, на что
-// смотреть в первую очередь. Внутри каждой группы - алфавитный порядок
+// Those that need attention come first: in the sidebar what matters is not the
+// alphabet but what to look at first. Within each group, the alphabetical order of
 // TargetStatus.
 func (p Presenter) containerNav(targets []entity.TargetSummary) []NavItem {
 	attention := make([]NavItem, 0, len(targets))
@@ -745,7 +745,7 @@ func badge(n int) string {
 	return fmt.Sprint(n)
 }
 
-// Sidebar собирает постоянную часть сайдбара.
+// Sidebar builds the persistent part of the sidebar.
 func (p Presenter) Sidebar(targets []entity.TargetSummary, counts entity.AlertCounts, logs int, host HostPanel) Sidebar {
 	mood, _ := p.mood(targets, counts, logs)
 
@@ -864,7 +864,7 @@ func legend(current Mood) []LegendMood {
 }
 
 // ---------------------------------------------------------------------------
-// Форматирование
+// Formatting
 // ---------------------------------------------------------------------------
 
 var months = [...]string{
@@ -872,7 +872,7 @@ var months = [...]string{
 	"jul", "aug", "sep", "oct", "nov", "dec",
 }
 
-// timestamp - «05 sep 14:22». Год не пишется: дальше ретеншна история не живёт.
+// timestamp formats "05 sep 14:22". No year: history doesn't live longer than retention.
 func (p Presenter) timestamp(t time.Time) string {
 	local := t.Local()
 
@@ -880,12 +880,12 @@ func (p Presenter) timestamp(t time.Time) string {
 		local.Day(), months[local.Month()-1], local.Hour(), local.Minute())
 }
 
-// ago - «3 minutes ago». Для свежих событий это читается быстрее абсолютного времени.
+// ago formats "3 minutes ago". For recent events this reads faster than absolute time.
 //
-// Нулевое время - не «очень давно», а «неизвестно»: бэкенд может вернуть
-// time.Time{} для события, которое watcher записал не проставив метку.
-// Считать отсюда разницу и печатать «106751 days ago» было бы куда менее
-// честно, чем прочерк.
+// A zero time isn't "very long ago" but "unknown": the backend may return
+// time.Time{} for an event the watcher recorded without setting a timestamp.
+// Computing a difference from it and printing "106751 days ago" would be far
+// less honest than a dash.
 func (p Presenter) ago(t time.Time) string {
 	if t.IsZero() {
 		return "—"
@@ -956,7 +956,7 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
-// plural склоняет существительное при числительном.
+// plural picks the singular or plural form of a noun for a number.
 func plural(n int, one, many string) string {
 	word := many
 	if n == 1 || n == -1 {
@@ -967,10 +967,10 @@ func plural(n int, one, many string) string {
 }
 
 // ---------------------------------------------------------------------------
-// Обвязка страниц
+// Page scaffolding
 // ---------------------------------------------------------------------------
 
-// OverviewSub - подпись под заголовком сводки: сколько чего отслеживается.
+// OverviewSub is the caption under the overview heading: how many of what is watched.
 func (p Presenter) OverviewSub(targets []entity.TargetSummary) string {
 	if len(targets) == 0 {
 		return "backend hasn't recorded a single target yet"
@@ -982,13 +982,13 @@ func (p Presenter) OverviewSub(targets []entity.TargetSummary) string {
 		" and " + plural(len(containers), "container", "containers") + " on one host"
 }
 
-// AlertsSub - подпись под заголовком истории алертов.
+// AlertsSub is the caption under the alert history heading.
 func (p Presenter) AlertsSub() string {
 	return "retention " + plural(int(p.Retention.Hours()/24), "day", "days") + " · newest first"
 }
 
-// ContainerNotFound - пустое состояние страницы контейнера, которого нет
-// среди целей: имя могли опечатать, а могли забыть навесить метку.
+// ContainerNotFound is the empty state of the page for a container that isn't
+// among the targets: the name may be mistyped, or the label may be missing.
 func (p Presenter) ContainerNotFound(name string) Empty {
 	return Empty{
 		Mood:  Moods["watching"],
@@ -998,10 +998,10 @@ func (p Presenter) ContainerNotFound(name string) Empty {
 	}
 }
 
-// WaitingLayout - вся страница ожидания целиком.
+// WaitingLayout is the whole waiting page.
 //
-// Считать счётчики не из чего, поэтому меню идёт без них - но уйти со
-// страницы пользователь должен мочь.
+// There is nothing to compute counters from, so the menu goes without them, but
+// the user must still be able to leave the page.
 func (p Presenter) WaitingLayout() Layout {
 	return Layout{
 		Title:       "Waiting for data",

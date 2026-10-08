@@ -7,11 +7,11 @@ import (
 	"argus-frontend/internal/domain/entity"
 )
 
-// fakeUseCase подменяет сценарии в тестах представления.
+// fakeUseCase stands in for the use cases in view tests.
 //
-// Он ничего не считает: задача - отдать ровно те структуры, которые вернул
-// бы usecase, и проверить, что transport раскладывает их по разметке без
-// выдумок. Ошибки задаются полем err, чтобы проверить экран ожидания.
+// It computes nothing: its job is to return exactly the structures usecase
+// would return, and to check that transport lays them out in markup without
+// making anything up. Errors are set through the err field, to test the waiting screen.
 type fakeUseCase struct {
 	targets   []entity.TargetSummary
 	alerts    []entity.Alert
@@ -82,13 +82,13 @@ func (f fakeUseCase) CreateProbe(context.Context, string, string) error { return
 func (f fakeUseCase) DeleteTarget(context.Context, string) error { return f.writeErr }
 
 // ---------------------------------------------------------------------------
-// Данные для тестов
+// Test data
 // ---------------------------------------------------------------------------
 
 var testNow = time.Date(2026, time.September, 5, 14, 30, 0, 0, time.UTC)
 
-// filledUseCase - база, в которой есть и живые цели, и упавшие, и цель без
-// единой проверки: последняя ловит попытки нарисовать 100% там, где данных нет.
+// filledUseCase is a database with live targets, down targets, and a target with
+// no checks at all: the last one catches attempts to draw 100% where there is no data.
 func filledUseCase() fakeUseCase {
 	return fakeUseCase{
 		targets: []entity.TargetSummary{
@@ -108,7 +108,7 @@ func filledUseCase() fakeUseCase {
 			{
 				ID: "probe:tcp://mail.local:587", Kind: entity.KindProbe,
 				Label: "SMTP relay", Status: entity.StatusDown, UpdatedAt: testNow,
-				// Проверок ещё не было: цель уже в конфиге, коллектор до неё не дошёл.
+				// No checks yet: the target is in the config, the collector hasn't reached it.
 				Probe: &entity.ProbeStats{},
 			},
 			{
@@ -134,13 +134,13 @@ func filledUseCase() fakeUseCase {
 			{
 				ID: 1, TargetID: "probe:tcp://mail.local:587", TargetLabel: "SMTP relay",
 				TargetKind: entity.KindProbe, Severity: "critical",
-				Message: "TCP-порт не отвечает", SentToTelegram: true,
+				Message: "TCP port is not responding", SentToTelegram: true,
 				CreatedAt: testNow.Add(-5 * time.Minute),
 			},
 			{
 				ID: 2, TargetID: "container:app-worker", TargetLabel: "app-worker",
 				TargetKind: entity.KindContainer, Severity: "warning",
-				Message: "7 совпадений в логах", SentToTelegram: false,
+				Message: "7 log matches", SentToTelegram: false,
 				CreatedAt: testNow.Add(-20 * time.Hour),
 			},
 		},
@@ -149,7 +149,7 @@ func filledUseCase() fakeUseCase {
 				TargetID: "container:app-worker", TargetLabel: "app-worker",
 				Kind: entity.KindContainer, Cause: "die",
 				StartedAt: testNow.Add(-40 * time.Minute), LastKnownAt: testNow.Add(-40 * time.Minute),
-				// Возврат контейнера бэкенд не записывает - длительность неизвестна.
+				// The backend doesn't record the container's return: the duration is unknown.
 				State: entity.IncidentUnclosed,
 			},
 			{

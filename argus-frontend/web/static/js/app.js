@@ -1,32 +1,32 @@
 /*
- * Argus dashboard — клиентский слой.
+ * Argus dashboard: the client-side layer.
  *
- * Здесь пять вещей и ничего больше:
- *   1. пауза htmx-поллинга и счётчик возраста данных;
- *   2. график, который живёт отдельно от поллинга партиалов;
- *   3. переключатель темы;
- *   4. мелкие локальные интеракции (модалка, копирование сниппета);
- *   5. живость ленты совпадений: новые строки, раскрытые строки, счётчик.
+ * There are five things here and nothing more:
+ *   1. pausing htmx polling and the data age counter;
+ *   2. the chart, which lives apart from partial polling;
+ *   3. the theme switcher;
+ *   4. small local interactions (the modal, copying a snippet);
+ *   5. liveliness of the match feed: new rows, expanded rows, the counter.
  *
- * Данные на страницу приносит htmx. Состояния приложения в JS нет: всё, что
- * видно на экране, пришло с сервера.
+ * Data is brought to the page by htmx. There is no application state in JS:
+ * everything visible on screen came from the server.
  */
 (function () {
   'use strict';
 
   var REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // Через сколько секунд без успешного обмена считать данные устаревшими.
+  // After how many seconds without a successful exchange the data counts as stale.
   var STALE_AFTER_S = 30;
 
-  // Как часто перезапрашивать точки графика. Реже партиалов: почасовой ряд
-  // не меняется чаще раза в минуту.
+  // How often to re-request the chart points. Less often than partials: the hourly
+  // series doesn't change more than once a minute.
   var CHART_REFRESH_MS = 60000;
 
   /* ---------------------------------------------------------------- htmx */
 
-  // Пауза. Пользовательские запросы (клик по фильтру, переход) проходят всегда —
-  // тормозим только опрос по таймеру, у которого нет triggeringEvent.
+  // Pause. User requests (a filter click, navigation) always go through:
+  // we only hold back timer polling, which has no triggeringEvent.
   var paused = false;
 
   document.addEventListener('htmx:beforeRequest', function (evt) {
@@ -35,13 +35,13 @@
     if (paused && isPoll) evt.preventDefault();
   });
 
-  // Подсветка изменений. Партиал свапается каждые 10 секунд независимо от
-  // того, изменилось ли что-нибудь, поэтому анимировать сам факт свапа нельзя:
-  // экран, который мигает без повода, приучает на себя не смотреть. Сравниваем
-  // текст ответа с тем, что уже на экране, и подсвечиваем только разницу.
+  // Change highlighting. A partial is swapped every 10 seconds whether or not
+  // anything changed, so the swap itself must not be animated: a screen that
+  // blinks for no reason teaches people not to look at it. We compare the
+  // response text with what is already on screen and highlight only the difference.
   //
-  // Сравнивается именно textContent, а не разметка: Alpine дописывает в DOM
-  // свои атрибуты, и по HTML карточка настроения «менялась» бы каждый тик.
+  // It is textContent that is compared, not the markup: Alpine adds its own
+  // attributes to the DOM, and by HTML the mood card would "change" on every tick.
   var freshID = null;
   var memory = null;
 
@@ -108,7 +108,7 @@
     }
   });
 
-  // Каждый успешный обмен обнуляет счётчик «обновлено N с назад».
+  // Every successful exchange resets the "updated N s ago" counter.
   document.addEventListener('htmx:afterSwap', function (evt) {
     if (window.Alpine && Alpine.store('argus')) Alpine.store('argus').seen();
 
@@ -118,16 +118,16 @@
       var fresh = document.getElementById(freshID);
       freshID = null;
       if (fresh) {
-        // Перезапуск анимации: без снятия класса и чтения layout она не
-        // сыграет второй раз на том же элементе.
+        // Restart the animation: without removing the class and reading layout it
+        // won't play a second time on the same element.
         fresh.classList.remove('is-fresh');
         void fresh.offsetWidth;
         fresh.classList.add('is-fresh');
       }
     }
 
-    // Если свап принёс новый canvas, его надо завести: карточка с графиком
-    // сама не поллится, и без этого график остался бы пустым.
+    // If the swap brought a new canvas, it has to be started: the chart card
+    // doesn't poll by itself, and without this the chart would stay empty.
     var target = evt.target;
     if (!target || !target.querySelectorAll) return;
     target.querySelectorAll('canvas[data-chart]').forEach(function (canvas) {
@@ -137,8 +137,8 @@
 
   /* --------------------------------------------------------------- Alpine */
 
-  // На старых страницах истории поллинга нет намеренно, и молчание сервера
-  // там - не потеря связи.
+  // Older history pages deliberately don't poll, and server silence
+  // there isn't a lost connection.
   function polling() {
     return document.querySelector('[hx-trigger*="every"]') !== null;
   }
@@ -164,9 +164,9 @@
         return 'updated ' + this.seconds + 's ago';
       },
 
-      // Дашборд мониторинга не имеет права молча показывать устаревшие данные
-      // как свежие. Самый частый интервал поллинга — 10 с; если обмена не было
-      // втрое дольше, сервер недоступен, и это должно быть видно.
+      // A monitoring dashboard has no right to silently show stale data
+      // as fresh. The most frequent polling interval is 10 s; if there was no
+      // exchange for three times that, the server is unavailable, and that must be visible.
       get stale() {
         return !this.paused && this.seconds > STALE_AFTER_S && polling();
       },
@@ -180,16 +180,16 @@
         paused = this.paused;
         if (!this.paused) {
           this.seconds = 0;
-          // Снятие с паузы должно сразу подтянуть данные, а не ждать следующий тик.
-          // Партиалы слушают `refreshNow from:body` — одного события хватает на все.
+          // Unpausing must pull in data right away, not wait for the next tick.
+          // Partials listen to `refreshNow from:body`: one event is enough for all of them.
           if (window.htmx) htmx.trigger(document.body, 'refreshNow');
           scan();
         }
       }
     });
 
-    // Кнопка темы. Саму тему применяет инлайновый скрипт из <head> — он же
-    // единственный источник правды, чтобы страница не мигала при загрузке.
+    // Theme button. The theme itself is applied by the inline script in <head>, which
+    // is also the single source of truth, so the page doesn't flash on load.
     Alpine.data('themeToggle', function () {
       return {
         mode: (window.argusTheme && window.argusTheme.mode) || 'auto',
@@ -211,11 +211,11 @@
     });
   });
 
-  /* --------------------------------------------------------------- График */
+  /* --------------------------------------------------------------- Chart */
 
-  // Chart.js держим отдельно от htmx: партиалы поллятся каждые 10 секунд, и
-  // пересоздание canvas на каждый свап убивало бы анимацию и подсказки.
-  // Поэтому карточка с графиком не поллится, а данные догружаются сюда.
+  // Chart.js is kept apart from htmx: partials poll every 10 seconds, and
+  // recreating the canvas on every swap would kill the animation and tooltips.
+  // So the chart card doesn't poll, and the data is loaded here.
 
   var charts = new WeakMap();
 
@@ -223,9 +223,9 @@
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   }
 
-  // palette отдаёт цвета рядов по именам токенов, которые приходят с сервера.
-  // Сервер называет цвет ролью (accent, up, warn, down), а не значением —
-  // иначе график не перекрашивался бы вместе с темой.
+  // palette returns series colours by the token names that come from the server.
+  // The server names a colour by role (accent, up, warn, down), not by value,
+  // otherwise the chart wouldn't change colour together with the theme.
   function palette() {
     return {
       accent: token('--accent'),
@@ -233,11 +233,11 @@
       warn: token('--warn'),
       down: token('--down'),
       idle: token('--idle'),
-      // Оформление самого графика читается с тёмной панели карточки, а не со
-      // страницы: график всегда живёт на .card--dark, и --grid-line/--ink дали
-      // бы белую сетку и почти чёрные подписи на чёрном фоне. Токена --muted в
-      // палитре нет вовсе - раньше подписи осей оставались на умолчании
-      // Chart.js (серый #666) и в светлой теме не читались.
+      // The chart's own styling is read from the card's dark panel, not from
+      // the page: the chart always lives on .card--dark, and --grid-line/--ink would
+      // give a white grid and almost black labels on a black background. There is no
+      // --muted token in the palette at all: axis labels used to stay at the Chart.js
+      // default (grey #666) and were unreadable in the light theme.
       muted: token('--emphasis-fg-soft'),
       grid: token('--emphasis-border'),
       border: token('--emphasis-border'),
@@ -247,7 +247,7 @@
     };
   }
 
-  // hexToRgba нужен для заливки под линией: сам токен непрозрачный.
+  // hexToRgba is needed for the fill under the line: the token itself is opaque.
   function hexToRgba(hex, alpha) {
     var m = /^#([0-9a-f]{6})$/i.exec(hex);
     if (!m) return hex;
@@ -259,9 +259,9 @@
     return payload.series.map(function (s) {
       var color = colors[s.color] || colors.accent;
 
-      // События за час - счётчик, а не измерение: сглаженная линия рисовала бы
-      // плавный подъём там, где событий не было вовсе. Такой ряд идёт
-      // столбиками - видно ровно те часы, в которые что-то произошло.
+      // Events per hour are a counter, not a measurement: a smoothed line would draw
+      // a gentle rise where there were no events at all. Such a series is drawn
+      // as bars, showing exactly the hours in which something happened.
       if (s.style === 'bar') {
         return {
           type: 'bar',
@@ -286,7 +286,7 @@
         tension: 0.35,
         pointRadius: 0,
         yAxisID: s.axis === 'right' ? 'y1' : 'y',
-        // Час без проверок приходит как null: разрыв честнее нарисованного нуля.
+        // An hour without checks arrives as null: a gap is more honest than a drawn zero.
         spanGaps: false
       };
     });
@@ -310,7 +310,7 @@
       scale.suggestedMax = 100;
       scale.beginAtZero = false;
     }
-    // Ряд без единиц измерения - счётчик: деление «0.5 события» врёт.
+    // A series without units is a counter: a "0.5 events" tick is a lie.
     if (!unit) {
       scale.ticks.precision = 0;
     }
@@ -369,8 +369,8 @@
   function draw(canvas, payload) {
     var note = emptyNoteFor(canvas);
 
-    // За период нет ни одной точки — пустые оси врут об охвате данных,
-    // поэтому вместо графика показываем прямую фразу.
+    // Not a single point for the period: empty axes lie about data coverage,
+    // so we show a plain sentence instead of the chart.
     if (payload.empty) {
       destroy(canvas);
       canvas.hidden = true;
@@ -415,9 +415,9 @@
       })
       .then(function (payload) { draw(canvas, payload); })
       .catch(function (err) {
-        // График — не критичная часть страницы: пишем в консоль и не ломаем
-        // всё остальное, если сервер не отдал данные.
-        console.warn('[argus] график не загрузился:', err.message);
+        // The chart isn't a critical part of the page: log to the console and don't
+        // break everything else if the server didn't return data.
+        console.warn('[argus] chart failed to load:', err.message);
       });
   }
 
@@ -434,8 +434,8 @@
     }, CHART_REFRESH_MS);
   });
 
-  // Смена темы — системная или ручная — перекрашивает оси, сетку и подсказки.
-  // Проще пересобрать график, чем обходить все цвета в его конфиге.
+  // A theme change, system or manual, recolours the axes, grid and tooltips.
+  // It's simpler to rebuild the chart than to walk all the colours in its config.
   document.addEventListener('argus:theme', function () {
     document.querySelectorAll('canvas[data-chart]').forEach(function (canvas) {
       if (!charts.has(canvas)) return;
@@ -444,34 +444,34 @@
     });
   });
 
-  /* ------------------------------------------- Раскрытые <details> --- */
+  /* ------------------------------------------- Expanded <details> --- */
 
-  // <details> состояние не помнит: ссылки в сайдбаре обычные, при переходе
-  // страница рендерится заново. Группа контейнеров и легенда настроений
-  // помнят выбор там же, где тема, - ключ в data-remember.
+  // <details> doesn't remember its state: the sidebar links are plain, and on
+  // navigation the page is rendered anew. The container group and the mood legend
+  // remember the choice in the same place as the theme, keyed by data-remember.
   //
-  // Вызывается сразу, а не по DOMContentLoaded: app.js подключён с defer, то
-  // есть выполняется после разбора разметки - элементы уже на месте, и
-  // состояние восстанавливается до отрисовки.
+  // Called immediately, not on DOMContentLoaded: app.js is loaded with defer,
+  // so it runs after the markup is parsed: the elements are already in place, and
+  // the state is restored before paint.
   document.querySelectorAll('details[data-remember]').forEach(function (el) {
     var key = el.dataset.remember;
 
     try {
       var saved = localStorage.getItem(key);
       if (saved) el.open = saved === 'open';
-    } catch (e) { /* приватный режим - остаётся состояние из разметки */ }
+    } catch (e) { /* private mode: the state from the markup stays */ }
 
     el.addEventListener('toggle', function () {
       try {
         localStorage.setItem(key, el.open ? 'open' : 'closed');
-      } catch (e) { /* см. выше */ }
+      } catch (e) { /* see above */ }
     });
   });
 
-  /* ------------------------------------------------ Выпадающие меню --- */
+  /* ------------------------------------------------ Dropdown menus --- */
 
-  // Меню на <details> закрывается само только повторным кликом по кнопке.
-  // Клик мимо и Escape - привычное поведение выпадающего списка.
+  // A <details> menu closes by itself only on a second click on the button.
+  // Clicking outside and Escape are the usual dropdown behaviour.
   function closeDropdowns(except) {
     document.querySelectorAll('details[data-dropdown][open]').forEach(function (d) {
       if (d !== except) d.open = false;

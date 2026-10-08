@@ -30,7 +30,7 @@ func (h *Handler) CreateTarget(w http.ResponseWriter, r *http.Request) {
 	case errors.As(err, &invalid):
 		form.Error = invalid.Reason
 	default:
-		h.log.Error("создание таргета", "err", err)
+		h.log.Error("creating target", "err", err)
 		form.Error = "The collector is unavailable, try again in a moment"
 	}
 

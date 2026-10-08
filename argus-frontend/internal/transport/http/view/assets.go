@@ -6,12 +6,12 @@ import (
 	"io/fs"
 )
 
-// assetVersion - короткий отпечаток статики: имена и размеры файлов.
+// assetVersion is a short fingerprint of the static files: file names and sizes.
 //
-// Ассеты меняются только вместе с бинарником, поэтому их можно кэшировать
-// надолго - но после деплоя браузер обязан увидеть новый адрес. Отпечаток
-// считается один раз при разборе шаблонов и живёт в Templates, а не в
-// переменной пакета: глобальное изменяемое состояние тут не нужно.
+// Assets change only together with the binary, so they can be cached for a
+// long time, but after a deploy the browser must see a new address. The
+// fingerprint is computed once when templates are parsed and lives in
+// Templates, not in a package variable: no global mutable state is needed here.
 func assetVersion(src fs.FS) string {
 	h := fnv.New32a()
 
@@ -25,7 +25,7 @@ func assetVersion(src fs.FS) string {
 			return err
 		}
 
-		// Запись в хеш не может завершиться ошибкой.
+		// Writing to a hash can't fail.
 		_, _ = fmt.Fprintf(h, "%s:%d;", path, info.Size())
 
 		return nil

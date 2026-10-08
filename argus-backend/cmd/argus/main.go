@@ -17,7 +17,7 @@ import (
 // @title           Argus API
 // @version         1.0
 // @BasePath        /v1/api
-// @description     API для мониторинга контейнеров и HTTP-таргетов.
+// @description     API for monitoring containers and HTTP targets.
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

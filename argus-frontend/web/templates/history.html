@@ -9,9 +9,9 @@
   </nav>
 
   {{if eq .Tab "logs"}}
-  {{/* Выбор контейнера меняет и график, а он живёт вне поллинга, поэтому
-       пункты - обычные ссылки с полным переходом. <details> даёт состояние,
-       клавиатуру и aria; app.js только закрывает меню по клику снаружи. */}}
+  {{/* Choosing a container also changes the chart, which lives outside polling, so
+       the items are plain links with a full navigation. <details> provides state,
+       keyboard and aria; app.js only closes the menu on an outside click. */}}
   <details class="dropdown" data-dropdown>
     <summary class="dropdown__button">
       <span class="dropdown__label">Container</span>

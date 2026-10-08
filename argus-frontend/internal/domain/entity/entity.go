@@ -1,13 +1,13 @@
-// Package entity - доменные типы дашборда Argus.
+// Package entity holds the domain types of the Argus dashboard.
 //
-// Слой ничего не знает ни про HTTP API бэкенда, ни про HTML: usecase считает
-// из них агрегаты, transport раскладывает по представлению. Зависимостей
-// наружу у пакета нет - только стандартная библиотека.
+// The layer knows nothing about the backend's HTTP API or about HTML: usecase
+// computes aggregates from these types, transport lays them out for the view.
+// The package has no outward dependencies, only the standard library.
 package entity
 
 import "time"
 
-// Kind - вид цели. Значения совпадают с target_type бэкенда (ТЗ §7).
+// Kind is the kind of target. The values match the backend's target_type (spec §7).
 type Kind string
 
 const (
@@ -16,10 +16,10 @@ const (
 	KindHost      Kind = "host"
 )
 
-// Status - состояние цели, как его держит бэкенд.
+// Status is the state of a target as the backend keeps it.
 //
-// StatusUnknown - это не то же самое, что down: так помечаются цели, о которых
-// коллектор сейчас ничего не знает, например при недоступном Docker (ТЗ §9).
+// StatusUnknown is not the same as down: it marks targets the collector
+// currently knows nothing about, for example when Docker is unavailable (spec §9).
 type Status string
 
 const (
@@ -28,7 +28,7 @@ const (
 	StatusUnknown Status = "unknown"
 )
 
-// Target - цель как её отдаёт бэкенд, без агрегатов.
+// Target is a target as the backend returns it, without aggregates.
 type Target struct {
 	ID        string
 	Kind      Kind
@@ -38,16 +38,16 @@ type Target struct {
 	UpdatedAt time.Time
 }
 
-// TargetSummary - цель вместе с посчитанными
-// агрегатами. Probe заполнен только для uptime-таргетов, Container - только
-// для контейнеров; у второго вида поле всегда nil.
+// TargetSummary is a target together with its computed
+// aggregates. Probe is filled only for uptime targets, Container only for
+// containers; for the other kind the field is always nil.
 type TargetSummary struct {
 	ID     string
 	Kind   Kind
 	Label  string
 	Status Status
-	// Source - адрес, который опрашивает пробер (для Kind == KindProbe).
-	// У контейнеров это то же самое, что Label (имя контейнера).
+	// Source is the address the prober checks (for Kind == KindProbe).
+	// For containers it is the same as Label (the container name).
 	Source    string
 	UpdatedAt time.Time
 
@@ -55,24 +55,24 @@ type TargetSummary struct {
 	Container *ContainerStats
 }
 
-// ProbeStats - агрегаты по результатам проверок uptime-таргета.
+// ProbeStats holds aggregates over the check results of an uptime target.
 type ProbeStats struct {
-	// LastLatencyMS и LastCheckedAt - последняя проверка. nil, если проверок
-	// ещё не было: цель уже в конфиге, но коллектор до неё не дошёл.
+	// LastLatencyMS and LastCheckedAt describe the latest check. nil if there
+	// were no checks yet: the target is in the config, but the collector hasn't reached it.
 	LastLatencyMS *float64
 	LastCheckedAt *time.Time
 
-	// Checks24h и Successes24h считаются за последние сутки. Ноль проверок -
-	// это ноль, а не 100% аптайма.
+	// Checks24h and Successes24h are counted over the last 24 hours. Zero checks
+	// is zero, not 100% uptime.
 	Checks24h    int
 	Successes24h int
 
-	// Recent - последние проверки от старых к новым, для полоски на карточке.
+	// Recent holds the latest checks from oldest to newest, for the bar on the card.
 	Recent []ProbeOutcome
 }
 
-// Uptime24h возвращает долю успешных проверок за сутки и признак того, что
-// считать было из чего.
+// Uptime24h returns the share of successful checks over 24 hours and whether
+// there was anything to compute it from.
 func (p ProbeStats) Uptime24h() (float64, bool) {
 	if p.Checks24h == 0 {
 		return 0, false
@@ -81,27 +81,27 @@ func (p ProbeStats) Uptime24h() (float64, bool) {
 	return 100 * float64(p.Successes24h) / float64(p.Checks24h), true
 }
 
-// ProbeOutcome - исход одной проверки.
+// ProbeOutcome is the outcome of a single check.
 type ProbeOutcome struct {
 	Success   bool
 	LatencyMS *float64
 	CheckedAt time.Time
 }
 
-// ContainerStats - агрегаты по событиям контейнера.
+// ContainerStats holds aggregates over a container's events.
 type ContainerStats struct {
 	Crashes        int
 	CrashesClearAt *time.Time
 
-	// Последнее событие: чем именно занят контейнер прямо сейчас.
+	// The latest event: what exactly the container is doing right now.
 	LastEvent       string
 	LastEventDetail string
 	LastEventAt     *time.Time
 }
 
-// Severity - пять уровней entity.Severity бэкенда как строки, от самого
-// срочного к самому тихому. AlertSeverities в web/present.go задаёт порядок
-// фильтра теми же значениями.
+// Severity is the backend's five entity.Severity levels as strings, from the
+// most urgent to the quietest. AlertSeverities in web/present.go sets the
+// filter order with the same values.
 const (
 	SeverityCritical = "critical"
 	SeverityError    = "error"
@@ -110,55 +110,55 @@ const (
 	SeverityDebug    = "debug"
 )
 
-// Alert - алерт бэкенда, дополненный данными о цели.
+// Alert is a backend alert, enriched with data about its target.
 //
-// У алерта нет ни типа, ни жизненного цикла: тип выводится из вида цели, а
-// вместо статуса «активен/закрыт» есть только факт отправки в Telegram
-// (Notified). Ничего из этого не додумывается - показывается ровно то, что
-// записано.
+// An alert has neither a type nor a lifecycle: the type is derived from the
+// kind of target, and instead of an "active/closed" status there is only the
+// fact of delivery to Telegram (Notified). None of this is made up: exactly
+// what was recorded is shown.
 type Alert struct {
 	ID             int64
 	TargetID       string
 	TargetLabel    string
 	TargetKind     Kind
-	Severity       string // одно из значений Severity*
+	Severity       string // one of the Severity* values
 	Message        string
 	SentToTelegram bool
 	CreatedAt      time.Time
 }
 
-// AlertCounts - счётчики алертов за последние сутки.
-// Critical объединяет SeverityCritical и SeverityError - оба «срочно, смотри
-// сейчас» с точки зрения дашборда; Warning - только SeverityWarning.
+// AlertCounts holds alert counters for the last 24 hours.
+// Critical combines SeverityCritical and SeverityError, both "urgent, look
+// now" from the dashboard's point of view; Warning is only SeverityWarning.
 type AlertCounts struct {
 	Day      int
 	Critical int
 	Warning  int
 }
 
-// ContainerDetail - страница одного контейнера.
+// ContainerDetail is the page of a single container.
 type ContainerDetail struct {
 	Target     TargetSummary
 	Events     []ContainerEvent
 	Activity   []ActivityPoint
 	LogMatches []LogMatch
 
-	// Incidents - интервалы простоя за сутки, выведенные из тех же событий,
-	// что лежат в Events. Незакрытые (без записи о возврате) тоже здесь:
-	// пробел в данных надо видеть, а не прятать.
+	// Incidents are outage intervals over 24 hours, derived from the same events
+	// that are in Events. Unclosed ones (without a recovery record) are here too:
+	// a gap in the data must be visible, not hidden.
 	Incidents []Incident
 }
 
-// ContainerEvent - событие Docker по контейнеру.
+// ContainerEvent is a Docker event for a container.
 type ContainerEvent struct {
 	Event      string
 	Detail     string
 	OccurredAt time.Time
 }
 
-// ActivityPoint - почасовая активность контейнера.
+// ActivityPoint is a container's hourly activity.
 //
-// Для контейнера нет ни latency, ни аптайма в процентах: его никто не пингует.
+// A container has neither latency nor uptime percentage: nothing pings it.
 type ActivityPoint struct {
 	Hour       time.Time
 	Events     int
@@ -188,9 +188,9 @@ type LogMatchReport struct {
 	Future  int
 }
 
-// LatencyPoint - почасовая точка графика на сводке.
-// Оба поля nil, если за этот час проверок не было: разрыв в графике честнее
-// нарисованного нуля.
+// LatencyPoint is an hourly point of the overview chart.
+// Both fields are nil if there were no checks in that hour: a gap in the chart
+// is more honest than a drawn zero.
 type LatencyPoint struct {
 	Hour      time.Time
 	P95MS     *float64

@@ -17,10 +17,10 @@ import (
 	"argus-frontend/internal/usecase"
 )
 
-// Фикстуры повторяют JSON бэкенда, а не DTO клиента: клиент их не
-// экспортирует, и тест сознательно идёт через настоящий HTTP - иначе
-// перевод микросекунд в миллисекунды и числовой severity остались бы
-// непроверенными.
+// The fixtures mirror the backend's JSON, not the client's DTOs: the client
+// doesn't export them, and the test deliberately goes through real HTTP;
+// otherwise the microseconds-to-milliseconds conversion and the numeric
+// severity would stay untested.
 type targetJSON struct {
 	ID         string    `json:"id"`
 	Source     string    `json:"source"`
@@ -54,12 +54,12 @@ type alertJSON struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// fakeBackend изображает argus-backend ровно настолько, насколько нужно
-// UseCase: /v1/api/targets, /v1/api/targets/{id}, /v1/api/probes,
-// /v1/api/events, /v1/api/alerts, все с фильтром ?target_id=.
+// fakeBackend imitates argus-backend exactly as much as UseCase
+// needs: /v1/api/targets, /v1/api/targets/{id}, /v1/api/probes,
+// /v1/api/events, /v1/api/alerts, all with the ?target_id= filter.
 type fakeBackend struct {
 	targets []targetJSON
-	probes  map[string][]probeJSON // по target_id
+	probes  map[string][]probeJSON // by target_id
 	events  map[string][]eventJSON
 	alerts  []alertJSON
 
@@ -218,16 +218,16 @@ func newUseCase(t *testing.T, fb fakeBackend) *usecase.UseCase {
 	return usecase.NewUseCase(backend.NewClient(srv.URL, 2*time.Second))
 }
 
-// now - точка отсчёта для тестовых данных. UseCase считает окна (24ч, 1ч)
-// от настоящего time.Now() (клиент в него не встроен, инъекция часов ради
-// тестов такому маленькому агрегату - лишняя абстракция), поэтому и
-// фикстуры должны быть относительно реального «сейчас», а не произвольной
-// даты.
+// now is the reference point for test data. UseCase computes windows (24h, 1h)
+// from the real time.Now() (the client doesn't have it built in, and injecting
+// a clock for tests into such a small aggregate is an unnecessary abstraction),
+// so the fixtures must also be relative to the real "now", not an arbitrary
+// date.
 var now = time.Now()
 
-// TestTargetStatusAggregatesFromRawProbes проверяет, что аптайм за 24ч и
-// последняя латентность считаются из сырых проб, а не выдумываются - это
-// ядро переезда с Postgres-агрегатов на HTTP + Go.
+// TestTargetStatusAggregatesFromRawProbes checks that 24h uptime and the
+// latest latency are computed from raw probes, not made up: this is the
+// core of the move from Postgres aggregates to HTTP + Go.
 func TestTargetStatusAggregatesFromRawProbes(t *testing.T) {
 	fb := fakeBackend{
 		targets: []targetJSON{
@@ -235,7 +235,7 @@ func TestTargetStatusAggregatesFromRawProbes(t *testing.T) {
 		},
 		probes: map[string][]probeJSON{
 			"t1": {
-				{ID: 1, TargetID: "t1", Success: true, Latency: 42_000, CreatedAt: now.Add(-30 * time.Hour)}, // старше 24ч, не считается
+				{ID: 1, TargetID: "t1", Success: true, Latency: 42_000, CreatedAt: now.Add(-30 * time.Hour)}, // older than 24h, not counted
 				{ID: 2, TargetID: "t1", Success: true, Latency: 10_000, CreatedAt: now.Add(-2 * time.Hour)},
 				{ID: 3, TargetID: "t1", Success: false, Latency: 20_000, CreatedAt: now.Add(-1 * time.Hour)},
 			},
@@ -252,10 +252,10 @@ func TestTargetStatusAggregatesFromRawProbes(t *testing.T) {
 
 	p := targets[0].Probe
 	if p.Checks24h != 2 || p.Successes24h != 1 {
-		t.Errorf("Checks24h=%d Successes24h=%d, хотели 2 и 1 (проба старше 24ч не должна учитываться)", p.Checks24h, p.Successes24h)
+		t.Errorf("Checks24h=%d Successes24h=%d, wanted 2 and 1 (a probe older than 24h must not be counted)", p.Checks24h, p.Successes24h)
 	}
 	if p.LastLatencyMS == nil || *p.LastLatencyMS != 20 {
-		t.Errorf("LastLatencyMS = %v, хотели 20мс (20000 микросекунд последней пробы)", p.LastLatencyMS)
+		t.Errorf("LastLatencyMS = %v, wanted 20ms (20000 microseconds of the latest probe)", p.LastLatencyMS)
 	}
 }
 
@@ -323,19 +323,19 @@ func TestHistoryAlertsFiltersByKindAndLabels(t *testing.T) {
 	}
 }
 
-// TestContainerDetailNotFound - 404 бэкенда должен стать entity.ErrNotFound,
-// не общим entity.ErrNotReady, иначе несуществующий контейнер выглядит как
-// «база не готова».
+// TestContainerDetailNotFound: a backend 404 must become entity.ErrNotFound,
+// not the generic entity.ErrNotReady, otherwise a nonexistent container looks like
+// "database not ready".
 func TestContainerDetailNotFound(t *testing.T) {
 	_, err := newUseCase(t, fakeBackend{}).ContainerDetail(context.Background(), "missing")
 	if err != entity.ErrNotFound {
-		t.Errorf("err = %v, хотели entity.ErrNotFound", err)
+		t.Errorf("err = %v, wanted entity.ErrNotFound", err)
 	}
 }
 
-// TestLatencySeriesGapsHoursWithNoChecks - час без проверок должен остаться
-// разрывом (nil), а не притвориться нулём или пропасть из ряда: 24 точки
-// всегда, с честными дырками (ТЗ "На экране только то, что есть в базе").
+// TestLatencySeriesGapsHoursWithNoChecks: an hour without checks must stay
+// a gap (nil), not pretend to be zero or vanish from the series: always 24 points,
+// with honest holes (spec: "The screen shows only what is in the database").
 func TestLatencySeriesGapsHoursWithNoChecks(t *testing.T) {
 	hourAgo := now.Add(-time.Hour).Truncate(time.Hour)
 	fb := fakeBackend{
@@ -355,7 +355,7 @@ func TestLatencySeriesGapsHoursWithNoChecks(t *testing.T) {
 		t.Fatalf("LatencySeries: %v", err)
 	}
 	if len(series) != 24 {
-		t.Fatalf("len(series) = %d, хотели 24 часовые точки", len(series))
+		t.Fatalf("len(series) = %d, wanted 24 hourly points", len(series))
 	}
 
 	var filled, gaps int
@@ -370,12 +370,12 @@ func TestLatencySeriesGapsHoursWithNoChecks(t *testing.T) {
 		filled++
 
 		if pt.Hour.Equal(hourAgo) && *pt.UptimePct != 50 {
-			t.Errorf("час %v: uptime = %v, хотели 50%% (1 из 2 проб успешна)", pt.Hour, *pt.UptimePct)
+			t.Errorf("hour %v: uptime = %v, wanted 50%% (1 of 2 probes succeeded)", pt.Hour, *pt.UptimePct)
 		}
 	}
 
 	if filled != 1 || gaps != 23 {
-		t.Errorf("filled=%d gaps=%d, хотели 1 заполненный час и 23 разрыва", filled, gaps)
+		t.Errorf("filled=%d gaps=%d, wanted 1 filled hour and 23 gaps", filled, gaps)
 	}
 }
 
@@ -404,21 +404,21 @@ func TestLatencySeriesKeepsSubMillisecondP95(t *testing.T) {
 		}
 
 		if pt.P95MS == nil || *pt.P95MS != 0.43 {
-			t.Errorf("p95 = %v, хотели 0.43 мс (430 микросекунд)", pt.P95MS)
+			t.Errorf("p95 = %v, wanted 0.43 ms (430 microseconds)", pt.P95MS)
 		}
 
 		return
 	}
 
-	t.Fatalf("час %v не найден в ряду", hourAgo)
+	t.Fatalf("hour %v not found in the series", hourAgo)
 }
 
-// TestPingUnreachableIsNotReady - недоступный бэкенд не должен всплывать как
-// сырая сетевая ошибка: дашборд должен уметь показать экран ожидания.
+// TestPingUnreachableIsNotReady: an unavailable backend must not surface as a
+// raw network error: the dashboard must be able to show the waiting screen.
 func TestPingUnreachableIsNotReady(t *testing.T) {
 	deadClient := backend.NewClient("http://127.0.0.1:1", 200*time.Millisecond)
 	err := usecase.NewUseCase(deadClient).Ping(context.Background())
 	if !errors.Is(err, entity.ErrNotReady) {
-		t.Fatalf("err = %v, хотели entity.ErrNotReady", err)
+		t.Fatalf("err = %v, wanted entity.ErrNotReady", err)
 	}
 }

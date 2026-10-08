@@ -9,11 +9,11 @@ import (
 	"argus-frontend/internal/domain/entity"
 )
 
-// timelineWindow - период полосы простоев. Тот же, что у инцидентов в
-// usecase: полоса и список под ней должны говорить об одном и том же.
+// timelineWindow is the period of the outage bar. The same as for incidents in
+// usecase: the bar and the list under it must talk about the same thing.
 const timelineWindow = 24 * time.Hour
 
-// Incidents раскладывает интервалы простоя по блоку сводки.
+// Incidents lays out outage intervals for the overview block.
 func (p Presenter) Incidents(incidents []entity.Incident, stats entity.IncidentStats) IncidentPanel {
 	panel := IncidentPanel{
 		Note:  incidentNote(stats),
@@ -28,7 +28,7 @@ func (p Presenter) Incidents(incidents []entity.Incident, stats entity.IncidentS
 	return panel
 }
 
-// incidentRows раскладывает интервалы списком, новыми сверху.
+// incidentRows lays out intervals as a list, newest first.
 func (p Presenter) incidentRows(incidents []entity.Incident) []IncidentRow {
 	sorted := append([]entity.Incident(nil), incidents...)
 	sort.SliceStable(sorted, func(i, j int) bool {
@@ -61,10 +61,10 @@ func (p Presenter) incidentRow(i entity.Incident) IncidentRow {
 	return row
 }
 
-// incidentStatus - цвет строки.
+// incidentStatus is the colour of a row.
 //
-// Незакрытый интервал идёт idle, а не down: это не «лежит сейчас», это «мы не
-// знаем». Тот же смысл, что у StatusIdle на остальных экранах (ТЗ §9).
+// An unclosed interval is idle, not down: it doesn't mean "down right now", it
+// means "we don't know". Same meaning as StatusIdle on the other screens (spec §9).
 func incidentStatus(state entity.IncidentState) Status {
 	switch state {
 	case entity.IncidentClosed:
@@ -91,11 +91,11 @@ func incidentLabel(state entity.IncidentState) string {
 	}
 }
 
-// durationOrDash - длительность простоя или прочерк.
+// durationOrDash returns the outage duration or a dash.
 //
-// Прочерк стоит там, где конца интервала в данных нет: argus-backend не
-// записывает возвращение контейнера, и «0 min» или растущий счётчик были бы
-// выдумкой на месте пробела.
+// The dash appears where the end of the interval isn't in the data: argus-backend
+// doesn't record the container's return, and "0 min" or a growing counter would
+// be made up in place of a gap.
 func durationOrDash(i entity.Incident) string {
 	d, ok := i.Duration()
 	if !ok {
@@ -105,8 +105,8 @@ func durationOrDash(i entity.Incident) string {
 	return humanDuration(d)
 }
 
-// humanDuration - длительность в том же виде, что и остальные интервалы на
-// дашборде, но с секундами: простой в 40 секунд не должен читаться как «0 min».
+// humanDuration formats a duration the same way as the other intervals on the
+// dashboard, but with seconds: a 40-second outage must not read as "0 min".
 func humanDuration(d time.Duration) string {
 	switch {
 	case d < time.Minute:
@@ -131,10 +131,10 @@ func incidentNote(stats entity.IncidentStats) string {
 	return note
 }
 
-// incidentStats - плитки над списком.
+// incidentStats builds the tiles above the list.
 //
-// Суммарный простой считается только по измеримым интервалам, поэтому рядом
-// стоит плитка незакрытых: без неё сумма читалась бы как полная картина.
+// Total downtime is counted only over measurable intervals, so a tile with
+// unclosed ones sits next to it: without it the total would read as the full picture.
 func (p Presenter) incidentStats(stats entity.IncidentStats) []MetaTile {
 	if stats.Count == 0 {
 		return nil
@@ -142,9 +142,9 @@ func (p Presenter) incidentStats(stats entity.IncidentStats) []MetaTile {
 
 	measured := stats.Count - stats.Unclosed
 
-	// Плиток три, под существующую сетку meta-grid. Незакрытые интервалы
-	// своей плитки не получают - про них говорит подпись блока, иначе
-	// четвёртая плитка ломала бы ряд ради одного числа.
+	// There are three tiles, to fit the existing meta-grid. Unclosed intervals
+	// don't get a tile of their own: the block caption covers them, otherwise
+	// a fourth tile would break the row for the sake of one number.
 	return []MetaTile{
 		{Label: "OUTAGES", Value: fmt.Sprintf("%d", stats.Count), Status: nonZero(stats.Count)},
 		{Label: "MEASURED DOWNTIME", Value: measuredOrDash(stats.Total, measured),
@@ -154,8 +154,8 @@ func (p Presenter) incidentStats(stats entity.IncidentStats) []MetaTile {
 	}
 }
 
-// measuredOrDash прячет сумму, когда измерить не удалось ни один интервал:
-// «0 s» в этом случае означал бы «простоя не было», а это другое утверждение.
+// measuredOrDash hides the total when not a single interval could be measured:
+// "0 s" would then mean "there was no downtime", which is a different claim.
 func measuredOrDash(d time.Duration, measured int) string {
 	if measured <= 0 {
 		return "—"
@@ -165,14 +165,14 @@ func measuredOrDash(d time.Duration, measured int) string {
 }
 
 // ---------------------------------------------------------------------------
-// Полоса на странице контейнера
+// Bar on the container page
 // ---------------------------------------------------------------------------
 
-// Timeline раскладывает интервалы простоя контейнера в полосу за сутки.
+// Timeline lays out a container's outage intervals on a 24-hour bar.
 //
-// Фон полосы - idle, а не up: события Docker говорят только о падениях, и
-// промежуток без них не доказывает, что контейнер работал. Hint это называет
-// прямо, чтобы полоса не читалась как график аптайма.
+// The bar's background is idle, not up: Docker events only report failures,
+// and a stretch without them doesn't prove the container was running. Hint says
+// so explicitly, so the bar doesn't read as an uptime chart.
 func (p Presenter) Timeline(partialBase string, incidents []entity.Incident) Timeline {
 	tl := Timeline{
 		URL:   partialBase + "/timeline",
@@ -199,11 +199,11 @@ func (p Presenter) Timeline(partialBase string, incidents []entity.Incident) Tim
 	return tl
 }
 
-// timelineLegend перечисляет только то, что на полосе действительно есть.
+// timelineLegend lists only what is actually on the bar.
 //
-// Легенда, обещающая отрезок, которого нет, читается как статус: «return not
-// recorded» под полосой без единой такой засечки выглядит утверждением про
-// контейнер, хотя это всего лишь условное обозначение.
+// A legend promising a segment that isn't there reads as a status: "return not
+// recorded" under a bar without a single such mark looks like a claim about the
+// container, although it is just a legend entry.
 func timelineLegend(bands []TimelineBand) []LegendItem {
 	var measured, unclosed bool
 
@@ -230,11 +230,11 @@ func timelineLegend(bands []TimelineBand) []LegendItem {
 	return legend
 }
 
-// band переводит интервал в отрезок полосы.
+// band turns an interval into a segment of the bar.
 //
-// Незакрытый интервал не имеет конца, и рисовать его до правого края значило
-// бы утверждать, что контейнер лежит до сих пор. Поэтому он рисуется меткой
-// минимальной ширины в точке падения - «здесь упал, дальше неизвестно».
+// An unclosed interval has no end, and drawing it up to the right edge would
+// claim the container is still down. So it is drawn as a mark of minimal
+// width at the point of failure: "went down here, unknown after that".
 func (p Presenter) band(i entity.Incident, from time.Time) (TimelineBand, bool) {
 	const (
 		window       = float64(timelineWindow)

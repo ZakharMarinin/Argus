@@ -64,7 +64,10 @@ A new migration is the next numbered file, `migrations/0000N_name.sql`, with `--
 ## API
 
 - `GET /healthz` - healthcheck.
-- `/v1/api` - targets (CRUD + `PATCH /{id}/status`), probes, events, log-matches (read and delete), alerts (CRUD), host.
+- `/v1/api/targets` - create (`POST`), list (`GET`), get (`GET /{id}`), delete (`DELETE /{id}`), change status (`PATCH /{id}/status`). There is no full update.
+- `/v1/api/alerts` - create (`POST`), list (`GET`), get (`GET /{id}`), delete (`DELETE /{id}`). Alerts can't be updated.
+- `/v1/api/probes`, `/v1/api/events`, `/v1/api/log-matches` - list (`GET`), get (`GET /{id}`), delete (`DELETE /{id}`).
+- `GET /v1/api/host` - latest host CPU, memory and disk sample.
 - Swagger UI: `http://127.0.0.1:8099/swagger/index.html`.
 
 ## Development

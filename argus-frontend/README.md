@@ -1,7 +1,7 @@
 # argus-frontend
 
 The Argus web dashboard: Go templates, raw CSS, htmx and Alpine.js. No SPA
-framework and no build pipeline, as set in the spec, §4.4.
+framework and no build pipeline.
 
 The dashboard talks only to the `argus-backend` HTTP API: it reads everything
 it shows, and the only thing it writes is creating and deleting uptime
@@ -17,10 +17,11 @@ echo 'ARGUS_BACKEND_URL=http://localhost:8099' > .env
 go run ./cmd/web     # default config is config.yaml; use -config path for another one
 ```
 
-`.env` in the current directory is read on startup, but it doesn't override
-environment variables that are already set. Any value from the environment
-takes precedence over the value in `config.yaml`. Only `ARGUS_BACKEND_URL` is
-required.
+`.env` in the current working directory is read on startup, but it doesn't
+override environment variables that are already set. The only setting that can
+come from the environment is the backend address: `ARGUS_BACKEND_URL` overrides
+`backend.base_url` from `config.yaml`. Everything else is read from the config
+file. The backend address is the only required value, set either way.
 
 The dashboard starts even if argus-backend is unavailable at the moment: it
 shows a waiting screen and comes back to life on its own once the backend
@@ -197,14 +198,14 @@ work.
   gap, not as zero latency.
 - **A target with no checks at all** shows a dash, not "100% uptime".
 - **argus-backend isn't answering or isn't ready yet**: a waiting screen and
-  503, not 500 (spec §9, §11). The page comes back on its own, without a
-  manual reload.
+  503, not 500. The collector and the dashboard can start in any order, so
+  this is a normal state. The page comes back on its own, without a manual
+  reload.
 - **Connection lost mid-session**: partials answer 503 with no body, htmx keeps
   the last live data, and after half a minute the chip in the header says
   "lost connection to server".
 
-What isn't in the collector's data (spec §7, schema), and therefore isn't on
-the screen:
+What isn't in the collector's data, and therefore isn't on the screen:
 
 | Missing | What's shown instead |
 |---|---|
@@ -215,30 +216,16 @@ the screen:
 | Container latency | nothing pings it: its page shows a chart of log matches and Docker events instead |
 | A "degraded" threshold | targets have only `up`/`down`/`unknown`; the yellow status is set from facts: for a target, at least one failed check in 24 hours; for a container, a failure (non-zero exit or OOM) in the last 15 minutes. Log matches affect only the card order and the mascot |
 
-## Differences from the mockup
+## Design notes
 
-**The fonts were replaced.** The mockup uses Bricolage Grotesque and Plus
-Jakarta Sans. Neither has Cyrillic (Jakarta only has `cyrillic-ext`, which is
-historical Cyrillic, not the modern Russian alphabet), and in the mockup itself
-all Russian text silently fell back to the system font. The closest fonts in
-character with full Cyrillic were chosen instead.
-
-Only two families remain: a separate display font for headings only added
-noise at this screen density:
-
-| Role | In the mockup | Now |
-|---|---|---|
-| Headings, large numbers | Bricolage Grotesque | Inter |
-| Body text | Plus Jakarta Sans | Inter |
-| Data, logs, code | DM Mono | JetBrains Mono |
+**Fonts.** Two families: Inter for headings, large numbers and body text,
+JetBrains Mono for data, logs and code. A separate display font for headings
+only added noise at this screen density. Both are vendored with their Latin and
+Cyrillic subsets (`web/static/fonts/`).
 
 **"New target" is a form for an uptime target.** The name and URL go to the
 collector's `POST /v1/api/targets`; below it, the same modal explains how to
 connect a container with a label. Deleting is the × in the target's row.
-
-**A dark theme was added.** The mockup is light only. In the dark theme the
-"alarming" card no longer stood out by being black alone, so it got a status
-stripe on the left, which works in both themes.
 
 ## Working offline
 

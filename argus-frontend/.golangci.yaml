@@ -60,9 +60,9 @@ linters:
       - linters:
           - gochecknoglobals
         text: Err\w+
-      # Неизменяемые таблицы подстановки: настроения маскота, названия месяцев,
-      # значения фильтров, список страниц, регулярка. Go не умеет const-мапы и
-      # const-слайсы, а прятать их в функции ради линтера читаемости не добавит.
+      # Immutable lookup tables: mascot moods, month names, filter values,
+      # the page list, a regexp. Go has no const maps or const slices, and
+      # hiding them in functions to please the linter wouldn't make it more readable.
       - linters:
           - gochecknoglobals
         text: (Moods|MoodOrder|AlertTypes|AlertSeverities|months|pages|envRef|funcs) is a global variable

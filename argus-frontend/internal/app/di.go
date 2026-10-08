@@ -13,8 +13,8 @@ import (
 	"argus-frontend/internal/usecase"
 )
 
-// Container - ленивая сборка зависимостей. Каждый узел создаётся один раз
-// и только когда его попросили.
+// Container is lazy dependency wiring. Each node is created once, and only
+// when it is asked for.
 type Container struct {
 	cfg *config.Config
 	log *slog.Logger
@@ -26,12 +26,12 @@ type Container struct {
 	router   http.Handler
 }
 
-// NewContainer готовит контейнер, ничего пока не создавая.
+// NewContainer prepares the container without creating anything yet.
 func NewContainer(cfg *config.Config, log *slog.Logger) *Container {
 	return &Container{cfg: cfg, log: log}
 }
 
-// Router собирает всё дерево зависимостей и отдаёт обработчик.
+// Router builds the whole dependency tree and returns the handler.
 func (c *Container) Router() (http.Handler, error) {
 	if c.router == nil {
 		h, err := c.Handler()
@@ -41,7 +41,7 @@ func (c *Container) Router() (http.Handler, error) {
 
 		r, err := router.Router(h)
 		if err != nil {
-			return nil, fmt.Errorf("сборка роутов: %w", err)
+			return nil, fmt.Errorf("building routes: %w", err)
 		}
 
 		c.router = r
@@ -66,7 +66,7 @@ func (c *Container) Handler() (*handlers.Handler, error) {
 	return c.handlers, nil
 }
 
-// Templates выбирает источник шаблонов: вшитый или дисковый.
+// Templates picks the template source: embedded or on disk.
 func (c *Container) Templates() (*view.Templates, error) {
 	if c.tpl == nil {
 		var (
@@ -77,14 +77,14 @@ func (c *Container) Templates() (*view.Templates, error) {
 		if c.cfg.Web.TemplateDir == "" {
 			tpl, err = view.ParseTemplates()
 		} else {
-			c.log.Info("режим разработки: шаблоны и статика читаются с диска",
+			c.log.Info("development mode: templates and static files are read from disk",
 				"dir", c.cfg.Web.TemplateDir)
 
 			tpl, err = view.Live(c.cfg.Web.TemplateDir)
 		}
 
 		if err != nil {
-			return nil, fmt.Errorf("шаблоны: %w", err)
+			return nil, fmt.Errorf("templates: %w", err)
 		}
 
 		c.tpl = tpl
@@ -101,9 +101,9 @@ func (c *Container) UseCase() *usecase.UseCase {
 	return c.uc
 }
 
-// Client создаёт клиент бэкенда. Связь при создании не проверяется: если
-// бэкенд сейчас недоступен, дашборд всё равно поднимется и покажет экран
-// ожидания вместо отказа старта.
+// Client creates the backend client. Connectivity isn't checked on creation:
+// if the backend is unavailable right now, the dashboard still starts and
+// shows a waiting screen instead of failing to start.
 func (c *Container) Client() *backend.Client {
 	if c.client == nil {
 		c.client = backend.NewClient(c.cfg.Backend.BaseURL, c.cfg.Timeout())

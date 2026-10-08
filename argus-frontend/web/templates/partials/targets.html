@@ -30,8 +30,8 @@
       </div>
     </div>
 
-    {{/* Полоска — реальные проверки за сутки, не больше 24 последних.
-         Пока проверок нет, её просто не видно. */}}
+    {{/* The strip is the real checks over 24 hours, no more than the latest 24.
+         While there are no checks, it simply isn't visible. */}}
     {{if .Strip}}
     <div class="strip" role="img" aria-label="Recent checks, successful: {{.Uptime}}">
       {{range .Strip}}<span class="strip__bar {{.Class}}"></span>{{end}}

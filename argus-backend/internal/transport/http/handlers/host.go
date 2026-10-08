@@ -7,8 +7,8 @@ import (
 )
 
 // GetHost godoc
-// @Summary      Ресурсы хоста
-// @Description  Последний замер CPU, RAM и корневого раздела. Метрика без значения - null; до первого замера sampled_at - null
+// @Summary      Host resources
+// @Description  Latest sample of CPU, RAM and the root partition. A metric without a value is null; before the first sample sampled_at is null
 // @Tags         host
 // @Produce      json
 // @Success      200  {object} entity.HostSnapshot

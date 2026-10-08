@@ -27,7 +27,7 @@ func (h *Handler) detailFor(ctx context.Context, name string) (view.Detail, erro
 	return h.present.Detail(detail), nil
 }
 
-// PartialSummary - плашка общего состояния вместе с маскотом.
+// PartialSummary serves the overall state banner together with the mascot.
 func (h *Handler) PartialSummary(w http.ResponseWriter, r *http.Request) {
 	h.overviewPartial(w, r, "summary", func(o view.Overview) any { return o.Health })
 }
@@ -36,18 +36,18 @@ func (h *Handler) PartialLogs(w http.ResponseWriter, r *http.Request) {
 	h.overviewPartial(w, r, "logs-card", func(o view.Overview) any { return o.Logs })
 }
 
-// PartialTargets - список uptime-таргетов.
+// PartialTargets serves the list of uptime targets.
 func (h *Handler) PartialTargets(w http.ResponseWriter, r *http.Request) {
 	h.overviewPartial(w, r, "targets", func(o view.Overview) any { return o.Targets })
 }
 
-// PartialContainers - список контейнеров.
+// PartialContainers serves the list of containers.
 func (h *Handler) PartialContainers(w http.ResponseWriter, r *http.Request) {
 	h.overviewPartial(w, r, "containers", func(o view.Overview) any { return o.Containers })
 }
 
-// overviewPartial - один и тот же путь для всех партиалов сводки: снимок,
-// ошибка без тела, рендер выбранного куска.
+// overviewPartial is the same path for all overview partials: snapshot,
+// error without a body, render of the selected piece.
 func (h *Handler) overviewPartial(w http.ResponseWriter, r *http.Request, name string, pick func(view.Overview) any) {
 	ctx, cancel := context.WithTimeout(r.Context(), queryTimeout)
 	defer cancel()
@@ -107,17 +107,17 @@ func (h *Handler) PartialHistory(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// PartialTimeline - полоса простоев за сутки на странице контейнера.
+// PartialTimeline serves the 24-hour outage bar on the container page.
 func (h *Handler) PartialTimeline(w http.ResponseWriter, r *http.Request) {
 	h.detailPartial(w, r, "timeline", func(d view.Detail) any { return d.Timeline })
 }
 
-// PartialMeta - плитки метаданных на странице контейнера.
+// PartialMeta serves the metadata tiles on the container page.
 func (h *Handler) PartialMeta(w http.ResponseWriter, r *http.Request) {
 	h.detailPartial(w, r, "detail-meta", func(d view.Detail) any { return d.Meta })
 }
 
-// PartialEvents - лента событий Docker на странице контейнера.
+// PartialEvents serves the Docker event feed on the container page.
 func (h *Handler) PartialEvents(w http.ResponseWriter, r *http.Request) {
 	h.detailPartial(w, r, "events", func(d view.Detail) any { return d.Events })
 }

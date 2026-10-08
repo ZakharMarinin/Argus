@@ -2,15 +2,15 @@ package entity
 
 import "errors"
 
-// ErrNotReady означает, что данных ещё нет: бэкенд не поднялся, не отвечает
-// или схема в нём ещё не создана.
+// ErrNotReady means there is no data yet: the backend hasn't started, isn't
+// answering, or its schema hasn't been created yet.
 //
-// Порядок старта collector и web не гарантирован (ТЗ §11), поэтому такая
-// ситуация штатная. Дашборд обязан показать понятный экран ожидания, а не 500.
-var ErrNotReady = errors.New("argus-backend ещё не готов или недоступен")
+// The start order of collector and web isn't guaranteed (spec §11), so this
+// is a normal situation. The dashboard must show a clear waiting screen, not a 500.
+var ErrNotReady = errors.New("argus-backend is not ready yet or unavailable")
 
-// ErrNotFound - цели с таким именем бэкенд не отслеживает.
-var ErrNotFound = errors.New("цель не отслеживается")
+// ErrNotFound means the backend doesn't track a target with this name.
+var ErrNotFound = errors.New("target is not tracked")
 
 type ValidationError struct {
 	Reason string
@@ -20,4 +20,4 @@ func (e *ValidationError) Error() string {
 	return e.Reason
 }
 
-var ErrBackendTooOld = errors.New("argus-backend устарел: нет order=desc и X-Total-Count, обновите его")
+var ErrBackendTooOld = errors.New("argus-backend is outdated: no order=desc and X-Total-Count, please upgrade it")

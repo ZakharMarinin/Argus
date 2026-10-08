@@ -1,16 +1,16 @@
-// Package web хранит шаблоны и статику дашборда, вшитые в бинарник.
+// Package web holds the dashboard's templates and static files, embedded in the binary.
 //
-// Кода здесь нет намеренно: шаблоны рендерит internal/transport/http/view,
-// а каталог остаётся рядом с ними, чтобы web.template_dir в конфиге указывал
-// на одно и то же место и в dev, и в проде.
+// There is no code here on purpose: templates are rendered by
+// internal/transport/http/view, and the directory stays next to them so that
+// web.template_dir in the config points to the same place in dev and in production.
 package web
 
 import "embed"
 
-// Assets - шаблоны и статика, вшитые в бинарник.
+// Assets holds the templates and static files embedded in the binary.
 //
-// ТЗ §4.4: htmx, Alpine и Chart.js вендорятся файлами и раздаются отсюда,
-// а не тянутся с CDN, чтобы дашборд открывался на хосте без интернета.
+// Spec §4.4: htmx, Alpine and Chart.js are vendored as files and served from
+// here rather than pulled from a CDN, so the dashboard opens on a host with no internet.
 //
 //go:embed templates static
 var Assets embed.FS

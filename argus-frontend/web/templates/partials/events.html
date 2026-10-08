@@ -1,6 +1,6 @@
 {{define "events" -}}
-{{/* Событие хранит не только рестарты, но и die/oom/kill/destroy, поэтому
-     заголовок про события, а не про одни перезапуски. */}}
+{{/* Events include not only restarts but also die/oom/kill/destroy, so
+     the heading is about events, not just restarts. */}}
 <section class="card" id="events"
          hx-get="{{.URL}}" hx-trigger="every 15s, refreshNow from:body" hx-swap="outerHTML"
          aria-label="Container events">

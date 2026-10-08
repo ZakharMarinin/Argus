@@ -40,7 +40,7 @@ Two small Go services, one Postgres, and a dashboard that refuses to make number
 
 Argus watches one machine and answers three questions: *is my service responding*, *are my containers staying up*, and *what happened while I wasn't looking*.
 
-It is built for the case where Prometheus + Grafana + Alertmanager is three services too many — a single VPS running a handful of containers. You label the containers you care about, point Argus at a health-check URL, and get a dashboard plus Telegram alerts. No agents, no exporters, no query language.
+It is built for the case where Prometheus + Grafana + Alertmanager is three services too many: a single VPS running a handful of containers. You label the containers you care about, point Argus at a health-check URL, and get a dashboard plus Telegram alerts. No agents, no exporters, no query language.
 
 Everything it knows comes from four sources: HTTP health checks it performs itself, the Docker event stream, the logs of the containers it watches, and the host's own counters for CPU, memory and disk. Nothing is inferred or smoothed.
 
@@ -73,7 +73,7 @@ Everything it knows comes from four sources: HTTP health checks it performs itse
 **The collector** owns everything that writes.
 
 - The *prober* sends a `GET` to every probe target every 60 seconds and records latency and outcome; a response under HTTP 300 counts as up. One failed check doesn't page anyone: the target goes down after `failure_threshold` failures in a row (2 by default), and the first successful check brings it back up.
-- The *watcher* subscribes to the Docker event stream and records container lifecycle events as they happen — no polling, no missed restarts. It also notices a crash loop: 5 exits within 5 minutes by default.
+- The *watcher* subscribes to the Docker event stream and records container lifecycle events as they happen: no polling, no missed restarts. It also notices a crash loop: 5 exits within 5 minutes by default.
 - The *matcher* follows the output of every watched container and records the lines that match your rules.
 - The *alerter* groups new alerts by target, sends one Telegram message per target, and marks them as sent.
 - The *cleaner* deletes probes, events and log matches older than 14 days, once a day. Alerts are kept.
@@ -88,7 +88,7 @@ The two processes share nothing but the API. Start them in any order.
 
 ### Outage history with real durations
 
-Argus doesn't store "incidents" — it reconstructs them on read from probe results and Docker events. A run of failed checks becomes one outage; a `die` closed by a `start` becomes one outage with a measured duration. One stop of a container is one outage, even though Docker reports it as a `kill` and a `die` a second apart.
+Argus doesn't store "incidents": it reconstructs them on read from probe results and Docker events. A run of failed checks becomes one outage; a `die` closed by a `start` becomes one outage with a measured duration. One stop of a container is one outage, even though Docker reports it as a `kill` and a `die` a second apart.
 
 They live under *History → Outages*, with totals on top: how many outages there were, how much downtime was actually measured, and the longest one.
 
@@ -114,7 +114,7 @@ A container that crashed and came back on its own shows as *degraded* for 15 min
 
 ### Log lines that match your rules
 
-The matcher follows stdout and stderr of every watched container and checks each new line against a list of regular expressions from the collector's config. A line that matches is stored verbatim with the rule's severity and raises an alert — `Log line matched rule "panic|FATAL"` — which goes to Telegram like any other.
+The matcher follows stdout and stderr of every watched container and checks each new line against a list of regular expressions from the collector's config. A line that matches is stored verbatim with the rule's severity and raises an alert (`Log line matched rule "panic|FATAL"`), which goes to Telegram like any other.
 
 ```yaml
 matcher:
@@ -135,7 +135,7 @@ The overview counts matched lines over the last 24 hours, and the count feeds th
 
 ### Charts that keep their gaps
 
-Latency p95 and uptime across all probe targets, Docker events per hour for a single container, and log matches per hour split by severity. The charts are the one part of the page htmx never replaces — points arrive as JSON and datasets update in place, so tooltips and animation survive.
+Latency p95 and uptime across all probe targets, Docker events per hour for a single container, and log matches per hour split by severity. The charts are the one part of the page htmx never replaces: points arrive as JSON and datasets update in place, so tooltips and animation survive.
 
 ![Charts](docs/media/charts.svg)
 
@@ -167,11 +167,11 @@ Alerts are raised by the collector and delivered by the Telegram bot. Put the bo
 | Health check failed twice in a row | `error` | the reason, see below |
 | A down target answers again | `info` | `Service is back up` |
 | A log line matched a rule | the rule's | `Log line matched rule "panic\|FATAL"` |
-| Clean exit (code 0), `kill`, `restart`, `start`, `destroy` | — | no alert, only an event on the container's page |
-| A stop you asked for: `kill` followed by an exit within 30 seconds, whatever the code | — | no alert, and it doesn't count toward a crash loop |
+| Clean exit (code 0), `kill`, `restart`, `start`, `destroy` | none | no alert, only an event on the container's page |
+| A stop you asked for: `kill` followed by an exit within 30 seconds, whatever the code | none | no alert, and it doesn't count toward a crash loop |
 | Host memory or disk above `host.warning` for 3 samples | `warning` | `Disk usage is 93% (warning above 90%)` |
 | Host memory or disk above `host.critical` for 3 samples | `critical` | `Memory usage is 96% (critical above 95%)` |
-| Host memory or disk going back down | — | no alert, the bar changes colour |
+| Host memory or disk going back down | none | no alert, the bar changes colour |
 
 Host alerts don't belong to any target. In Telegram they arrive as `Host · <hostname>`, and *History → Alerts* has a `host` filter for them.
 
@@ -183,7 +183,7 @@ Each row in the history shows its delivery state: `sent to Telegram` once the al
 
 ### Who watches Argus
 
-A dead collector sends no alerts, and silence in Telegram looks exactly like a quiet night. Set `HEARTBEAT_URL` in `.env` to a dead man's switch — a [healthchecks.io](https://healthchecks.io) check, or anything that alerts when a URL stops being hit — and the collector sends it a `GET` every `heartbeat.interval` (1 minute). Before each ping it checks that Postgres answers: a collector that can't record anything stays quiet on purpose.
+A dead collector sends no alerts, and silence in Telegram looks exactly like a quiet night. Set `HEARTBEAT_URL` in `.env` to a dead man's switch (a [healthchecks.io](https://healthchecks.io) check, or anything that alerts when a URL stops being hit), and the collector sends it a `GET` every `heartbeat.interval` (1 minute). Before each ping it checks that Postgres answers: a collector that can't record anything stays quiet on purpose.
 
 That covers the collector crashing, the host going down, Docker stopping, and the database becoming unreachable. It doesn't cover Telegram itself failing to deliver.
 
@@ -202,8 +202,8 @@ The mood comes from the same data as everything else, and the loudest signal win
 | Mood | When |
 | --- | --- |
 | All quiet | every target is up, no alerts, no log matches in 24 hours |
-| Watching | 1–2 log matches in 24 hours |
-| Something's off | a container crash in the last 15 minutes, a failed check in 24 hours, a warning alert, or 3–4 log matches |
+| Watching | 1-2 log matches in 24 hours |
+| Something's off | a container crash in the last 15 minutes, a failed check in 24 hours, a warning alert, or 3-4 log matches |
 | Critical failure | a target is down, a critical alert in 24 hours, or 5+ log matches |
 | Asleep | nothing to watch yet, or no answer from the collector |
 
@@ -211,7 +211,7 @@ Asleep never means all is well. Next to the mood, the card says which signal cho
 
 ### Details that matter at 3am
 
-- **Live without reloads.** Every panel re-fetches itself and swaps in place: every 10 seconds for live numbers, every 15–30 seconds for history lists. A chip in the header shows the age of the data, pauses polling when you click it, and says `lost connection to server` when requests start failing.
+- **Live without reloads.** Every panel re-fetches itself and swaps in place: every 10 seconds for live numbers, every 15-30 seconds for history lists. A chip in the header shows the age of the data, pauses polling when you click it, and says `lost connection to server` when requests start failing.
 - **Only real changes flash.** A panel that swapped identical content stays still, so a blinking screen always means something actually changed.
 - **Works offline.** htmx, Alpine, Chart.js and both fonts are vendored into the binary. The dashboard opens on a host with no internet.
 - **Dark and light.** The theme is resolved by an inline script before first paint, so the page never flashes the wrong palette.
@@ -229,7 +229,7 @@ docker compose up -d --build                                     # Postgres 16 +
 
 `.env` and `config.yaml` are git-ignored, so your secrets and rules stay local. `config.yaml` is mounted into the collector read-only: after you edit it, `docker compose restart argus` picks it up.
 
-The collector needs `/var/run/docker.sock` mounted to watch containers and read their logs — the compose file does this. Without `BOT_TOKEN` and `CHAT_ID` the alerter doesn't start: everything is still recorded, and alerts stay `not sent`. Swagger UI for the collector's API is at `http://localhost:8099/swagger/index.html`. `GET /healthz` answers 200 while the collector is serving, and the dashboard waits for it before starting.
+The collector needs `/var/run/docker.sock` mounted to watch containers and read their logs; the compose file does this. Without `BOT_TOKEN` and `CHAT_ID` the alerter doesn't start: everything is still recorded, and alerts stay `not sent`. Swagger UI for the collector's API is at `http://localhost:8099/swagger/index.html`. `GET /healthz` answers 200 while the collector is serving, and the dashboard waits for it before starting.
 
 Migrations are built into the collector and run on every start, before anything else. Each one runs in its own transaction under a Postgres advisory lock. If a migration fails, the collector exits instead of running on a half-migrated schema. If the database was migrated by a newer version of Argus, the collector refuses to start instead of running on a schema it doesn't know: upgrade, don't downgrade.
 
@@ -259,7 +259,7 @@ services:
 | `argus.monitor: "true"` | Registers the container. Its `die` / `oom` / `kill` / `restart` / `start` / `destroy` events are recorded from then on. |
 | `argus.probe.url: <url>` | Also registers an HTTP probe target, checked every 60 seconds. Optional. |
 
-The watcher picks up labelled containers as they start — no restart of Argus needed.
+The watcher picks up labelled containers as they start, no restart of Argus needed.
 
 The probe runs from inside the Argus container, so the URL has to make sense from there. `localhost`, `127.0.0.1` and `0.0.0.0` point at Argus itself, not at your host. To check a port your service publishes on the host (`ports: - "8080:8080"`), use `host.docker.internal`, which the compose file maps to the host. That checks the same path real clients use: the published port, the mapping, and the service behind it.
 
@@ -323,7 +323,7 @@ It also mounts the host's root filesystem read-only at `/hostfs`, to measure the
 
 ## Configuration
 
-**Collector** — `argus-backend/config.yaml`:
+**Collector**: `argus-backend/config.yaml`:
 
 | Key | Default | Meaning |
 | --- | --- | --- |
@@ -333,7 +333,7 @@ It also mounts the host's root filesystem read-only at `/hostfs`, to measure the
 | `prober.failure_threshold` | `2` | failed checks in a row before a target is down |
 | `watcher.crash_loop_restarts` | `5` | exits that count as a crash loop… |
 | `watcher.crash_loop_window` | `5m` | …within this window |
-| `matcher.rules` | — | log rules: `pattern` (regexp), `severity`, `container` (name or `*`) |
+| `matcher.rules` | none | log rules: `pattern` (regexp), `severity`, `container` (name or `*`) |
 | `retention.keep` | `336h` | how long probes, events and log matches are kept (14 days) |
 | `retention.interval` | `24h` | how often old rows are deleted |
 | `telegram.notify_interval` | `5s` | how often pending alerts are pushed |
@@ -347,11 +347,11 @@ It also mounts the host's root filesystem read-only at `/hostfs`, to measure the
 
 Secrets come from the environment or `.env`: `POSTGRES_URL`, `BOT_TOKEN`, `CHAT_ID`, `HEARTBEAT_URL`, and `CONFIG_PATH` for the config file itself.
 
-**Dashboard** — `argus-frontend/config.yaml`:
+**Dashboard**: `argus-frontend/config.yaml`:
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `backend.base_url` | — | collector address, required |
+| `backend.base_url` | none | collector address, required |
 | `backend.timeout_seconds` | `5` | per-request timeout to the collector |
 | `web.listen_addr` | `:8080` | where the dashboard listens (this repo's config sets `:8088`) |
 | `web.template_dir` | empty | set to `./web` to load templates and CSS from disk during development |
@@ -365,7 +365,7 @@ Named here because a monitoring tool that hides its blind spots is the problem i
 - **No per-container CPU or memory.** Host resources are for the whole machine.
 - **Only the root partition.** A separate disk for `/var/lib/docker` or `/home` isn't measured.
 - **Docker Desktop reports its VM.** On macOS and Windows the host is the Docker virtual machine, so the numbers are that machine's, not your laptop's.
-- **No alert lifecycle.** There is no acknowledge or resolve — only "sent to Telegram". The screen says exactly that.
+- **No alert lifecycle.** There is no acknowledge or resolve, only "sent to Telegram". The screen says exactly that.
 - **No latency for containers.** Nothing pings a container, so its page shows Docker event activity instead of a made-up response time.
 - **Alerts are never pruned.** Retention deletes probes, events and log matches; alert history keeps growing until you delete rows through the API.
 - **No editing of targets.** Uptime targets are created and deleted from the dashboard, never changed in place: delete one and create it again. Containers register themselves by label and aren't managed from the dashboard at all.
@@ -393,10 +393,10 @@ argus-frontend/    dashboard
   web/                          templates and static assets, go:embed
 ```
 
-Ports are declared by the consumer, so dependencies point inward: the aggregation layer knows nothing about HTTP, and the domain layer knows nothing about HTTP or HTML. The dashboard connects over the API only — it has no database driver at all. Its only dependencies load the config file and `.env`; everything else is the standard library.
+Ports are declared by the consumer, so dependencies point inward: the aggregation layer knows nothing about HTTP, and the domain layer knows nothing about HTTP or HTML. The dashboard connects over the API only: it has no database driver at all. Its only dependencies load the config file and `.env`; everything else is the standard library.
 
 Stack: Go, PostgreSQL 16, htmx, Alpine.js, Chart.js, raw CSS. No SPA framework, no build pipeline, no CDN.
 
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE).
+Apache License 2.0, see [LICENSE](LICENSE).

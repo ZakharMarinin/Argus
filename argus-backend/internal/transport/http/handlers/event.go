@@ -14,14 +14,14 @@ import (
 )
 
 // GetListEvents godoc
-// @Summary      Список событий
-// @Description  Возвращает события с фильтрацией по таргету/типу либо постранично
+// @Summary      List events
+// @Description  Returns events filtered by target/type, or paged
 // @Tags         events
 // @Produce      json
-// @Param        target_id query    string false "ID таргета"
-// @Param        type      query    string false "Тип события"
-// @Param        limit     query    int    false "Лимит"
-// @Param        offset    query    int    false "Отступ"
+// @Param        target_id query    string false "Target ID"
+// @Param        type      query    string false "Event type"
+// @Param        limit     query    int    false "Limit"
+// @Param        offset    query    int    false "Offset"
 // @Success      200  {array}  entity.ContainerEvent
 // @Failure      400  {object} response.ErrorResponse
 // @Failure      500  {object} response.ErrorResponse
@@ -67,11 +67,11 @@ func (h *Handler) GetListEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetEvent godoc
-// @Summary      Получить событие
-// @Description  Возвращает событие по ID
+// @Summary      Get an event
+// @Description  Returns an event by ID
 // @Tags         events
 // @Produce      json
-// @Param        id   path      int true "ID события"
+// @Param        id   path      int true "Event ID"
 // @Success      200  {object} entity.ContainerEvent
 // @Failure      400  {object} response.ErrorResponse
 // @Failure      404  {object} response.ErrorResponse
@@ -99,10 +99,10 @@ func (h *Handler) GetEvent(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteEvent godoc
-// @Summary      Удалить событие
-// @Description  Удаляет событие по ID
+// @Summary      Delete an event
+// @Description  Deletes an event by ID
 // @Tags         events
-// @Param        id   path      int true "ID события"
+// @Param        id   path      int true "Event ID"
 // @Success      204  "No Content"
 // @Failure      400  {object} response.ErrorResponse
 // @Failure      404  {object} response.ErrorResponse

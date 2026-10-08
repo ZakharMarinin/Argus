@@ -1,5 +1,5 @@
-// Package app собирает и держит процесс дашборда: зависимости, HTTP-сервер
-// и порядок остановки.
+// Package app assembles and runs the dashboard process: dependencies, the HTTP
+// server and the shutdown order.
 package app
 
 import (
@@ -13,10 +13,10 @@ import (
 	"argus-frontend/internal/config"
 )
 
-// shutdownTimeout - сколько ждём завершения текущих запросов.
+// shutdownTimeout is how long we wait for in-flight requests to finish.
 const shutdownTimeout = 5 * time.Second
 
-// App - процесс дашборда.
+// App is the dashboard process.
 type App struct {
 	cfg    *config.Config
 	log    *slog.Logger
@@ -25,7 +25,7 @@ type App struct {
 	errc   chan error
 }
 
-// NewApp готовит приложение.
+// NewApp prepares the application.
 func NewApp(cfg *config.Config, log *slog.Logger) *App {
 	return &App{
 		cfg:  cfg,
@@ -35,8 +35,8 @@ func NewApp(cfg *config.Config, log *slog.Logger) *App {
 	}
 }
 
-// Run поднимает HTTP-сервер и возвращается, не дожидаясь его остановки.
-// Ошибка означает, что процессу нечего делать: кривые шаблоны или роуты.
+// Run starts the HTTP server and returns without waiting for it to stop.
+// An error means the process has nothing to do: broken templates or routes.
 func (a *App) Run(ctx context.Context) error {
 	handler, err := a.di.Router()
 	if err != nil {
@@ -50,7 +50,7 @@ func (a *App) Run(ctx context.Context) error {
 	}
 
 	go func() {
-		a.log.Info("дашборд запущен", "addr", a.cfg.Web.ListenAddr, "version", Version())
+		a.log.Info("dashboard started", "addr", a.cfg.Web.ListenAddr, "version", Version())
 
 		err := a.server.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -58,28 +58,28 @@ func (a *App) Run(ctx context.Context) error {
 		}
 	}()
 
-	// Первую проверку связи делаем в фоне и только логируем: недоступный
-	// бэкенд на старте - не ошибка запуска, страница ожидания уже это
-	// объясняет.
+	// The first connectivity check runs in the background and is only logged:
+	// an unavailable backend at startup isn't a startup failure, the waiting
+	// page already explains it.
 	go a.checkBackend(ctx)
 
 	return nil
 }
 
-// Failed отдаёт канал, в который падает ошибка сервера: процессу надо
-// умереть, а не молча висеть без слушателя.
+// Failed returns the channel that receives a server error: the process should
+// die rather than silently hang with no listener.
 func (a *App) Failed() <-chan error { return a.errc }
 
-// Stop останавливает сервер, давая текущим запросам дописаться.
+// Stop stops the server, letting in-flight requests finish.
 func (a *App) Stop(ctx context.Context) {
-	a.log.Info("останавливаюсь")
+	a.log.Info("shutting down")
 
 	srvCtx, cancel := context.WithTimeout(ctx, shutdownTimeout)
 	defer cancel()
 
 	err := a.server.Shutdown(srvCtx)
 	if err != nil {
-		a.log.Error("сервер не остановился штатно", "err", err)
+		a.log.Error("server did not shut down cleanly", "err", err)
 	}
 }
 
@@ -89,15 +89,15 @@ func (a *App) checkBackend(ctx context.Context) {
 
 	err := a.di.UseCase().Ping(ctx)
 	if err != nil {
-		a.log.Warn("argus-backend пока недоступен, показываю экран ожидания", "err", err)
+		a.log.Warn("argus-backend is not available yet, showing the waiting screen", "err", err)
 
 		return
 	}
 
-	a.log.Info("argus-backend отвечает")
+	a.log.Info("argus-backend is responding")
 }
 
-// Version берёт версию из данных сборки: отдельного флага под неё не нужно.
+// Version takes the version from the build info: no separate flag is needed for it.
 func Version() string {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {

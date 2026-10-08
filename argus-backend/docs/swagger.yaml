@@ -132,54 +132,54 @@ definitions:
     type: object
 info:
   contact: {}
-  description: API для мониторинга контейнеров и HTTP-таргетов.
+  description: API for monitoring containers and HTTP targets.
   title: Argus API
   version: "1.0"
 paths:
   /alerts:
     get:
-      description: Возвращает алерты; фильтры сочетаются между собой. Общее число
-        подходящих записей - в заголовке X-Total-Count
+      description: Returns alerts; filters can be combined. The total number of matching
+        records is in the X-Total-Count header
       parameters:
       - collectionFormat: multi
-        description: ID таргета, можно несколько
+        description: Target ID, can be repeated
         in: query
         items:
           type: string
         name: target_id
         type: array
-      - description: Только алерты хоста (без таргета)
+      - description: Only host alerts (no target)
         in: query
         name: host
         type: boolean
-      - description: Важность
+      - description: Severity
         in: query
         name: severity
         type: integer
-      - description: Отправлен ли алерт
+      - description: Whether the alert was sent
         in: query
         name: notified
         type: boolean
-      - description: Не раньше этого момента, RFC 3339
+      - description: Not earlier than this moment, RFC 3339
         in: query
         name: since
         type: string
-      - description: Порядок по id
+      - description: Order by id
         enum:
         - asc
         - desc
         in: query
         name: order
         type: string
-      - description: Лимит
+      - description: Limit
         in: query
         name: limit
         type: integer
-      - description: Сколько записей пропустить
+      - description: How many records to skip
         in: query
         name: skip
         type: integer
-      - description: Только записи с id больше указанного
+      - description: Only records with an id greater than this
         in: query
         name: offset
         type: integer
@@ -190,7 +190,7 @@ paths:
           description: OK
           headers:
             X-Total-Count:
-              description: Число записей под фильтром
+              description: Number of records matching the filter
               type: integer
           schema:
             items:
@@ -204,15 +204,15 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Список алертов
+      summary: List alerts
       tags:
       - alerts
     post:
       consumes:
       - application/json
-      description: Создает новый алерт
+      description: Creates a new alert
       parameters:
-      - description: Данные алерта
+      - description: Alert data
         in: body
         name: request
         required: true
@@ -229,14 +229,14 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Создать алерт
+      summary: Create an alert
       tags:
       - alerts
   /alerts/{id}:
     delete:
-      description: Удаляет алерт по ID
+      description: Deletes an alert by ID
       parameters:
-      - description: ID алерта
+      - description: Alert ID
         in: path
         name: id
         required: true
@@ -252,13 +252,13 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Удалить алерт
+      summary: Delete an alert
       tags:
       - alerts
     get:
-      description: Возвращает алерт по ID
+      description: Returns an alert by ID
       parameters:
-      - description: ID алерта
+      - description: Alert ID
         in: path
         name: id
         required: true
@@ -278,26 +278,26 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Получить алерт
+      summary: Get an alert
       tags:
       - alerts
   /events:
     get:
-      description: Возвращает события с фильтрацией по таргету/типу либо постранично
+      description: Returns events filtered by target/type, or paged
       parameters:
-      - description: ID таргета
+      - description: Target ID
         in: query
         name: target_id
         type: string
-      - description: Тип события
+      - description: Event type
         in: query
         name: type
         type: string
-      - description: Лимит
+      - description: Limit
         in: query
         name: limit
         type: integer
-      - description: Отступ
+      - description: Offset
         in: query
         name: offset
         type: integer
@@ -318,14 +318,14 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Список событий
+      summary: List events
       tags:
       - events
   /events/{id}:
     delete:
-      description: Удаляет событие по ID
+      description: Deletes an event by ID
       parameters:
-      - description: ID события
+      - description: Event ID
         in: path
         name: id
         required: true
@@ -341,13 +341,13 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Удалить событие
+      summary: Delete an event
       tags:
       - events
     get:
-      description: Возвращает событие по ID
+      description: Returns an event by ID
       parameters:
-      - description: ID события
+      - description: Event ID
         in: path
         name: id
         required: true
@@ -367,13 +367,13 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Получить событие
+      summary: Get an event
       tags:
       - events
   /host:
     get:
-      description: Последний замер CPU, RAM и корневого раздела. Метрика без значения
-        - null; до первого замера sampled_at - null
+      description: Latest sample of CPU, RAM and the root partition. A metric without
+        a value is null; before the first sample sampled_at is null
       produces:
       - application/json
       responses:
@@ -381,45 +381,45 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/entity.HostSnapshot'
-      summary: Ресурсы хоста
+      summary: Host resources
       tags:
       - host
   /log-matches:
     get:
-      description: Возвращает лог-матчи; фильтры сочетаются между собой. Общее число
-        подходящих записей - в заголовке X-Total-Count
+      description: Returns log matches; filters can be combined. The total number
+        of matching records is in the X-Total-Count header
       parameters:
       - collectionFormat: multi
-        description: ID таргета, можно несколько
+        description: Target ID, can be repeated
         in: query
         items:
           type: string
         name: target_id
         type: array
-      - description: Важность
+      - description: Severity
         in: query
         name: severity
         type: integer
-      - description: Не раньше этого момента, RFC 3339
+      - description: Not earlier than this moment, RFC 3339
         in: query
         name: since
         type: string
-      - description: Порядок по id
+      - description: Order by id
         enum:
         - asc
         - desc
         in: query
         name: order
         type: string
-      - description: Лимит
+      - description: Limit
         in: query
         name: limit
         type: integer
-      - description: Сколько записей пропустить
+      - description: How many records to skip
         in: query
         name: skip
         type: integer
-      - description: Только записи с id больше указанного
+      - description: Only records with an id greater than this
         in: query
         name: offset
         type: integer
@@ -430,7 +430,7 @@ paths:
           description: OK
           headers:
             X-Total-Count:
-              description: Число записей под фильтром
+              description: Number of records matching the filter
               type: integer
           schema:
             items:
@@ -444,14 +444,14 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Список лог-матчей
+      summary: List log matches
       tags:
       - log-matches
   /log-matches/{id}:
     delete:
-      description: Удаляет лог-матч по ID
+      description: Deletes a log match by ID
       parameters:
-      - description: ID лог-матча
+      - description: Log match ID
         in: path
         name: id
         required: true
@@ -467,13 +467,13 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Удалить лог-матч
+      summary: Delete a log match
       tags:
       - log-matches
     get:
-      description: Возвращает лог-матч по ID
+      description: Returns a log match by ID
       parameters:
-      - description: ID лог-матча
+      - description: Log match ID
         in: path
         name: id
         required: true
@@ -493,26 +493,26 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Получить лог-матч
+      summary: Get a log match
       tags:
       - log-matches
   /probes:
     get:
-      description: Возвращает пробы с фильтрацией по таргету/результату либо постранично
+      description: Returns probes filtered by target/result, or paged
       parameters:
-      - description: ID таргета
+      - description: Target ID
         in: query
         name: target_id
         type: string
-      - description: Успешность пробы
+      - description: Whether the probe succeeded
         in: query
         name: success
         type: boolean
-      - description: Лимит
+      - description: Limit
         in: query
         name: limit
         type: integer
-      - description: Отступ
+      - description: Offset
         in: query
         name: offset
         type: integer
@@ -533,14 +533,14 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Список проб
+      summary: List probes
       tags:
       - probes
   /probes/{id}:
     delete:
-      description: Удаляет пробу по ID
+      description: Deletes a probe by ID
       parameters:
-      - description: ID пробы
+      - description: Probe ID
         in: path
         name: id
         required: true
@@ -556,13 +556,13 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Удалить пробу
+      summary: Delete a probe
       tags:
       - probes
     get:
-      description: Возвращает пробу по ID
+      description: Returns a probe by ID
       parameters:
-      - description: ID пробы
+      - description: Probe ID
         in: path
         name: id
         required: true
@@ -582,26 +582,26 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Получить пробу
+      summary: Get a probe
       tags:
       - probes
   /targets:
     get:
-      description: Возвращает таргеты с фильтрацией по типу/статусу либо постранично
+      description: Returns targets filtered by type/status, or paged
       parameters:
-      - description: Тип таргета
+      - description: Target type
         in: query
         name: type
         type: string
-      - description: Статус таргета
+      - description: Target status
         in: query
         name: status
         type: string
-      - description: Лимит
+      - description: Limit
         in: query
         name: limit
         type: integer
-      - description: Отступ
+      - description: Offset
         in: query
         name: offset
         type: integer
@@ -618,15 +618,15 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Список таргетов
+      summary: List targets
       tags:
       - targets
     post:
       consumes:
       - application/json
-      description: Регистрирует новый таргет для мониторинга
+      description: Registers a new target for monitoring
       parameters:
-      - description: Данные таргета
+      - description: Target data
         in: body
         name: request
         required: true
@@ -643,14 +643,14 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Создать таргет
+      summary: Create a target
       tags:
       - targets
   /targets/{id}:
     delete:
-      description: Удаляет таргет по ID
+      description: Deletes a target by ID
       parameters:
-      - description: ID таргета
+      - description: Target ID
         in: path
         name: id
         required: true
@@ -666,13 +666,13 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Удалить таргет
+      summary: Delete a target
       tags:
       - targets
     get:
-      description: Возвращает таргет по ID
+      description: Returns a target by ID
       parameters:
-      - description: ID таргета
+      - description: Target ID
         in: path
         name: id
         required: true
@@ -692,21 +692,21 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Получить таргет
+      summary: Get a target
       tags:
       - targets
   /targets/{id}/status:
     patch:
       consumes:
       - application/json
-      description: Изменяет статус существующего таргета
+      description: Changes the status of an existing target
       parameters:
-      - description: ID таргета
+      - description: Target ID
         in: path
         name: id
         required: true
         type: string
-      - description: Новый статус
+      - description: New status
         in: body
         name: request
         required: true
@@ -730,7 +730,7 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Обновить статус таргета
+      summary: Update target status
       tags:
       - targets
 swagger: "2.0"

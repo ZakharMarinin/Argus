@@ -245,5 +245,5 @@ func encode(q url.Values) template.URL {
 		return ""
 	}
 
-	return template.URL("?" + q.Encode()) //nolint:gosec // G203: url.Values.Encode экранирует всё сам
+	return template.URL("?" + q.Encode()) //nolint:gosec // G203: url.Values.Encode escapes everything itself
 }

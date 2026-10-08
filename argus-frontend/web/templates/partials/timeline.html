@@ -1,8 +1,8 @@
 {{define "timeline" -}}
-{{/* Полоса рисуется блоками с посчитанными left/width - без Chart.js и без
-     JS, поэтому её можно спокойно подменять вместе с партиалом.
-     Фон полосы - idle: события Docker говорят только о падениях, и
-     промежуток без них не доказывает, что контейнер работал. */}}
+{{/* The bar is drawn as blocks with precomputed left/width, without Chart.js and
+     without JS, so it can safely be swapped together with the partial.
+     The bar's background is idle: Docker events only report failures, and
+     a stretch without them doesn't prove the container was running. */}}
 <section class="card" id="timeline"
          hx-get="{{.URL}}" hx-trigger="every 30s, refreshNow from:body" hx-swap="outerHTML"
          aria-label="Downtime over the last 24 hours">
@@ -29,9 +29,9 @@
     {{end}}
   </div>
 
-  {{/* Имя контейнера в строках не повторяется - оно в заголовке страницы.
-       Список нужен потому, что короткий простой на суточной полосе занимает
-       доли процента, и цифру оттуда не прочитать. */}}
+  {{/* The container name isn't repeated in the rows: it is in the page heading.
+       The list is needed because a short outage takes up a fraction of a percent
+       on a 24-hour bar, and the number can't be read from there. */}}
   <div class="outages">
     {{range .Rows}}
     <div class="outage {{.Status.Class}}">

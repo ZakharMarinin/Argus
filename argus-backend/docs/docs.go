@@ -17,14 +17,14 @@ const docTemplate = `{
     "paths": {
         "/alerts": {
             "get": {
-                "description": "Возвращает алерты; фильтры сочетаются между собой. Общее число подходящих записей - в заголовке X-Total-Count",
+                "description": "Returns alerts; filters can be combined. The total number of matching records is in the X-Total-Count header",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "alerts"
                 ],
-                "summary": "Список алертов",
+                "summary": "List alerts",
                 "parameters": [
                     {
                         "type": "array",
@@ -32,31 +32,31 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "ID таргета, можно несколько",
+                        "description": "Target ID, can be repeated",
                         "name": "target_id",
                         "in": "query"
                     },
                     {
                         "type": "boolean",
-                        "description": "Только алерты хоста (без таргета)",
+                        "description": "Only host alerts (no target)",
                         "name": "host",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Важность",
+                        "description": "Severity",
                         "name": "severity",
                         "in": "query"
                     },
                     {
                         "type": "boolean",
-                        "description": "Отправлен ли алерт",
+                        "description": "Whether the alert was sent",
                         "name": "notified",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Не раньше этого момента, RFC 3339",
+                        "description": "Not earlier than this moment, RFC 3339",
                         "name": "since",
                         "in": "query"
                     },
@@ -66,25 +66,25 @@ const docTemplate = `{
                             "desc"
                         ],
                         "type": "string",
-                        "description": "Порядок по id",
+                        "description": "Order by id",
                         "name": "order",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Лимит",
+                        "description": "Limit",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Сколько записей пропустить",
+                        "description": "How many records to skip",
                         "name": "skip",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Только записи с id больше указанного",
+                        "description": "Only records with an id greater than this",
                         "name": "offset",
                         "in": "query"
                     }
@@ -101,7 +101,7 @@ const docTemplate = `{
                         "headers": {
                             "X-Total-Count": {
                                 "type": "integer",
-                                "description": "Число записей под фильтром"
+                                "description": "Number of records matching the filter"
                             }
                         }
                     },
@@ -120,7 +120,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Создает новый алерт",
+                "description": "Creates a new alert",
                 "consumes": [
                     "application/json"
                 ],
@@ -130,10 +130,10 @@ const docTemplate = `{
                 "tags": [
                     "alerts"
                 ],
-                "summary": "Создать алерт",
+                "summary": "Create an alert",
                 "parameters": [
                     {
-                        "description": "Данные алерта",
+                        "description": "Alert data",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -160,18 +160,18 @@ const docTemplate = `{
         },
         "/alerts/{id}": {
             "get": {
-                "description": "Возвращает алерт по ID",
+                "description": "Returns an alert by ID",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "alerts"
                 ],
-                "summary": "Получить алерт",
+                "summary": "Get an alert",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID алерта",
+                        "description": "Alert ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -199,15 +199,15 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Удаляет алерт по ID",
+                "description": "Deletes an alert by ID",
                 "tags": [
                     "alerts"
                 ],
-                "summary": "Удалить алерт",
+                "summary": "Delete an alert",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID алерта",
+                        "description": "Alert ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -234,36 +234,36 @@ const docTemplate = `{
         },
         "/events": {
             "get": {
-                "description": "Возвращает события с фильтрацией по таргету/типу либо постранично",
+                "description": "Returns events filtered by target/type, or paged",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "events"
                 ],
-                "summary": "Список событий",
+                "summary": "List events",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID таргета",
+                        "description": "Target ID",
                         "name": "target_id",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Тип события",
+                        "description": "Event type",
                         "name": "type",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Лимит",
+                        "description": "Limit",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Отступ",
+                        "description": "Offset",
                         "name": "offset",
                         "in": "query"
                     }
@@ -295,18 +295,18 @@ const docTemplate = `{
         },
         "/events/{id}": {
             "get": {
-                "description": "Возвращает событие по ID",
+                "description": "Returns an event by ID",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "events"
                 ],
-                "summary": "Получить событие",
+                "summary": "Get an event",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID события",
+                        "description": "Event ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -334,15 +334,15 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Удаляет событие по ID",
+                "description": "Deletes an event by ID",
                 "tags": [
                     "events"
                 ],
-                "summary": "Удалить событие",
+                "summary": "Delete an event",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID события",
+                        "description": "Event ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -369,14 +369,14 @@ const docTemplate = `{
         },
         "/host": {
             "get": {
-                "description": "Последний замер CPU, RAM и корневого раздела. Метрика без значения - null; до первого замера sampled_at - null",
+                "description": "Latest sample of CPU, RAM and the root partition. A metric without a value is null; before the first sample sampled_at is null",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "host"
                 ],
-                "summary": "Ресурсы хоста",
+                "summary": "Host resources",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -389,14 +389,14 @@ const docTemplate = `{
         },
         "/log-matches": {
             "get": {
-                "description": "Возвращает лог-матчи; фильтры сочетаются между собой. Общее число подходящих записей - в заголовке X-Total-Count",
+                "description": "Returns log matches; filters can be combined. The total number of matching records is in the X-Total-Count header",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "log-matches"
                 ],
-                "summary": "Список лог-матчей",
+                "summary": "List log matches",
                 "parameters": [
                     {
                         "type": "array",
@@ -404,19 +404,19 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "ID таргета, можно несколько",
+                        "description": "Target ID, can be repeated",
                         "name": "target_id",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Важность",
+                        "description": "Severity",
                         "name": "severity",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Не раньше этого момента, RFC 3339",
+                        "description": "Not earlier than this moment, RFC 3339",
                         "name": "since",
                         "in": "query"
                     },
@@ -426,25 +426,25 @@ const docTemplate = `{
                             "desc"
                         ],
                         "type": "string",
-                        "description": "Порядок по id",
+                        "description": "Order by id",
                         "name": "order",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Лимит",
+                        "description": "Limit",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Сколько записей пропустить",
+                        "description": "How many records to skip",
                         "name": "skip",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Только записи с id больше указанного",
+                        "description": "Only records with an id greater than this",
                         "name": "offset",
                         "in": "query"
                     }
@@ -461,7 +461,7 @@ const docTemplate = `{
                         "headers": {
                             "X-Total-Count": {
                                 "type": "integer",
-                                "description": "Число записей под фильтром"
+                                "description": "Number of records matching the filter"
                             }
                         }
                     },
@@ -482,18 +482,18 @@ const docTemplate = `{
         },
         "/log-matches/{id}": {
             "get": {
-                "description": "Возвращает лог-матч по ID",
+                "description": "Returns a log match by ID",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "log-matches"
                 ],
-                "summary": "Получить лог-матч",
+                "summary": "Get a log match",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID лог-матча",
+                        "description": "Log match ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -521,15 +521,15 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Удаляет лог-матч по ID",
+                "description": "Deletes a log match by ID",
                 "tags": [
                     "log-matches"
                 ],
-                "summary": "Удалить лог-матч",
+                "summary": "Delete a log match",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID лог-матча",
+                        "description": "Log match ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -556,36 +556,36 @@ const docTemplate = `{
         },
         "/probes": {
             "get": {
-                "description": "Возвращает пробы с фильтрацией по таргету/результату либо постранично",
+                "description": "Returns probes filtered by target/result, or paged",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "probes"
                 ],
-                "summary": "Список проб",
+                "summary": "List probes",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID таргета",
+                        "description": "Target ID",
                         "name": "target_id",
                         "in": "query"
                     },
                     {
                         "type": "boolean",
-                        "description": "Успешность пробы",
+                        "description": "Whether the probe succeeded",
                         "name": "success",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Лимит",
+                        "description": "Limit",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Отступ",
+                        "description": "Offset",
                         "name": "offset",
                         "in": "query"
                     }
@@ -617,18 +617,18 @@ const docTemplate = `{
         },
         "/probes/{id}": {
             "get": {
-                "description": "Возвращает пробу по ID",
+                "description": "Returns a probe by ID",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "probes"
                 ],
-                "summary": "Получить пробу",
+                "summary": "Get a probe",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID пробы",
+                        "description": "Probe ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -656,15 +656,15 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Удаляет пробу по ID",
+                "description": "Deletes a probe by ID",
                 "tags": [
                     "probes"
                 ],
-                "summary": "Удалить пробу",
+                "summary": "Delete a probe",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID пробы",
+                        "description": "Probe ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -691,36 +691,36 @@ const docTemplate = `{
         },
         "/targets": {
             "get": {
-                "description": "Возвращает таргеты с фильтрацией по типу/статусу либо постранично",
+                "description": "Returns targets filtered by type/status, or paged",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "targets"
                 ],
-                "summary": "Список таргетов",
+                "summary": "List targets",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Тип таргета",
+                        "description": "Target type",
                         "name": "type",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Статус таргета",
+                        "description": "Target status",
                         "name": "status",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Лимит",
+                        "description": "Limit",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Отступ",
+                        "description": "Offset",
                         "name": "offset",
                         "in": "query"
                     }
@@ -744,7 +744,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Регистрирует новый таргет для мониторинга",
+                "description": "Registers a new target for monitoring",
                 "consumes": [
                     "application/json"
                 ],
@@ -754,10 +754,10 @@ const docTemplate = `{
                 "tags": [
                     "targets"
                 ],
-                "summary": "Создать таргет",
+                "summary": "Create a target",
                 "parameters": [
                     {
-                        "description": "Данные таргета",
+                        "description": "Target data",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -784,18 +784,18 @@ const docTemplate = `{
         },
         "/targets/{id}": {
             "get": {
-                "description": "Возвращает таргет по ID",
+                "description": "Returns a target by ID",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "targets"
                 ],
-                "summary": "Получить таргет",
+                "summary": "Get a target",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID таргета",
+                        "description": "Target ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -823,15 +823,15 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Удаляет таргет по ID",
+                "description": "Deletes a target by ID",
                 "tags": [
                     "targets"
                 ],
-                "summary": "Удалить таргет",
+                "summary": "Delete a target",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID таргета",
+                        "description": "Target ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -858,7 +858,7 @@ const docTemplate = `{
         },
         "/targets/{id}/status": {
             "patch": {
-                "description": "Изменяет статус существующего таргета",
+                "description": "Changes the status of an existing target",
                 "consumes": [
                     "application/json"
                 ],
@@ -868,17 +868,17 @@ const docTemplate = `{
                 "tags": [
                     "targets"
                 ],
-                "summary": "Обновить статус таргета",
+                "summary": "Update target status",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID таргета",
+                        "description": "Target ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Новый статус",
+                        "description": "New status",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -1116,7 +1116,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/v1/api",
 	Schemes:          []string{},
 	Title:            "Argus API",
-	Description:      "API для мониторинга контейнеров и HTTP-таргетов.",
+	Description:      "API for monitoring containers and HTTP targets.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

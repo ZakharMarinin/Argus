@@ -15,12 +15,12 @@ import (
 )
 
 // CreateAlert godoc
-// @Summary      Создать алерт
-// @Description  Создает новый алерт
+// @Summary      Create an alert
+// @Description  Creates a new alert
 // @Tags         alerts
 // @Accept       json
 // @Produce      json
-// @Param        request body entity.Alert true "Данные алерта"
+// @Param        request body entity.Alert true "Alert data"
 // @Success      201  {object} entity.Alert
 // @Failure      400  {object} response.ErrorResponse
 // @Router       /alerts [post].
@@ -60,21 +60,21 @@ func (h *Handler) CreateAlert(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetListAlerts godoc
-// @Summary      Список алертов
-// @Description  Возвращает алерты; фильтры сочетаются между собой. Общее число подходящих записей - в заголовке X-Total-Count
+// @Summary      List alerts
+// @Description  Returns alerts; filters can be combined. The total number of matching records is in the X-Total-Count header
 // @Tags         alerts
 // @Produce      json
-// @Param        target_id query    []string false "ID таргета, можно несколько" collectionFormat(multi)
-// @Param        host      query    bool     false "Только алерты хоста (без таргета)"
-// @Param        severity  query    int      false "Важность"
-// @Param        notified  query    bool     false "Отправлен ли алерт"
-// @Param        since     query    string   false "Не раньше этого момента, RFC 3339"
-// @Param        order     query    string   false "Порядок по id" Enums(asc, desc)
-// @Param        limit     query    int      false "Лимит"
-// @Param        skip      query    int      false "Сколько записей пропустить"
-// @Param        offset    query    int      false "Только записи с id больше указанного"
+// @Param        target_id query    []string false "Target ID, can be repeated" collectionFormat(multi)
+// @Param        host      query    bool     false "Only host alerts (no target)"
+// @Param        severity  query    int      false "Severity"
+// @Param        notified  query    bool     false "Whether the alert was sent"
+// @Param        since     query    string   false "Not earlier than this moment, RFC 3339"
+// @Param        order     query    string   false "Order by id" Enums(asc, desc)
+// @Param        limit     query    int      false "Limit"
+// @Param        skip      query    int      false "How many records to skip"
+// @Param        offset    query    int      false "Only records with an id greater than this"
 // @Success      200  {array}  entity.Alert
-// @Header       200  {integer} X-Total-Count "Число записей под фильтром"
+// @Header       200  {integer} X-Total-Count "Number of records matching the filter"
 // @Failure      400  {object} response.ErrorResponse
 // @Failure      500  {object} response.ErrorResponse
 // @Router       /alerts [get].
@@ -113,11 +113,11 @@ func (h *Handler) GetListAlerts(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetAlert godoc
-// @Summary      Получить алерт
-// @Description  Возвращает алерт по ID
+// @Summary      Get an alert
+// @Description  Returns an alert by ID
 // @Tags         alerts
 // @Produce      json
-// @Param        id   path      int true "ID алерта"
+// @Param        id   path      int true "Alert ID"
 // @Success      200  {object} entity.Alert
 // @Failure      400  {object} response.ErrorResponse
 // @Failure      404  {object} response.ErrorResponse
@@ -145,10 +145,10 @@ func (h *Handler) GetAlert(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteAlert godoc
-// @Summary      Удалить алерт
-// @Description  Удаляет алерт по ID
+// @Summary      Delete an alert
+// @Description  Deletes an alert by ID
 // @Tags         alerts
-// @Param        id   path      int true "ID алерта"
+// @Param        id   path      int true "Alert ID"
 // @Success      204  "No Content"
 // @Failure      400  {object} response.ErrorResponse
 // @Failure      404  {object} response.ErrorResponse

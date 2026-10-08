@@ -1,9 +1,9 @@
-// Package usecase считает всё, что дашборд показывает.
+// Package usecase computes everything the dashboard shows.
 //
-// Бэкенд отдаёт только сырые списки (цели, пробы, события, алерты), поэтому
-// агрегаты - аптайм за сутки, рестарты за час, счётчики алертов, почасовой
-// p95 - живут здесь. Ни SQL, ни HTTP, ни HTML пакет не знает: снаружи он
-// видит только порт Backend и доменные типы entity.
+// The backend returns only raw lists (targets, probes, events, alerts), so the
+// aggregates (24-hour uptime, restarts per hour, alert counters, hourly p95)
+// live here. The package knows nothing about SQL, HTTP or HTML: from the
+// outside it sees only the Backend port and the entity domain types.
 package usecase
 
 import (
@@ -14,18 +14,18 @@ import (
 	"argus-frontend/internal/domain/entity"
 )
 
-// Backend - всё, что usecase просит у argus-backend.
+// Backend is everything usecase asks of argus-backend.
 //
-// Порт описан здесь, а реализован в internal/gateway/backend: зависимость
-// смотрит внутрь, к домену, а не наружу к HTTP.
+// The port is declared here and implemented in internal/gateway/backend: the
+// dependency points inward, toward the domain, not outward toward HTTP.
 type Backend interface {
-	// Targets отдаёт все цели - и uptime-таргеты, и контейнеры.
+	// Targets returns all targets, both uptime targets and containers.
 	Targets(ctx context.Context) ([]entity.Target, error)
 
-	// Probes отдаёт историю проверок одной цели.
+	// Probes returns the check history of one target.
 	Probes(ctx context.Context, targetID string) ([]entity.ProbeOutcome, error)
 
-	// Events отдаёт события Docker по одной цели-контейнеру.
+	// Events returns the Docker events of one container target.
 	Events(ctx context.Context, targetID string) ([]entity.ContainerEvent, error)
 
 	Alerts(ctx context.Context, q entity.ListQuery) (entity.Page[entity.Alert], error)
@@ -35,28 +35,28 @@ type Backend interface {
 	CreateTarget(ctx context.Context, t entity.Target) error
 	DeleteTarget(ctx context.Context, id string) error
 
-	// Ping проверяет, что бэкенд отвечает.
+	// Ping checks that the backend is responding.
 	Ping(ctx context.Context) error
 }
 
-// UseCase - чтение и агрегация состояния мониторинга.
+// UseCase reads and aggregates the monitoring state.
 type UseCase struct {
 	backend Backend
 }
 
-// NewUseCase собирает сценарии поверх порта бэкенда.
+// NewUseCase builds the use cases on top of the backend port.
 func NewUseCase(b Backend) *UseCase {
 	return &UseCase{backend: b}
 }
 
-// Ping проверяет, что бэкенд отвечает.
+// Ping checks that the backend is responding.
 func (uc *UseCase) Ping(ctx context.Context) error {
 	return notReady(uc.backend.Ping(ctx))
 }
 
-// notReady переводит любую ошибку бэкенда в entity.ErrNotReady: для дашборда
-// недоступный бэкенд и бэкенд, который ещё поднимается, - одно и то же
-// состояние ожидания.
+// notReady turns any backend error into entity.ErrNotReady: for the dashboard
+// an unavailable backend and a backend that is still starting are the same
+// waiting state.
 func notReady(err error) error {
 	if err == nil || errors.Is(err, entity.ErrBackendTooOld) {
 		return err

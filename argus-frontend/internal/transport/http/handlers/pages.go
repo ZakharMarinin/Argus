@@ -10,7 +10,7 @@ import (
 	"argus-frontend/internal/transport/http/view"
 )
 
-// Overview - сводка: здоровье, цели, контейнеры, график.
+// Overview is the overview page: health, targets, containers, chart.
 func (h *Handler) Overview(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), queryTimeout)
 	defer cancel()
@@ -43,7 +43,7 @@ func (h *Handler) AlertsRedirect(w http.ResponseWriter, r *http.Request) {
 		target += "?" + r.URL.RawQuery
 	}
 
-	http.Redirect(w, r, target, http.StatusMovedPermanently) //nolint:gosec // G710: путь фиксированный, из запроса берётся только query-строка
+	http.Redirect(w, r, target, http.StatusMovedPermanently) //nolint:gosec // G710: the path is fixed, only the query string comes from the request
 }
 
 func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
@@ -118,7 +118,7 @@ func containerNames(targets []entity.TargetSummary) []string {
 	return names
 }
 
-// Container - страница одного контейнера.
+// Container is the page of a single container.
 func (h *Handler) Container(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), queryTimeout)
 	defer cancel()

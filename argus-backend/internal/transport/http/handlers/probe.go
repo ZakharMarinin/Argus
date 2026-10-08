@@ -14,14 +14,14 @@ import (
 )
 
 // GetListProbes godoc
-// @Summary      Список проб
-// @Description  Возвращает пробы с фильтрацией по таргету/результату либо постранично
+// @Summary      List probes
+// @Description  Returns probes filtered by target/result, or paged
 // @Tags         probes
 // @Produce      json
-// @Param        target_id query    string false "ID таргета"
-// @Param        success   query    bool   false "Успешность пробы"
-// @Param        limit     query    int    false "Лимит"
-// @Param        offset    query    int    false "Отступ"
+// @Param        target_id query    string false "Target ID"
+// @Param        success   query    bool   false "Whether the probe succeeded"
+// @Param        limit     query    int    false "Limit"
+// @Param        offset    query    int    false "Offset"
 // @Success      200  {array}  entity.Probe
 // @Failure      400  {object} response.ErrorResponse
 // @Failure      500  {object} response.ErrorResponse
@@ -76,11 +76,11 @@ func (h *Handler) GetListProbes(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetProbe godoc
-// @Summary      Получить пробу
-// @Description  Возвращает пробу по ID
+// @Summary      Get a probe
+// @Description  Returns a probe by ID
 // @Tags         probes
 // @Produce      json
-// @Param        id   path      int true "ID пробы"
+// @Param        id   path      int true "Probe ID"
 // @Success      200  {object} entity.Probe
 // @Failure      400  {object} response.ErrorResponse
 // @Failure      404  {object} response.ErrorResponse
@@ -108,10 +108,10 @@ func (h *Handler) GetProbe(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteProbe godoc
-// @Summary      Удалить пробу
-// @Description  Удаляет пробу по ID
+// @Summary      Delete a probe
+// @Description  Deletes a probe by ID
 // @Tags         probes
-// @Param        id   path      int true "ID пробы"
+// @Param        id   path      int true "Probe ID"
 // @Success      204  "No Content"
 // @Failure      400  {object} response.ErrorResponse
 // @Failure      404  {object} response.ErrorResponse

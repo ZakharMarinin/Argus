@@ -2,9 +2,9 @@ package backend
 
 import "errors"
 
-// ErrUnreachable оборачивает любую ошибку связи с бэкендом (сеть,
-// таймаут, не-200 ответ) - usecase переводит её в entity.ErrNotReady.
-var ErrUnreachable = errors.New("argus-backend недоступен")
+// ErrUnreachable wraps any error talking to the backend (network, timeout,
+// non-200 response); usecase turns it into entity.ErrNotReady.
+var ErrUnreachable = errors.New("argus-backend is unavailable")
 
-// ErrNotFound - бэкенд ответил 404: usecase переводит её в entity.ErrNotFound.
-var ErrNotFound = errors.New("не найдено")
+// ErrNotFound means the backend answered 404: usecase turns it into entity.ErrNotFound.
+var ErrNotFound = errors.New("not found")

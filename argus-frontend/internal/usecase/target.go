@@ -9,10 +9,10 @@ import (
 	"argus-frontend/internal/domain/entity"
 )
 
-// stripLimit - сколько последних проверок показывает полоска на карточке.
+// stripLimit is how many recent checks the bar on the card shows.
 const stripLimit = 24
 
-// TargetStatus отдаёт все цели вместе с агрегатами за последние сутки.
+// TargetStatus returns all targets together with their aggregates for the last 24 hours.
 func (uc *UseCase) TargetStatus(ctx context.Context) ([]entity.TargetSummary, error) {
 	targets, err := uc.backend.Targets(ctx)
 	if err != nil {
@@ -61,7 +61,7 @@ func summaryOf(t entity.Target) entity.TargetSummary {
 	}
 }
 
-// probeStats считает агрегаты uptime-таргета из его полной истории проб.
+// probeStats computes an uptime target's aggregates from its full probe history.
 func (uc *UseCase) probeStats(ctx context.Context, targetID string) (*entity.ProbeStats, error) {
 	probes, err := uc.backend.Probes(ctx, targetID)
 	if err != nil {
@@ -106,7 +106,7 @@ func (uc *UseCase) probeStats(ctx context.Context, targetID string) (*entity.Pro
 
 const crashWindow = 15 * time.Minute
 
-// containerStats считает агрегаты контейнера из его событий Docker.
+// containerStats computes a container's aggregates from its Docker events.
 func (uc *UseCase) containerStats(ctx context.Context, targetID string) (*entity.ContainerStats, error) {
 	events, err := uc.backend.Events(ctx, targetID)
 	if err != nil {

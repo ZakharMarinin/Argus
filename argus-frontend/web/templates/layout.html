@@ -7,10 +7,10 @@
   <title>{{.Title}} · Argus</title>
   <link rel="icon" href="/static/img/argus-logo-128.png">
 
-  {{/* Тему нужно проставить до первой отрисовки, иначе страница мигнёт светлым
-       и только потом станет тёмной. Поэтому скрипт инлайновый и синхронный -
-       единственный такой на странице. Он же разрешает «как в системе» в
-       конкретное значение data-theme, чтобы в CSS палитра описывалась один раз. */}}
+  {{/* The theme has to be set before the first paint, otherwise the page flashes light
+       and only then turns dark. That's why the script is inline and synchronous,
+       the only one like that on the page. It also resolves "system" into a
+       concrete data-theme value, so the palette is described in CSS only once. */}}
   <script>
     (function () {
       var KEY = 'argus:theme';
@@ -42,7 +42,7 @@
           try {
             if (mode === 'auto') localStorage.removeItem(KEY);
             else localStorage.setItem(KEY, mode);
-          } catch (e) { /* приватный режим - выбор просто не переживёт перезагрузку */ }
+          } catch (e) { /* private mode: the choice simply won't survive a reload */ }
           this.apply();
         }
       };
@@ -57,8 +57,8 @@
   </script>
 
   <link rel="stylesheet" href="{{asset "/static/css/argus.css"}}">
-  {{/* Библиотеки вендорятся статикой: дашборд должен открываться без интернета.
-       Порядок важен - app.js вешает слушатели htmx и alpine:init до старта Alpine. */}}
+  {{/* Libraries are vendored as static files: the dashboard must open without internet.
+       Order matters: app.js attaches htmx and alpine:init listeners before Alpine starts. */}}
   <script src="{{asset "/static/js/htmx.min.js"}}" defer></script>
   <script src="{{asset "/static/js/chart.min.js"}}" defer></script>
   <script src="{{asset "/static/js/app.js"}}" defer></script>
@@ -67,8 +67,8 @@
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
 
-  {{/* На узком экране сайдбар свёрнут; на широком CSS игнорирует атрибут.
-       Без JS атрибута нет вовсе, и сайдбар виден всегда. */}}
+  {{/* On a narrow screen the sidebar is collapsed; on a wide one CSS ignores the attribute.
+       Without JS there is no attribute at all, and the sidebar is always visible. */}}
   <div class="app" x-data="{ sidebar: false }">
     <button type="button" class="sidebar-toggle" @click="sidebar = !sidebar"
             :aria-expanded="sidebar ? 'true' : 'false'" aria-controls="sidebar">

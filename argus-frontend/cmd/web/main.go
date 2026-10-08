@@ -1,8 +1,8 @@
-// Команда web поднимает дашборд Argus.
+// Command web starts the Argus dashboard.
 //
-// Процесс ходит только в HTTP API argus-backend и не касается Postgres и
-// миграций. Его можно останавливать, пересобирать и перезапускать
-// независимо от collector'а.
+// The process talks only to the argus-backend HTTP API and doesn't touch
+// Postgres or migrations. It can be stopped, rebuilt and restarted
+// independently of the collector.
 package main
 
 import (
@@ -23,14 +23,14 @@ import (
 )
 
 func main() {
-	configPath := flag.String("config", "config.yaml", "путь к YAML-конфигу")
+	configPath := flag.String("config", "config.yaml", "path to the YAML config")
 	flag.Parse()
 
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	err := run(*configPath, log)
 	if err != nil {
-		log.Error("не удалось запуститься", "err", err)
+		log.Error("failed to start", "err", err)
 		os.Exit(1)
 	}
 }

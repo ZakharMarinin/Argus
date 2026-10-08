@@ -1,9 +1,9 @@
-// Package view - модели представления дашборда Argus и их рендер.
+// Package view holds the Argus dashboard's view models and their rendering.
 //
-// Пакет ничего не знает ни про HTTP API бэкенда, ни про роуты: он принимает
-// доменные структуры entity, раскладывает их Presenter'ом по своим типам и
-// рендерит шаблоны из web/. Единственное место, где данные становятся
-// текстом.
+// The package knows nothing about the backend's HTTP API or about routes: it
+// takes entity domain structures, lays them out into its own types with the
+// Presenter and renders the templates from web/. It is the only place where
+// data becomes text.
 package view
 
 import (
@@ -11,19 +11,19 @@ import (
 	"html/template"
 )
 
-// Status - состояние цели в терминах дашборда. Значение попадает в CSS-класс,
-// который задаёт пару --s / --s-tint; дальше маркер, пилюля и полоска
-// разбирают их. Ни один шаблон не хардкодит цвет.
+// Status is a target's state in dashboard terms. The value goes into a CSS class
+// that sets the --s / --s-tint pair; the marker, the pill and the bar then
+// read them. No template hardcodes a colour.
 type Status string
 
 const (
-	StatusUp   Status = "up"   // всё отвечает
-	StatusWarn Status = "warn" // деградация: рестарты, флаки в пробах
-	StatusDown Status = "down" // не отвечает
-	StatusIdle Status = "idle" // состояние неизвестно (ТЗ §9: не то же самое, что down)
+	StatusUp   Status = "up"   // everything responds
+	StatusWarn Status = "warn" // degraded: restarts, flaky probes
+	StatusDown Status = "down" // not responding
+	StatusIdle Status = "idle" // state unknown (spec §9: not the same as down)
 )
 
-// Class возвращает CSS-класс статуса.
+// Class returns the CSS class of the status.
 func (s Status) Class() string {
 	switch s {
 	case StatusUp, StatusWarn, StatusDown, StatusIdle:
@@ -33,8 +33,8 @@ func (s Status) Class() string {
 	}
 }
 
-// Mood - настроение маскота. Один источник правды для картинки и подписи:
-// и карточка на сводке, и превью в переключателе берут его отсюда.
+// Mood is the mascot's mood. A single source of truth for the picture and the
+// caption: both the overview card and the preview in the switcher take it from here.
 type Mood struct {
 	Key   string
 	Title string
@@ -43,7 +43,7 @@ type Mood struct {
 	When  string
 }
 
-// Moods - весь набор настроений, ключ совпадает с именем гифки.
+// Moods is the full set of moods; the key matches the GIF name.
 var Moods = map[string]Mood{
 	"happy": {
 		Key: "happy", Src: "/static/img/argus-happy.gif",
@@ -69,8 +69,8 @@ var Moods = map[string]Mood{
 		Note:  "There are critical alerts or targets that are down. Worth checking the history.",
 		When:  "A target is down, a critical alert fired, or 5+ log matches in 24h.",
 	},
-	// Спящий Argus означает «следить пока не за чем»: бэкенд не отдал ни
-	// одной цели. Про паузу автообновления говорит чип в шапке, а не маскот.
+	// A sleeping Argus means "nothing to watch yet": the backend returned no
+	// targets at all. Pausing auto-refresh is shown by the chip in the header, not the mascot.
 	"sleeping": {
 		Key: "sleeping", Src: "/static/img/argus-sleeping.gif",
 		Title: "Nothing to watch yet",
@@ -79,22 +79,22 @@ var Moods = map[string]Mood{
 	},
 }
 
-// MoodOrder задаёт порядок кнопок в переключателе.
+// MoodOrder sets the order of buttons in the switcher.
 var MoodOrder = []string{"happy", "watching", "scared", "angry", "sleeping"}
 
 // ---------------------------------------------------------------------------
-// Обвязка страницы
+// Page scaffolding
 // ---------------------------------------------------------------------------
 
-// Layout - всё, что нужно layout.html: сайдбар и модель конкретной страницы
-// в Content.
+// Layout is everything layout.html needs: the sidebar and the model of the
+// specific page in Content.
 type Layout struct {
 	Title  string
 	Sub    string
-	Active string // ключ текущего пункта меню
+	Active string // key of the current menu item
 
-	// PartialPath показывается в чипе `hx-get ...` в шапке. Это не декор:
-	// видно, какой партиал сейчас поллится.
+	// PartialPath is shown in the `hx-get ...` chip in the header. It isn't
+	// decoration: it shows which partial is being polled right now.
 	PartialPath string
 
 	Nav     []NavItem
@@ -111,7 +111,7 @@ type TargetForm struct {
 	Error string
 }
 
-// NavItem - пункт меню в сайдбаре.
+// NavItem is a menu item in the sidebar.
 type NavItem struct {
 	Key   string
 	Label string
@@ -119,8 +119,8 @@ type NavItem struct {
 	Badge string
 }
 
-// Sidebar - постоянная часть сайдбара: маскот, версия, ресурсы хоста и
-// сворачиваемый список контейнеров.
+// Sidebar is the persistent part of the sidebar: the mascot, the version, host
+// resources and the collapsible list of containers.
 type Sidebar struct {
 	Mood       Mood
 	Legend     []LegendMood
@@ -139,7 +139,7 @@ type HostPanel struct {
 	Meters []Meter
 }
 
-// Meter - одна полоска использования ресурса.
+// Meter is a single resource usage bar.
 type Meter struct {
 	Label   string
 	Value   string
@@ -148,10 +148,10 @@ type Meter struct {
 }
 
 // ---------------------------------------------------------------------------
-// Сводка
+// Overview
 // ---------------------------------------------------------------------------
 
-// Overview - модель главной страницы.
+// Overview is the model of the main page.
 type Overview struct {
 	Health     Health
 	Targets    TargetList
@@ -161,10 +161,10 @@ type Overview struct {
 	Recent     RecentPanel
 }
 
-// Health - строка общего состояния.
+// Health is the overall state line.
 //
-// В схеме нет жизненного цикла алерта: «активен/закрыт» взять неоткуда.
-// Поэтому считаются алерты за последние сутки, и подпись говорит именно это.
+// The schema has no alert lifecycle: there is nowhere to get "active/closed" from.
+// So alerts over the last 24 hours are counted, and the caption says exactly that.
 type Health struct {
 	State        string // OK | DEGRADED | WATCH | NO DATA
 	TargetsUp    int
@@ -172,14 +172,14 @@ type Health struct {
 	AlertsDay    int
 	Bar          []HealthSeg
 	Tiles        []Tile
-	// Empty - бэкенд не отдал ни одной цели.
+	// Empty means the backend returned no targets at all.
 	Empty      bool
 	Mood       Mood
 	MoodStatus Status
 	Reason     string
 }
 
-// Tone переводит State в значение data-health для фонового оттенка страницы.
+// Tone turns State into a data-health value for the page's background tint.
 func (h Health) Tone() string {
 	switch h.State {
 	case "OK":
@@ -193,45 +193,45 @@ func (h Health) Tone() string {
 	}
 }
 
-// HealthSeg - сегмент полоски здоровья.
+// HealthSeg is a segment of the health bar.
 type HealthSeg struct {
 	Status  Status
 	Percent int
 }
 
-// Tile - одна из плотных цифр строки состояния.
+// Tile is one of the dense figures in the state line.
 type Tile struct {
 	Value  string
 	Label  string
 	Status Status
 }
 
-// Chart - параметры карточки с графиком. Данные тянутся отдельным
-// JSON-запросом, чтобы htmx-поллинг партиалов не пересоздавал canvas каждые
-// 10 секунд.
+// Chart holds the parameters of a chart card. The data is fetched with a
+// separate JSON request, so that htmx polling of partials doesn't recreate the
+// canvas every 10 seconds.
 type Chart struct {
 	DataURL string
 	Title   string
 	Legend  []LegendItem
-	// Hint поясняет, что именно нарисовано, если это неочевидно.
+	// Hint explains what exactly is drawn, if it isn't obvious.
 	Hint      string
 	EmptyNote string
 }
 
-// LegendItem - подпись ряда с цветовой меткой.
+// LegendItem is a series label with a colour mark.
 type LegendItem struct {
 	Label string
-	// Color - имя токена палитры: accent, up, warn, down, idle.
+	// Color is the name of a palette token: accent, up, warn, down, idle.
 	Color string
 }
 
-// TargetList - блок uptime-таргетов.
+// TargetList is the uptime targets block.
 type TargetList struct {
-	Note    string // «проверка каждые 30 с · таймаут 5 с»
+	Note    string // "checks every 30 s · timeout 5 s"
 	Targets []Target
 }
 
-// Target - одна uptime-цель.
+// Target is a single uptime target.
 type Target struct {
 	ID      string
 	Name    string
@@ -240,62 +240,62 @@ type Target struct {
 	Label   string // up | degraded | down | no data
 	Latency string
 	Uptime  string
-	// Strip - исходы последних проверок, слева направо (старые → новые).
+	// Strip holds the outcomes of the latest checks, left to right (old → new).
 	Strip []Status
 }
 
-// ContainerList - блок контейнеров.
+// ContainerList is the containers block.
 type ContainerList struct {
-	Note       string // «5 из 6 running»
+	Note       string // "5 of 6 running"
 	Containers []Container
 }
 
-// Container - одна карточка контейнера.
+// Container is a single container card.
 type Container struct {
 	Name   string
 	Note   string
 	Href   string
 	Status Status
 	Label  string // up | warn | down | no data
-	// Dark поднимает карточку на тёмную панель - контейнеры, которые точно
-	// требуют внимания (не отвечают), а не просто предупреждение.
+	// Dark raises the card onto a dark panel: containers that definitely
+	// need attention (not responding), not just a warning.
 	Dark    bool
 	Metrics []Metric
 }
 
-// Metric - значение вида restarts/last-event у карточки контейнера.
+// Metric is a value like restarts/last-event on a container card.
 type Metric struct {
 	Label string
 	Value string
-	// Status подсвечивает само значение. Пустой - нейтральное число.
+	// Status highlights the value itself. Empty means a neutral number.
 	Status Status
 }
 
 // ---------------------------------------------------------------------------
-// Алерты
+// Alerts
 // ---------------------------------------------------------------------------
 
-// AlertPage - фильтры и список вместе: партиал отдаёт их одним куском,
-// чтобы после клика по фильтру перерисовалось и активное состояние чипа.
+// AlertPage holds the filters and the list together: the partial returns them in
+// one piece, so that after a filter click the chip's active state is redrawn too.
 type AlertPage struct {
 	Types      []Chip
 	Severities []Chip
 	Alerts     []Alert
-	// Query - текущие фильтры в виде строки запроса. Партиал переиспользует
-	// её в собственном hx-get, поэтому поллинг сохраняет выбранный фильтр.
+	// Query holds the current filters as a query string. The partial reuses
+	// it in its own hx-get, so polling keeps the selected filter.
 	Query template.URL
 	Pager Pager
 	Empty string
 }
 
-// Chip - кнопка фильтра.
+// Chip is a filter button.
 type Chip struct {
 	Label  string
 	Href   template.URL
 	Active bool
 }
 
-// Alert - строка истории алертов.
+// Alert is a row of the alert history.
 type Alert struct {
 	Time     string
 	Message  string
@@ -305,16 +305,16 @@ type Alert struct {
 	State    string
 	Status   Status
 	MoodSrc  string
-	// Alarm поднимает строку на тёмную панель. Достаётся свежим critical/error -
-	// если раздать его всей истории, приём перестанет значить «смотри сюда».
+	// Alarm raises the row onto a dark panel. Only fresh critical/error alerts get it:
+	// if the whole history got it, the device would stop meaning "look here".
 	Alarm bool
 }
 
 // ---------------------------------------------------------------------------
-// Детали контейнера
+// Container details
 // ---------------------------------------------------------------------------
 
-// Detail - страница одного контейнера.
+// Detail is the page of a single container.
 type Detail struct {
 	Name     string
 	Hero     Hero
@@ -325,38 +325,38 @@ type Detail struct {
 	Logs     LogFeed
 }
 
-// Hero - тёмная плашка с маскотом и текущим поводом для беспокойства.
+// Hero is the dark banner with the mascot and the current reason for concern.
 type Hero struct {
 	Badge   string // «WARNING · RESTARTED»
 	Title   string
-	Rule    string // сработавшее событие, моноширинным
+	Rule    string // the triggered event, in monospace
 	MoodSrc string
 	Status  Status
 }
 
-// MetaPanel - плитки состояния контейнера.
+// MetaPanel holds the container's state tiles.
 type MetaPanel struct {
 	URL   string
 	Tiles []MetaTile
 }
 
-// MetaTile - плитка «СТАТУС / РЕСТАРТЫ / ...».
+// MetaTile is a "STATUS / RESTARTS / ..." tile.
 type MetaTile struct {
 	Label  string
 	Value  string
 	Status Status
 }
 
-// EventPanel - история событий Docker по контейнеру.
+// EventPanel is the history of Docker events for a container.
 //
-// Таблица событий хранит не только рестарты, но и die/oom/kill/destroy,
-// поэтому панель называется по событиям, а не по одним перезапускам.
+// The events table stores not only restarts but also die/oom/kill/destroy,
+// so the panel is named after events rather than just restarts.
 type EventPanel struct {
 	URL    string
 	Events []EventRow
 }
 
-// EventRow - одно событие Docker.
+// EventRow is a single Docker event.
 type EventRow struct {
 	Time   string
 	Reason string
@@ -365,23 +365,23 @@ type EventRow struct {
 }
 
 // ---------------------------------------------------------------------------
-// Инциденты
+// Incidents
 // ---------------------------------------------------------------------------
 
-// IncidentPanel - блок «сколько и как долго всё лежало».
+// IncidentPanel is the "how many outages and how long" block.
 type IncidentPanel struct {
 	Note  string
 	Stats []MetaTile
 	Rows  []IncidentRow
 }
 
-// IncidentRow - один интервал простоя.
+// IncidentRow is a single outage interval.
 //
-// Duration - готовая строка, и у незакрытого интервала это прочерк: конца
-// в данных нет, а нарисованное число выглядело бы как измерение.
+// Duration is a ready string, and for an unclosed interval it is a dash: the end
+// isn't in the data, and a drawn number would look like a measurement.
 type IncidentRow struct {
 	Name     string
-	Href     string // ссылка на страницу контейнера; у проб пустая
+	Href     string // link to the container page; empty for probes
 	Kind     string
 	Status   Status
 	Label    string // recovered | still down | return not recorded
@@ -390,49 +390,49 @@ type IncidentRow struct {
 	Duration string
 }
 
-// Timeline - полоса простоев за сутки на странице контейнера.
+// Timeline is the 24-hour outage bar on the container page.
 //
-// Полоса статична между свапами htmx и не требует ни Chart.js, ни JS: это
-// набор блоков с посчитанными left/width.
+// The bar is static between htmx swaps and needs neither Chart.js nor JS: it is
+// a set of blocks with precomputed left/width.
 type Timeline struct {
 	URL    string
 	Title  string
 	Hint   string
 	Bands  []TimelineBand
 	Legend []LegendItem
-	// Rows - те же интервалы списком, новыми сверху.
+	// Rows holds the same intervals as a list, newest first.
 	//
-	// Полоса показывает картину суток, но короткий простой занимает на ней
-	// доли процента: три падения подряд сливаются в одну засечку. Список
-	// читается при любом масштабе, поэтому цифры живут в нём, а не в
-	// подсказках по наведению.
+	// The bar shows the picture of the day, but a short outage takes up a
+	// fraction of a percent on it: three failures in a row merge into one mark.
+	// The list is readable at any scale, so the numbers live in it rather than
+	// in hover tooltips.
 	Rows []IncidentRow
-	// Note заменяет полосу, когда рисовать нечего.
+	// Note replaces the bar when there is nothing to draw.
 	Note string
 }
 
-// TimelineBand - один отрезок полосы.
+// TimelineBand is a single segment of the bar.
 type TimelineBand struct {
 	Status Status
-	// Style несёт left и width уже посчитанными: html/template вырезал бы
-	// их из атрибута style как небезопасные.
+	// Style carries left and width already computed: html/template would strip
+	// them from the style attribute as unsafe.
 	Style template.CSS
-	// Title - подсказка по наведению: причина и длительность.
+	// Title is the hover tooltip: cause and duration.
 	Title string
 }
 
 // ---------------------------------------------------------------------------
-// Состояние «данных ещё нет»
+// "No data yet" state
 // ---------------------------------------------------------------------------
 
-// Empty описывает пустой экран.
+// Empty describes an empty screen.
 type Empty struct {
 	Mood  Mood
 	Title string
 	Note  string
 }
 
-// WaitingForData - экран «данных ещё нет».
+// WaitingForData is the "no data yet" screen.
 func WaitingForData(reason string) Empty {
 	return Empty{
 		Mood:  Moods["sleeping"],
@@ -442,14 +442,14 @@ func WaitingForData(reason string) Empty {
 }
 
 // ---------------------------------------------------------------------------
-// Хелперы шаблонов
+// Template helpers
 // ---------------------------------------------------------------------------
 
-// styleSpan отдаёт положение и ширину отрезка полосы как typed CSS.
+// styleSpan returns the position and width of a bar segment as typed CSS.
 //
-// Проценты дробные: интервал в минуту на суточной полосе в целых процентах
-// исчез бы вовсе, а простой, которого не видно, - это простой, о котором не
-// узнали.
+// The percentages are fractional: a one-minute interval on a 24-hour bar would
+// vanish entirely in whole percent, and an outage nobody can see is an outage
+// nobody finds out about.
 func styleSpan(left, width float64) template.CSS {
 	left = clampPercent(left)
 	width = clampPercent(width)
@@ -458,7 +458,7 @@ func styleSpan(left, width float64) template.CSS {
 		width = 100 - left
 	}
 
-	// G203: оба значения - числа, уже ограниченные диапазоном 0..100.
+	// G203: both values are numbers already clamped to 0..100.
 	return template.CSS(fmt.Sprintf("left:%.3f%%;width:%.3f%%", left, width)) //nolint:gosec
 }
 
@@ -474,8 +474,8 @@ func clampPercent(v float64) float64 {
 	return v
 }
 
-// styleWidth отдаёт ширину как typed CSS, иначе html/template вырежет
-// вычисленное значение из атрибута style.
+// styleWidth returns the width as typed CSS, otherwise html/template strips
+// the computed value from the style attribute.
 func styleWidth(percent int) template.CSS {
 	if percent < 0 {
 		percent = 0
@@ -484,10 +484,10 @@ func styleWidth(percent int) template.CSS {
 		percent = 100
 	}
 
-	// G203: значение — целое число, уже ограниченное диапазоном 0..100.
+	// G203: the value is an integer already clamped to 0..100.
 	return template.CSS(fmt.Sprintf("width:%d%%", percent)) //nolint:gosec
 }
 
 func styleHeight(percent float64) template.CSS {
-	return template.CSS(fmt.Sprintf("height:%.1f%%", clampPercent(percent))) //nolint:gosec // G203: число, ограниченное 0..100
+	return template.CSS(fmt.Sprintf("height:%.1f%%", clampPercent(percent))) //nolint:gosec // G203: a number clamped to 0..100
 }

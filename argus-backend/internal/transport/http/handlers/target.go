@@ -15,12 +15,12 @@ import (
 )
 
 // CreateTarget godoc
-// @Summary      Создать таргет
-// @Description  Регистрирует новый таргет для мониторинга
+// @Summary      Create a target
+// @Description  Registers a new target for monitoring
 // @Tags         targets
 // @Accept       json
 // @Produce      json
-// @Param        request body entity.Target true "Данные таргета"
+// @Param        request body entity.Target true "Target data"
 // @Success      201  {object} entity.Target
 // @Failure      400  {object} response.ErrorResponse
 // @Router       /targets [post].
@@ -60,14 +60,14 @@ func (h *Handler) CreateTarget(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetListTargets godoc
-// @Summary      Список таргетов
-// @Description  Возвращает таргеты с фильтрацией по типу/статусу либо постранично
+// @Summary      List targets
+// @Description  Returns targets filtered by type/status, or paged
 // @Tags         targets
 // @Produce      json
-// @Param        type   query    string false "Тип таргета"
-// @Param        status query    string false "Статус таргета"
-// @Param        limit  query    int    false "Лимит"
-// @Param        offset query    int    false "Отступ"
+// @Param        type   query    string false "Target type"
+// @Param        status query    string false "Target status"
+// @Param        limit  query    int    false "Limit"
+// @Param        offset query    int    false "Offset"
 // @Success      200  {array}  entity.Target
 // @Failure      500  {object} response.ErrorResponse
 // @Router       /targets [get].
@@ -103,11 +103,11 @@ func (h *Handler) GetListTargets(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetTarget godoc
-// @Summary      Получить таргет
-// @Description  Возвращает таргет по ID
+// @Summary      Get a target
+// @Description  Returns a target by ID
 // @Tags         targets
 // @Produce      json
-// @Param        id   path      string true "ID таргета"
+// @Param        id   path      string true "Target ID"
 // @Success      200  {object} entity.Target
 // @Failure      400  {object} response.ErrorResponse
 // @Failure      404  {object} response.ErrorResponse
@@ -135,10 +135,10 @@ func (h *Handler) GetTarget(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteTarget godoc
-// @Summary      Удалить таргет
-// @Description  Удаляет таргет по ID
+// @Summary      Delete a target
+// @Description  Deletes a target by ID
 // @Tags         targets
-// @Param        id   path      string true "ID таргета"
+// @Param        id   path      string true "Target ID"
 // @Success      204  "No Content"
 // @Failure      400  {object} response.ErrorResponse
 // @Failure      404  {object} response.ErrorResponse
@@ -165,13 +165,13 @@ func (h *Handler) DeleteTarget(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateTargetStatus godoc
-// @Summary      Обновить статус таргета
-// @Description  Изменяет статус существующего таргета
+// @Summary      Update target status
+// @Description  Changes the status of an existing target
 // @Tags         targets
 // @Accept       json
 // @Produce      json
-// @Param        id      path     string true "ID таргета"
-// @Param        request body     object{status=string} true "Новый статус"
+// @Param        id      path     string true "Target ID"
+// @Param        request body     object{status=string} true "New status"
 // @Success      200  {object} entity.Target
 // @Failure      400  {object} response.ErrorResponse
 // @Failure      404  {object} response.ErrorResponse

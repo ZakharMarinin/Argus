@@ -15,7 +15,7 @@ import (
 	"argus-frontend/web"
 )
 
-// pages перечисляет страницы и шаблон, который для каждой определяет "content".
+// pages lists the pages and, for each, the template that defines "content".
 var pages = map[string]string{
 	"overview":  "templates/overview.html",
 	"history":   "templates/history.html",
@@ -23,38 +23,38 @@ var pages = map[string]string{
 	"waiting":   "templates/waiting.html",
 }
 
-// Templates - разобранный набор шаблонов дашборда.
+// Templates is the parsed set of dashboard templates.
 //
-// Каждая страница получает собственный набор: layout вызывает "content",
-// и если сложить все страницы в один набор, определения перетрут друг друга.
-// Партиалы общие - их имена уникальны.
+// Each page gets its own set: layout calls "content", and if all pages were
+// put into one set, the definitions would overwrite each other.
+// Partials are shared: their names are unique.
 type Templates struct {
 	src  fs.FS
 	live bool
 
-	// version - отпечаток статики, посчитанный один раз при разборе.
+	// version is the static files fingerprint, computed once at parse time.
 	version string
 
 	pages    map[string]*template.Template
 	partials *template.Template
 }
 
-// ParseTemplates разбирает шаблоны из вшитой файловой системы.
+// ParseTemplates parses templates from the embedded file system.
 //
-// Ошибка здесь означает опечатку в шаблоне, поэтому вызывать её нужно
-// на старте процесса, а не на первом запросе.
+// An error here means a typo in a template, so it must be called at process
+// startup, not on the first request.
 func ParseTemplates() (*Templates, error) {
 	return newTemplates(web.Assets, false)
 }
 
-// Live читает шаблоны и статику с диска и перечитывает шаблоны на каждый
-// запрос. Нужен только при разработке: без него правка в CSS или в шаблоне
-// видна лишь после пересборки бинарника, потому что go:embed вшивает копию.
-// Каталог - тот, что содержит templates/ и static/ (обычно ./web).
+// Live reads templates and static files from disk and re-reads templates on
+// every request. Only needed during development: without it a change in CSS or a
+// template shows up only after rebuilding the binary, because go:embed embeds a copy.
+// The directory is the one that contains templates/ and static/ (usually ./web).
 func Live(dir string) (*Templates, error) {
 	_, err := os.Stat(filepath.Join(dir, "templates", "layout.html"))
 	if err != nil {
-		return nil, fmt.Errorf("в %s нет templates/layout.html: %w", dir, err)
+		return nil, fmt.Errorf("no templates/layout.html in %s: %w", dir, err)
 	}
 
 	return newTemplates(os.DirFS(dir), true)
@@ -73,7 +73,7 @@ func (t *Templates) parse() error {
 	partials, err := template.New("partials").Funcs(t.funcs()).
 		ParseFS(t.src, "templates/partials/*.html")
 	if err != nil {
-		return fmt.Errorf("партиалы: %w", err)
+		return fmt.Errorf("partials: %w", err)
 	}
 
 	set := make(map[string]*template.Template, len(pages))
@@ -81,7 +81,7 @@ func (t *Templates) parse() error {
 		page, err := template.Must(partials.Clone()).
 			ParseFS(t.src, "templates/layout.html", file)
 		if err != nil {
-			return fmt.Errorf("страница %s: %w", name, err)
+			return fmt.Errorf("page %s: %w", name, err)
 		}
 		set[name] = page
 	}
@@ -91,7 +91,7 @@ func (t *Templates) parse() error {
 	return nil
 }
 
-// funcs - хелперы, доступные шаблонам.
+// funcs holds the helpers available to templates.
 func (t *Templates) funcs() template.FuncMap {
 	return template.FuncMap{
 		"styleWidth": styleWidth,
@@ -99,11 +99,11 @@ func (t *Templates) funcs() template.FuncMap {
 	}
 }
 
-// asset дописывает к пути отпечаток сборки: /static/css/argus.css?v=1a2b3c4d
+// asset appends the build fingerprint to a path: /static/css/argus.css?v=1a2b3c4d
 //
-// Ассеты меняются только вместе с бинарником, поэтому их можно кэшировать
-// надолго - но после деплоя браузер обязан увидеть новый адрес. В live-режиме
-// вместо отпечатка идёт текущее время, чтобы правки были видны сразу.
+// Assets change only together with the binary, so they can be cached for a
+// long time, but after a deploy the browser must see a new address. In live mode
+// the current time is used instead of the fingerprint, so changes show up right away.
 func (t *Templates) asset(path string) string {
 	if t.live {
 		return path + "?v=" + strconv.FormatInt(time.Now().UnixNano(), 36)
@@ -112,15 +112,15 @@ func (t *Templates) asset(path string) string {
 	return path + "?v=" + t.version
 }
 
-// Static возвращает файловую систему со статикой - вшитой или дисковой.
+// Static returns the file system with static files, embedded or on disk.
 func (t *Templates) Static() (fs.FS, error) {
 	return fs.Sub(t.src, "static")
 }
 
-// Live сообщает, работает ли набор в режиме разработки.
+// Live reports whether the set runs in development mode.
 func (t *Templates) IsLive() bool { return t.live }
 
-// Page рендерит целую страницу.
+// Page renders a whole page.
 func (t *Templates) Page(w http.ResponseWriter, name string, data Layout) error {
 	err := t.reloadIfLive()
 	if err != nil {
@@ -128,13 +128,13 @@ func (t *Templates) Page(w http.ResponseWriter, name string, data Layout) error 
 	}
 	set, ok := t.pages[name]
 	if !ok {
-		return fmt.Errorf("неизвестная страница %q", name)
+		return fmt.Errorf("unknown page %q", name)
 	}
 
 	return render(w, set, "layout", data)
 }
 
-// Partial рендерит один партиал - ответ на hx-get.
+// Partial renders a single partial, the response to an hx-get.
 func (t *Templates) Partial(w http.ResponseWriter, name string, data any) error {
 	err := t.reloadIfLive()
 	if err != nil {
@@ -152,18 +152,18 @@ func (t *Templates) reloadIfLive() error {
 	return t.parse()
 }
 
-// render пишет шаблон в буфер и только потом в ResponseWriter: иначе ошибка
-// на середине шаблона оставит наполовину отданный HTML со статусом 200.
+// render writes the template to a buffer and only then to the ResponseWriter:
+// otherwise an error halfway through the template would leave half-sent HTML with status 200.
 func render(w http.ResponseWriter, set *template.Template, name string, data any) error {
 	var buf bytes.Buffer
 
 	err := set.ExecuteTemplate(&buf, name, data)
 	if err != nil {
-		return fmt.Errorf("рендер %s: %w", name, err)
+		return fmt.Errorf("render %s: %w", name, err)
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// Партиалы обновляются поллингом - кэш промежуточных прокси только мешает.
+	// Partials are refreshed by polling: caching by intermediate proxies only gets in the way.
 	w.Header().Set("Cache-Control", "no-store")
 
 	_, err = io.Copy(w, &buf)

@@ -6,7 +6,9 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 go build -o /out/argus ./cmd/argus
+
+ARG VERSION=dev
+RUN CGO_ENABLED=0 go build -ldflags "-X argus-collector/internal/version.Version=${VERSION}" -o /out/argus ./cmd/argus
 
 FROM alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
 

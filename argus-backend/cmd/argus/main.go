@@ -4,7 +4,10 @@ import (
 	"argus-collector/internal/app"
 	"argus-collector/internal/config"
 	"argus-collector/internal/pkg/logger"
+	"argus-collector/internal/version"
 	"context"
+	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,11 +22,21 @@ import (
 // @BasePath        /v1/api
 // @description     API for monitoring containers and HTTP targets.
 func main() {
+	showVersion := flag.Bool("version", false, "print the version and exit")
+	flag.Parse()
+
+	if *showVersion {
+		fmt.Println("argus-collector " + version.Version)
+
+		return
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	cfg := config.MustParseConfig()
 	log := logger.SetupLogger(cfg.Env)
+	log.Info("argus-collector starting", "version", version.Version)
 
 	app := app.NewApp(cfg, log)
 	app.MustRun(ctx)

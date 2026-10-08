@@ -18,7 +18,10 @@ services:
       retries: 20
 
   argus:
-    build: .
+    build:
+      context: .
+      args:
+        VERSION: ${ARGUS_VERSION:-dev}
     env_file: .env
     environment:
       HOST_DISK_PATH: /hostfs

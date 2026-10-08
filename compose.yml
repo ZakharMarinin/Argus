@@ -3,7 +3,10 @@ include:
 
 services:
   argus-web:
-    build: argus-frontend
+    build:
+      context: argus-frontend
+      args:
+        VERSION: ${ARGUS_VERSION:-dev}
     container_name: argus-web
     restart: unless-stopped
     environment:

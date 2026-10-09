@@ -382,3 +382,55 @@ func TestCrashWarningClearsFifteenMinutesAfterLastReturn(t *testing.T) {
 		}
 	}
 }
+
+// TestShortHistoryDowntimeMatchesOutages — случай из ARG-28: цель живёт
+// восемь минут, упали 2 из 5 проверок. Сводка простоя у TargetStatus должна
+// совпасть с тем, что Incidents отдаёт странице Outages, и не может быть
+// больше реально наблюдаемого периода.
+func TestShortHistoryDowntimeMatchesOutages(t *testing.T) {
+	fb := fakeBackend{
+		targets: []targetJSON{
+			{ID: "t1", Name: "qa-web", TargetType: "probe", Status: "up", UpdatedAt: now},
+		},
+		probes: map[string][]probeJSON{
+			"t1": {
+				{ID: 1, TargetID: "t1", Success: false, CreatedAt: now.Add(-8 * time.Minute)},
+				{ID: 2, TargetID: "t1", Success: false, CreatedAt: now.Add(-7 * time.Minute)},
+				{ID: 3, TargetID: "t1", Success: true, CreatedAt: now.Add(-6 * time.Minute)},
+				{ID: 4, TargetID: "t1", Success: true, CreatedAt: now.Add(-4 * time.Minute)},
+				{ID: 5, TargetID: "t1", Success: true, CreatedAt: now.Add(-2 * time.Minute)},
+			},
+		},
+	}
+	uc := newUseCase(t, fb)
+
+	targets, err := uc.TargetStatus(context.Background())
+	if err != nil {
+		t.Fatalf("TargetStatus: %v", err)
+	}
+
+	_, stats, err := uc.Incidents(context.Background())
+	if err != nil {
+		t.Fatalf("Incidents: %v", err)
+	}
+
+	if len(targets) != 1 || targets[0].Probe == nil {
+		t.Fatalf("targets = %+v", targets)
+	}
+
+	got := targets[0].Outages24h
+	if got != stats {
+		t.Errorf("TargetStatus outages = %+v, Incidents stats = %+v: summary and Outages disagree", got, stats)
+	}
+	if got.Total != 2*time.Minute {
+		t.Errorf("measured downtime = %v, want 2m (from the first failed probe to the first successful one)", got.Total)
+	}
+	if got.Total > 8*time.Minute {
+		t.Errorf("measured downtime %v is longer than the 8 minutes of history", got.Total)
+	}
+
+	first := targets[0].Probe.FirstCheckedAt
+	if first == nil || now.Sub(*first).Round(time.Second) != 8*time.Minute {
+		t.Errorf("FirstCheckedAt = %v, want the oldest probe at -8m", first)
+	}
+}

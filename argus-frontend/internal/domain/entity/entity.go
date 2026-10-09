@@ -53,6 +53,12 @@ type TargetSummary struct {
 
 	Probe     *ProbeStats
 	Container *ContainerStats
+
+	// Outages24h — сводка тех же интервалов простоя за 24 часа, что показывает
+	// страница Outages (usecase.Incidents), посчитанная по уже загруженной
+	// истории цели. Плитка простоя в сводке берёт её, а не пересчитывает
+	// процент uptime в минуты.
+	Outages24h IncidentStats
 }
 
 // ProbeStats holds aggregates over the check results of an uptime target.
@@ -66,6 +72,11 @@ type ProbeStats struct {
 	// is zero, not 100% uptime.
 	Checks24h    int
 	Successes24h int
+
+	// FirstCheckedAt — самая старая проверка в окне 24 часов. По ней видно,
+	// что истории меньше суток и процент нельзя подписывать как «24h».
+	// nil, если проверок за сутки не было.
+	FirstCheckedAt *time.Time
 
 	// Recent holds the latest checks from oldest to newest, for the bar on the card.
 	Recent []ProbeOutcome

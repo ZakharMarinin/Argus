@@ -26,9 +26,9 @@ func (uc *UseCase) TargetStatus(ctx context.Context) ([]entity.TargetSummary, er
 
 		switch t.Kind {
 		case entity.KindProbe:
-			summary.Probe, err = uc.probeStats(ctx, t.ID)
+			summary.Probe, summary.Outages24h, err = uc.probeStats(ctx, t.ID)
 		case entity.KindContainer:
-			summary.Container, err = uc.containerStats(ctx, t.ID)
+			summary.Container, summary.Outages24h, err = uc.containerStats(ctx, t.ID)
 		case entity.KindHost:
 		}
 
@@ -62,10 +62,14 @@ func summaryOf(t entity.Target) entity.TargetSummary {
 }
 
 // probeStats computes an uptime target's aggregates from its full probe history.
-func (uc *UseCase) probeStats(ctx context.Context, targetID string) (*entity.ProbeStats, error) {
+//
+// Вторым значением возвращает сводку интервалов простоя за 24 часа: те же
+// probeIncidents и withinWindow, что у Incidents, поэтому сводка на главной и
+// страница Outages сходятся на одних данных без лишних запросов к бэкенду.
+func (uc *UseCase) probeStats(ctx context.Context, targetID string) (*entity.ProbeStats, entity.IncidentStats, error) {
 	probes, err := uc.backend.Probes(ctx, targetID)
 	if err != nil {
-		return nil, notReady(err)
+		return nil, entity.IncidentStats{}, notReady(err)
 	}
 
 	sort.Slice(probes, func(i, j int) bool { return probes[i].CheckedAt.Before(probes[j].CheckedAt) })
@@ -78,6 +82,11 @@ func (uc *UseCase) probeStats(ctx context.Context, targetID string) (*entity.Pro
 	for _, p := range probes {
 		if p.CheckedAt.Before(dayAgo) {
 			continue
+		}
+
+		if stats.FirstCheckedAt == nil {
+			first := p.CheckedAt
+			stats.FirstCheckedAt = &first
 		}
 
 		last24h = append(last24h, p)
@@ -101,19 +110,24 @@ func (uc *UseCase) probeStats(ctx context.Context, targetID string) (*entity.Pro
 
 	stats.Recent = last24h
 
-	return stats, nil
+	return stats, incidentStats(withinWindow(probeIncidents(entity.Target{}, probes), dayAgo)), nil
 }
 
 const crashWindow = 15 * time.Minute
 
 // containerStats computes a container's aggregates from its Docker events.
-func (uc *UseCase) containerStats(ctx context.Context, targetID string) (*entity.ContainerStats, error) {
+//
+// Вторым значением, как и probeStats, возвращает сводку интервалов простоя за
+// 24 часа по тем же правилам, что у Incidents.
+func (uc *UseCase) containerStats(ctx context.Context, targetID string) (*entity.ContainerStats, entity.IncidentStats, error) {
 	events, err := uc.backend.Events(ctx, targetID)
 	if err != nil {
-		return nil, notReady(err)
+		return nil, entity.IncidentStats{}, notReady(err)
 	}
 
-	return containerStatsFromEvents(events), nil
+	outages := incidentStats(withinWindow(containerIncidents(entity.Target{}, events), time.Now().Add(-incidentWindow)))
+
+	return containerStatsFromEvents(events), outages, nil
 }
 
 func containerStatsFromEvents(events []entity.ContainerEvent) *entity.ContainerStats {

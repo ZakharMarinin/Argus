@@ -64,7 +64,7 @@ func TestPagesRenderWithData(t *testing.T) {
 		path string
 		want []string
 	}{
-		{"/", []string{"Uptime targets", "API health", "app-worker", "42 ms", "14min"}},
+		{"/", []string{"Uptime targets", "API health", "app-worker", "42 ms", "5 min", "measured downtime, 24h · 1 unmeasured"}},
 		{"/history/alerts", []string{"History", "TCP port is not responding", "CRITICAL"}},
 		{"/history/logs?sev=error", []string{"panic: connection refused", "all containers", "/api/log-matches", `href="/history/logs?sev=error&amp;target=app-worker"`}},
 		{"/history/outages", []string{"return not recorded", "MEASURED DOWNTIME"}},

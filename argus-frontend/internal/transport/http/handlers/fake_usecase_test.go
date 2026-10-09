@@ -110,6 +110,8 @@ func filledUseCase() fakeUseCase {
 				Label: "SMTP relay", Status: entity.StatusDown, UpdatedAt: testNow,
 				// No checks yet: the target is in the config, the collector hasn't reached it.
 				Probe: &entity.ProbeStats{},
+				// Тот же закрытый интервал, что в incidents ниже.
+				Outages24h: entity.IncidentStats{Count: 1, Total: 5 * time.Minute, Longest: 5 * time.Minute},
 			},
 			{
 				ID: "container:app-worker", Kind: entity.KindContainer,
@@ -119,6 +121,8 @@ func filledUseCase() fakeUseCase {
 					LastEvent:   "restart",
 					LastEventAt: new(testNow.Add(-20 * time.Minute)),
 				},
+				// Тот же интервал без записанного возвращения, что в incidents ниже.
+				Outages24h: entity.IncidentStats{Count: 1, Unclosed: 1},
 			},
 			{
 				ID: "container:grafana-agent", Kind: entity.KindContainer,

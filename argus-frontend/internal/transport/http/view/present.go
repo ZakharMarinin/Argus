@@ -175,6 +175,7 @@ func (p Presenter) health(probes, containers []entity.TargetSummary, counts enti
 	}
 
 	uptime, uptimeOK := aggregateUptime(probes)
+	outages := totalOutages(probes, containers)
 	h.Tiles = []Tile{
 		{
 			Value: containerCount(running, len(containers)),
@@ -182,13 +183,15 @@ func (p Presenter) health(probes, containers []entity.TargetSummary, counts enti
 		},
 		{
 			Value:  percentOrDash(uptime, uptimeOK),
-			Label:  "uptime, 24h",
+			Label:  p.uptimeLabel(probes),
 			Status: uptimeStatus(uptime, uptimeOK),
 		},
 		{
-			Value:  downtimeOrDash(uptime, uptimeOK),
-			Label:  "downtime over 24h, estimated",
-			Status: downtimeStatus(uptime, uptimeOK),
+			// Проверки за сутки были (uptimeOK), значит отсутствие интервалов —
+			// измеренный факт, а не пустота в данных.
+			Value:  downtimeOrDash(outages, uptimeOK),
+			Label:  downtimeLabel(outages),
+			Status: downtimeStatus(outages),
 		},
 	}
 
@@ -233,27 +236,92 @@ func uptimeStatus(uptime float64, ok bool) Status {
 	return StatusWarn
 }
 
-func downtimeStatus(uptime float64, ok bool) Status {
-	if !ok || uptime >= 100 {
-		return ""
+// fullDaySlack — допуск, с которым история считается полной сутками: проверки
+// идут с интервалом, и самая старая из окна 24 часов всегда чуть моложе его начала.
+const fullDaySlack = time.Hour
+
+// uptimeLabel подписывает процент реальным периодом наблюдения.
+//
+// Процент считается только по сделанным проверкам, но подпись «24h» у цели,
+// которую проверяют восемь минут, обещала бы сутки истории, которых нет.
+func (p Presenter) uptimeLabel(probes []entity.TargetSummary) string {
+	var first *time.Time
+	for _, t := range probes {
+		if t.Probe == nil || t.Probe.FirstCheckedAt == nil {
+			continue
+		}
+		if first == nil || t.Probe.FirstCheckedAt.Before(*first) {
+			first = t.Probe.FirstCheckedAt
+		}
 	}
 
-	return StatusDown
+	if first == nil {
+		return "uptime, 24h"
+	}
+
+	observed := p.now().Sub(*first)
+	if observed >= 24*time.Hour-fullDaySlack {
+		return "uptime, 24h"
+	}
+
+	return "uptime, last " + humanDuration(observed)
 }
 
-// downtimeOrDash converts the share of failed checks into minutes of downtime.
-// It is a simple estimate from the check history, so the tile caption also
-// says "estimate".
-func downtimeOrDash(uptime float64, ok bool) string {
-	if !ok {
-		return "—"
-	}
-	minutes := int(math.Round((100 - uptime) / 100 * 24 * 60))
-	if minutes >= 60 {
-		return fmt.Sprintf("%dh %02dmin", minutes/60, minutes%60)
+// totalOutages складывает интервалы простоя всех целей за 24 часа — те же,
+// что на странице Outages, поэтому итог совпадает с её MEASURED DOWNTIME.
+func totalOutages(probes, containers []entity.TargetSummary) entity.IncidentStats {
+	var total entity.IncidentStats
+	for _, t := range append(append([]entity.TargetSummary{}, probes...), containers...) {
+		total.Count += t.Outages24h.Count
+		total.Unclosed += t.Outages24h.Unclosed
+		total.Total += t.Outages24h.Total
+		if t.Outages24h.Longest > total.Longest {
+			total.Longest = t.Outages24h.Longest
+		}
 	}
 
-	return fmt.Sprintf("%dmin", minutes)
+	return total
+}
+
+func downtimeStatus(outages entity.IncidentStats) Status {
+	switch {
+	case outages.Count > outages.Unclosed:
+		return StatusDown
+	case outages.Unclosed > 0:
+		return StatusIdle
+	default:
+		return ""
+	}
+}
+
+// downtimeOrDash показывает измеренный простой за 24 часа.
+//
+// Это сумма реальных интервалов между наблюдениями, а не доля упавших проверок,
+// растянутая на сутки: на истории в восемь минут та давала «9h 36min».
+// Прочерк — когда измерять нечем: проверок не было (observed == false) или ни
+// один интервал не имеет конца. «0 min» — только когда проверки шли и простоя
+// в них не нашлось.
+func downtimeOrDash(outages entity.IncidentStats, observed bool) string {
+	if outages.Count == 0 {
+		if !observed {
+			return "—"
+		}
+
+		return "0 min"
+	}
+
+	return measuredOrDash(outages.Total, outages.Count-outages.Unclosed)
+}
+
+// downtimeLabel повторяет подпись страницы Outages и называет интервалы без
+// записанного возвращения: без этого сумма читалась бы как полная картина.
+func downtimeLabel(outages entity.IncidentStats) string {
+	label := "measured downtime, 24h"
+	if outages.Unclosed > 0 {
+		label += fmt.Sprintf(" · %d unmeasured", outages.Unclosed)
+	}
+
+	return label
 }
 
 func (p Presenter) probeNote(probes []entity.TargetSummary) string {

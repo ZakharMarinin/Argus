@@ -222,19 +222,19 @@ func (a *Alerter) AlertWorker(ctx context.Context) {
 	})
 
 	for _, notif := range notifications {
-		if !a.notify(ctx, log, notif, now) {
+		if !a.notify(ctx, notif, now) {
 			return
 		}
 	}
 }
 
-func (a *Alerter) notify(ctx context.Context, log *slog.Logger, n *notification, now time.Time) bool {
+func (a *Alerter) notify(ctx context.Context, n *notification, now time.Time) bool {
 	send, muted := a.split(n, now)
 
 	if len(muted) > 0 {
 		err := a.uc.MarkAlertsNotified(ctx, muted, entity.AlertStatusCooldown)
 		if err != nil {
-			log.Error("failed to mark alerts notified", "error", err)
+			a.log.Error("failed to mark alerts notified", "error", err)
 
 			return true
 		}
@@ -245,19 +245,19 @@ func (a *Alerter) notify(ctx context.Context, log *slog.Logger, n *notification,
 		return true
 	}
 
-	msg := formatMessage(&notification{Alerts: send, Name: n.Name, Status: n.Status}, a.suppressed[n.Key]+len(muted))
+	msg := formatMessage(&notification{Alerts: send, Name: n.Name, Status: n.Status}, a.suppressed[n.Key])
 
 	_, err := a.bot.Send(telebot.ChatID(a.cfg.Telegram.ChatID), msg)
 
 	if flood, ok := errors.AsType[telebot.FloodError](err); ok {
 		a.pausedUntil = now.Add(time.Duration(flood.RetryAfter) * time.Second)
-		log.Warn("telegram rate limit hit, pausing alerter", "retry_after_sec", flood.RetryAfter)
+		a.log.Warn("telegram rate limit hit, pausing alerter", "retry_after_sec", flood.RetryAfter)
 
 		return false
 	}
 
 	if err != nil {
-		log.Error("failed to send notification", "id", n.Key, "name", n.Name, "error", err)
+		a.log.Error("failed to send notification", "id", n.Key, "name", n.Name, "error", err)
 
 		return true
 	}
@@ -270,7 +270,7 @@ func (a *Alerter) notify(ctx context.Context, log *slog.Logger, n *notification,
 
 	err = a.uc.MarkAlertsNotified(ctx, send, entity.AlertStatusSent)
 	if err != nil {
-		log.Error("failed to mark alerts notified", "error", err)
+		a.log.Error("failed to mark alerts notified", "error", err)
 	}
 
 	return true
@@ -279,14 +279,18 @@ func (a *Alerter) notify(ctx context.Context, log *slog.Logger, n *notification,
 func (a *Alerter) split(n *notification, now time.Time) ([]*entity.Alert, []*entity.Alert) {
 	var send, muted []*entity.Alert
 
+	batch := make(map[alertKey]struct{}, len(n.Alerts))
 	for _, alert := range n.Alerts {
-		sent, ok := a.lastSent[keyOf(alert)]
-		if ok && now.Sub(sent) < a.cfg.Telegram.Cooldown {
+		k := keyOf(alert)
+		sent, _ := a.lastSent[k]
+		_, dup := batch[k]
+		if dup || now.Sub(sent) < a.cfg.Telegram.Cooldown {
 			muted = append(muted, alert)
-
+			
 			continue
 		}
 
+		batch[k] = struct{}{}
 		send = append(send, alert)
 	}
 

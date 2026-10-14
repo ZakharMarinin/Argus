@@ -212,7 +212,7 @@ What isn't in the collector's data, and therefore isn't on the screen:
 | Container CPU/RAM/disk | the cards show failures over 15 minutes and matches over 24 hours; resources exist only for the host, in the sidebar (latest sample from `/v1/api/host`) |
 | Container image | the line isn't shown while there is no value |
 | Alert type | derived from the kind of target: `uptime` or `container` |
-| "Active/closed" alert status | the only real indicator is whether it was sent to Telegram (`sent_to_tg`) |
+| "Active/closed" alert status | the only real indicator is the delivery status (`status`): `sent` is shown as "sent to Telegram", `cooldown` as "suppressed (cooldown)", `not_sent` as "not sent"; a value the dashboard doesn't know is shown as is |
 | Container latency | nothing pings it: its page shows a chart of log matches and Docker events instead |
 | A "degraded" threshold | targets have only `up`/`down`/`unknown`; the yellow status is set from facts: for a target, at least one failed check in 24 hours; for a container, a failure (non-zero exit or OOM) in the last 15 minutes. Log matches affect only the card order and the mascot |
 

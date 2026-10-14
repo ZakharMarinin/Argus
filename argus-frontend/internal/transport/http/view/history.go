@@ -120,17 +120,19 @@ func (p Presenter) HistoryAlerts(page entity.Page[entity.Alert], q url.Values) A
 
 	for _, a := range page.Items {
 		status, mood := alertStatus(a.Severity)
+		state, stateClass := deliveryState(a.Status)
 
 		rows = append(rows, Alert{
-			Time:     p.timestamp(a.CreatedAt),
-			Message:  a.Message,
-			Target:   a.TargetLabel,
-			Type:     alertType(a.TargetKind),
-			Severity: strings.ToUpper(a.Severity),
-			State:    telegramState(a.SentToTelegram),
-			Status:   status,
-			MoodSrc:  Moods[mood].Src,
-			Alarm:    urgent(a.Severity) && now.Sub(a.CreatedAt) < time.Hour,
+			Time:       p.timestamp(a.CreatedAt),
+			Message:    a.Message,
+			Target:     a.TargetLabel,
+			Type:       alertType(a.TargetKind),
+			Severity:   strings.ToUpper(a.Severity),
+			State:      state,
+			StateClass: stateClass,
+			Status:     status,
+			MoodSrc:    Moods[mood].Src,
+			Alarm:      urgent(a.Severity) && now.Sub(a.CreatedAt) < time.Hour,
 		})
 	}
 

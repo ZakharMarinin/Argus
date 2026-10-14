@@ -8,6 +8,30 @@ import (
 	"argus-frontend/internal/domain/entity"
 )
 
+// TestDeliveryState: each backend status gets its own wording, cooldown is
+// told apart from "sent", and a value the dashboard doesn't know is shown as
+// is instead of being passed off as one of the known ones.
+func TestDeliveryState(t *testing.T) {
+	cases := []struct {
+		status    string
+		wantLabel string
+		wantClass string
+	}{
+		{entity.AlertStatusSent, "sent to Telegram", "alert-row__state--sent"},
+		{entity.AlertStatusCooldown, "suppressed (cooldown)", "alert-row__state--cooldown"},
+		{entity.AlertStatusNotSent, "not sent", ""},
+		{"queued", "queued", ""},
+		{"", "delivery unknown", ""},
+	}
+
+	for _, c := range cases {
+		label, class := deliveryState(c.status)
+		if label != c.wantLabel || class != c.wantClass {
+			t.Errorf("deliveryState(%q) = %q, %q; want %q, %q", c.status, label, class, c.wantLabel, c.wantClass)
+		}
+	}
+}
+
 func TestPercentOrDash(t *testing.T) {
 	cases := []struct {
 		value float64

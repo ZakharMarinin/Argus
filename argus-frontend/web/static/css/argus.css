@@ -682,6 +682,11 @@ img { max-width: 100%; display: block; }
 .alert-row__when { text-align: right; }
 .alert-row__time { display: block; font-family: var(--font-mono); font-size: 12.5px; }
 .alert-row__state { display: block; font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+/* Sent is the fact worth reading; cooldown is a deliberate pause, so it stays
+   quiet but italic: distinct from both "sent" and "not sent", never red.
+   Italic survives the colour override on dark rows. */
+.alert-row__state--sent { color: var(--ink-soft); font-weight: 600; }
+.alert-row__state--cooldown { font-style: italic; }
 
 .alert-row:not(.alert-row--dark).is-down { border: 1px solid var(--down); background-color: color-mix(in srgb, var(--down), transparent 80%);}
 .alert-row:not(.alert-row--dark).is-idle { border: 1px solid var(--idle); background-color: color-mix(in srgb, var(--idle), transparent 80%); }

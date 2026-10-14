@@ -302,9 +302,11 @@ type Alert struct {
 	Target   string
 	Type     string
 	Severity string
-	State    string
-	Status   Status
-	MoodSrc  string
+	State    string // delivery status as text
+	// StateClass is a modifier class for State; empty for the plain look.
+	StateClass string
+	Status     Status
+	MoodSrc    string
 	// Alarm raises the row onto a dark panel. Only fresh critical/error alerts get it:
 	// if the whole history got it, the device would stop meaning "look here".
 	Alarm bool

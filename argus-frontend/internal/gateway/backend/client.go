@@ -84,7 +84,7 @@ type alertDTO struct {
 	TargetID  string    `json:"target_id"`
 	Severity  int       `json:"severity"`
 	Details   string    `json:"details"`
-	Notified  bool      `json:"notified"`
+	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -206,12 +206,12 @@ func (c *Client) Alerts(ctx context.Context, q entity.ListQuery) (entity.Page[en
 	page := entity.Page[entity.Alert]{Total: dto.Total, Skip: dto.Skip, Items: make([]entity.Alert, 0, len(dto.Items))}
 	for _, a := range dto.Items {
 		page.Items = append(page.Items, entity.Alert{
-			ID:             int64(a.ID),
-			TargetID:       a.TargetID,
-			Severity:       severityName(a.Severity),
-			Message:        a.Details,
-			SentToTelegram: a.Notified,
-			CreatedAt:      a.CreatedAt,
+			ID:        int64(a.ID),
+			TargetID:  a.TargetID,
+			Severity:  severityName(a.Severity),
+			Message:   a.Details,
+			Status:    a.Status,
+			CreatedAt: a.CreatedAt,
 		})
 	}
 

@@ -138,13 +138,13 @@ func filledUseCase() fakeUseCase {
 			{
 				ID: 1, TargetID: "probe:tcp://mail.local:587", TargetLabel: "SMTP relay",
 				TargetKind: entity.KindProbe, Severity: "critical",
-				Message: "TCP port is not responding", SentToTelegram: true,
+				Message: "TCP port is not responding", Status: entity.AlertStatusSent,
 				CreatedAt: testNow.Add(-5 * time.Minute),
 			},
 			{
 				ID: 2, TargetID: "container:app-worker", TargetLabel: "app-worker",
 				TargetKind: entity.KindContainer, Severity: "warning",
-				Message: "7 log matches", SentToTelegram: false,
+				Message: "7 log matches", Status: entity.AlertStatusNotSent,
 				CreatedAt: testNow.Add(-20 * time.Hour),
 			},
 		},

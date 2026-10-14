@@ -49,9 +49,14 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
-                        "type": "boolean",
-                        "description": "Whether the alert was sent",
-                        "name": "notified",
+                        "enum": [
+                            "sent",
+                            "cooldown",
+                            "not_sent"
+                        ],
+                        "type": "string",
+                        "description": "Status filter: sent, cooldown, not_sent",
+                        "name": "status",
                         "in": "query"
                     },
                     {
@@ -928,16 +933,29 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "notified": {
-                    "type": "boolean"
-                },
                 "severity": {
                     "$ref": "#/definitions/entity.Severity"
+                },
+                "status": {
+                    "$ref": "#/definitions/entity.AlertStatus"
                 },
                 "target_id": {
                     "type": "string"
                 }
             }
+        },
+        "entity.AlertStatus": {
+            "type": "string",
+            "enum": [
+                "sent",
+                "cooldown",
+                "not_sent"
+            ],
+            "x-enum-varnames": [
+                "AlertStatusSent",
+                "AlertStatusCooldown",
+                "AlertStatusNotSent"
+            ]
         },
         "entity.ContainerEvent": {
             "type": "object",

@@ -107,8 +107,8 @@ func listWhere(b sq.SelectBuilder, f entity.ListFilter) sq.SelectBuilder {
 		b = b.Where(sq.Eq{"severity": *f.Severity})
 	}
 
-	if f.Notified != nil {
-		b = b.Where(sq.Eq{"notificated": *f.Notified})
+	if f.Status != nil {
+		b = b.Where(sq.Eq{"status": *f.Status})
 	}
 
 	if f.Since != nil {

@@ -185,6 +185,7 @@ func (w *Watcher) raiseCrashLoop(ctx context.Context, targetID uuid.UUID) {
 	_, err := w.uc.CreateAlert(ctx, &entity.Alert{
 		TargetID: &targetID,
 		Severity: entity.SeverityCritical,
+		Status:   entity.AlertStatusNotSent,
 		Details: fmt.Sprintf("Container is crash-looping: %d restarts within %s",
 			w.cfg.Watcher.CrashLoopRestarts, w.cfg.Watcher.CrashLoopWindow),
 	})

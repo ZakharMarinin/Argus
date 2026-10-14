@@ -35,9 +35,9 @@ type AlertRepository interface {
 	CreateAlert(ctx context.Context, alert *entity.Alert) (*entity.Alert, error)
 	DeleteAlert(ctx context.Context, id int) (int, error)
 	GetAlert(ctx context.Context, id int) (*entity.Alert, error)
-	GetAlertsByNotification(ctx context.Context, flag bool, limit uint64) ([]*entity.Alert, error)
+	GetAlertsByNotification(ctx context.Context, status entity.AlertStatus, limit uint64) ([]*entity.Alert, error)
 	FindAlerts(ctx context.Context, f entity.ListFilter) ([]*entity.Alert, int, error)
-	MarkAlertsNotified(ctx context.Context, id []int) error
+	MarkAlertsNotified(ctx context.Context, id []int, status entity.AlertStatus) error
 }
 
 //nolint:dupl

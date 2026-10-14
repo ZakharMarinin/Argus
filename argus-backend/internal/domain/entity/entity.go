@@ -16,6 +16,7 @@ const (
 
 type Severity int
 type EventType string
+type AlertStatus string
 
 const (
 	SeverityCritical Severity = iota
@@ -32,6 +33,12 @@ const (
 	ContainerRestart EventType = "restart"
 	ContainerDestroy EventType = "destroy"
 	ContainerStart   EventType = "start"
+)
+
+const (
+	AlertStatusSent     AlertStatus = "sent"
+	AlertStatusCooldown AlertStatus = "cooldown"
+	AlertStatusNotSent  AlertStatus = "not_sent"
 )
 
 func (s Severity) Valid() bool {
@@ -83,6 +90,15 @@ func (e EventType) AlertSeverity(exitCode string) (Severity, bool) {
 		return SeverityInfo, false
 	default:
 		return SeverityInfo, false
+	}
+}
+
+func (a AlertStatus) Valid() bool {
+	switch a {
+	case AlertStatusSent, AlertStatusCooldown, AlertStatusNotSent:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -148,19 +164,19 @@ type Probe struct {
 }
 
 type Alert struct {
-	ID        int        `json:"id"`
-	TargetID  *uuid.UUID `json:"target_id"`
-	Severity  Severity  `json:"severity"`
-	Details   string    `json:"details"`
-	Notified  bool      `json:"notified"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        int         `json:"id"`
+	TargetID  *uuid.UUID  `json:"target_id"`
+	Severity  Severity    `json:"severity"`
+	Details   string      `json:"details"`
+	Status    AlertStatus `json:"status"`
+	CreatedAt time.Time   `json:"created_at"`
 }
 
 type ListFilter struct {
 	TargetIDs []uuid.UUID
 	Host      bool
 	Severity  *Severity
-	Notified  *bool
+	Status    *AlertStatus
 	Since     *time.Time
 	After     int
 	Skip      uint64

@@ -8,7 +8,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     networks:
+      - default
       - db
+    ports:
+      - "127.0.0.1:5432:5432"
     volumes:
       - argus_postgres_data:/var/lib/postgresql/data
     healthcheck:

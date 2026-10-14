@@ -36,15 +36,15 @@ func (uc *UseCase) GetAlert(ctx context.Context, id int) (*entity.Alert, error) 
 	return alert, wrapErr(op, err)
 }
 
-func (uc *UseCase) GetAlertsByNotification(ctx context.Context, flag bool, limit uint64) ([]*entity.Alert, error) {
+func (uc *UseCase) GetAlertsByNotification(ctx context.Context, status entity.AlertStatus, limit uint64) ([]*entity.Alert, error) {
 	const op = "UseCase.GetAlertsByNotification"
 
-	alerts, err := uc.db.GetAlertsByNotification(ctx, flag, limit)
+	alerts, err := uc.db.GetAlertsByNotification(ctx, status, limit)
 
 	return alerts, wrapErr(op, err)
 }
 
-func (uc *UseCase) MarkAlertsNotified(ctx context.Context, alerts []*entity.Alert) error {
+func (uc *UseCase) MarkAlertsNotified(ctx context.Context, alerts []*entity.Alert, status entity.AlertStatus) error {
 	const op = "UseCase.MarkAlertsNotified"
 
 	ids := make([]int, 0, len(alerts))
@@ -53,7 +53,7 @@ func (uc *UseCase) MarkAlertsNotified(ctx context.Context, alerts []*entity.Aler
 		ids = append(ids, alert.ID)
 	}
 
-	err := uc.db.MarkAlertsNotified(ctx, ids)
+	err := uc.db.MarkAlertsNotified(ctx, ids, status)
 
 	return wrapErr(op, err)
 }

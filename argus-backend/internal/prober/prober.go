@@ -207,6 +207,7 @@ func (p *Prober) handleTransitions(ctx context.Context, results []probeResult) {
 }
 
 func (p *Prober) raiseAlert(ctx context.Context, source string, alert *entity.Alert) bool {
+	alert.Status = entity.AlertStatusNotSent
 	_, err := p.uc.CreateAlert(ctx, alert)
 	if err != nil {
 		p.log.With("op", "Prober.raiseAlert").

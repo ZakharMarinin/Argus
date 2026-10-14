@@ -1480,8 +1480,8 @@ func (_c *MockAlertRepository_GetAlert_Call) RunAndReturn(run func(ctx context.C
 }
 
 // GetAlertsByNotification provides a mock function for the type MockAlertRepository
-func (_mock *MockAlertRepository) GetAlertsByNotification(ctx context.Context, flag bool, limit uint64) ([]*entity.Alert, error) {
-	ret := _mock.Called(ctx, flag, limit)
+func (_mock *MockAlertRepository) GetAlertsByNotification(ctx context.Context, status entity.AlertStatus, limit uint64) ([]*entity.Alert, error) {
+	ret := _mock.Called(ctx, status, limit)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAlertsByNotification")
@@ -1489,18 +1489,18 @@ func (_mock *MockAlertRepository) GetAlertsByNotification(ctx context.Context, f
 
 	var r0 []*entity.Alert
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, bool, uint64) ([]*entity.Alert, error)); ok {
-		return returnFunc(ctx, flag, limit)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.AlertStatus, uint64) ([]*entity.Alert, error)); ok {
+		return returnFunc(ctx, status, limit)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, bool, uint64) []*entity.Alert); ok {
-		r0 = returnFunc(ctx, flag, limit)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.AlertStatus, uint64) []*entity.Alert); ok {
+		r0 = returnFunc(ctx, status, limit)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*entity.Alert)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, bool, uint64) error); ok {
-		r1 = returnFunc(ctx, flag, limit)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, entity.AlertStatus, uint64) error); ok {
+		r1 = returnFunc(ctx, status, limit)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1514,21 +1514,21 @@ type MockAlertRepository_GetAlertsByNotification_Call struct {
 
 // GetAlertsByNotification is a helper method to define mock.On call
 //   - ctx context.Context
-//   - flag bool
+//   - status entity.AlertStatus
 //   - limit uint64
-func (_e *MockAlertRepository_Expecter) GetAlertsByNotification(ctx any, flag any, limit any) *MockAlertRepository_GetAlertsByNotification_Call {
-	return &MockAlertRepository_GetAlertsByNotification_Call{Call: _e.mock.On("GetAlertsByNotification", ctx, flag, limit)}
+func (_e *MockAlertRepository_Expecter) GetAlertsByNotification(ctx any, status any, limit any) *MockAlertRepository_GetAlertsByNotification_Call {
+	return &MockAlertRepository_GetAlertsByNotification_Call{Call: _e.mock.On("GetAlertsByNotification", ctx, status, limit)}
 }
 
-func (_c *MockAlertRepository_GetAlertsByNotification_Call) Run(run func(ctx context.Context, flag bool, limit uint64)) *MockAlertRepository_GetAlertsByNotification_Call {
+func (_c *MockAlertRepository_GetAlertsByNotification_Call) Run(run func(ctx context.Context, status entity.AlertStatus, limit uint64)) *MockAlertRepository_GetAlertsByNotification_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 bool
+		var arg1 entity.AlertStatus
 		if args[1] != nil {
-			arg1 = args[1].(bool)
+			arg1 = args[1].(entity.AlertStatus)
 		}
 		var arg2 uint64
 		if args[2] != nil {
@@ -1548,22 +1548,22 @@ func (_c *MockAlertRepository_GetAlertsByNotification_Call) Return(alerts []*ent
 	return _c
 }
 
-func (_c *MockAlertRepository_GetAlertsByNotification_Call) RunAndReturn(run func(ctx context.Context, flag bool, limit uint64) ([]*entity.Alert, error)) *MockAlertRepository_GetAlertsByNotification_Call {
+func (_c *MockAlertRepository_GetAlertsByNotification_Call) RunAndReturn(run func(ctx context.Context, status entity.AlertStatus, limit uint64) ([]*entity.Alert, error)) *MockAlertRepository_GetAlertsByNotification_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // MarkAlertsNotified provides a mock function for the type MockAlertRepository
-func (_mock *MockAlertRepository) MarkAlertsNotified(ctx context.Context, id []int) error {
-	ret := _mock.Called(ctx, id)
+func (_mock *MockAlertRepository) MarkAlertsNotified(ctx context.Context, id []int, status entity.AlertStatus) error {
+	ret := _mock.Called(ctx, id, status)
 
 	if len(ret) == 0 {
 		panic("no return value specified for MarkAlertsNotified")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, []int) error); ok {
-		r0 = returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []int, entity.AlertStatus) error); ok {
+		r0 = returnFunc(ctx, id, status)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1578,11 +1578,12 @@ type MockAlertRepository_MarkAlertsNotified_Call struct {
 // MarkAlertsNotified is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id []int
-func (_e *MockAlertRepository_Expecter) MarkAlertsNotified(ctx any, id any) *MockAlertRepository_MarkAlertsNotified_Call {
-	return &MockAlertRepository_MarkAlertsNotified_Call{Call: _e.mock.On("MarkAlertsNotified", ctx, id)}
+//   - status entity.AlertStatus
+func (_e *MockAlertRepository_Expecter) MarkAlertsNotified(ctx any, id any, status any) *MockAlertRepository_MarkAlertsNotified_Call {
+	return &MockAlertRepository_MarkAlertsNotified_Call{Call: _e.mock.On("MarkAlertsNotified", ctx, id, status)}
 }
 
-func (_c *MockAlertRepository_MarkAlertsNotified_Call) Run(run func(ctx context.Context, id []int)) *MockAlertRepository_MarkAlertsNotified_Call {
+func (_c *MockAlertRepository_MarkAlertsNotified_Call) Run(run func(ctx context.Context, id []int, status entity.AlertStatus)) *MockAlertRepository_MarkAlertsNotified_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1592,9 +1593,14 @@ func (_c *MockAlertRepository_MarkAlertsNotified_Call) Run(run func(ctx context.
 		if args[1] != nil {
 			arg1 = args[1].([]int)
 		}
+		var arg2 entity.AlertStatus
+		if args[2] != nil {
+			arg2 = args[2].(entity.AlertStatus)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -1605,7 +1611,7 @@ func (_c *MockAlertRepository_MarkAlertsNotified_Call) Return(err error) *MockAl
 	return _c
 }
 
-func (_c *MockAlertRepository_MarkAlertsNotified_Call) RunAndReturn(run func(ctx context.Context, id []int) error) *MockAlertRepository_MarkAlertsNotified_Call {
+func (_c *MockAlertRepository_MarkAlertsNotified_Call) RunAndReturn(run func(ctx context.Context, id []int, status entity.AlertStatus) error) *MockAlertRepository_MarkAlertsNotified_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3433,8 +3439,8 @@ func (_c *MockStorage_GetAlert_Call) RunAndReturn(run func(ctx context.Context, 
 }
 
 // GetAlertsByNotification provides a mock function for the type MockStorage
-func (_mock *MockStorage) GetAlertsByNotification(ctx context.Context, flag bool, limit uint64) ([]*entity.Alert, error) {
-	ret := _mock.Called(ctx, flag, limit)
+func (_mock *MockStorage) GetAlertsByNotification(ctx context.Context, status entity.AlertStatus, limit uint64) ([]*entity.Alert, error) {
+	ret := _mock.Called(ctx, status, limit)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAlertsByNotification")
@@ -3442,18 +3448,18 @@ func (_mock *MockStorage) GetAlertsByNotification(ctx context.Context, flag bool
 
 	var r0 []*entity.Alert
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, bool, uint64) ([]*entity.Alert, error)); ok {
-		return returnFunc(ctx, flag, limit)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.AlertStatus, uint64) ([]*entity.Alert, error)); ok {
+		return returnFunc(ctx, status, limit)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, bool, uint64) []*entity.Alert); ok {
-		r0 = returnFunc(ctx, flag, limit)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, entity.AlertStatus, uint64) []*entity.Alert); ok {
+		r0 = returnFunc(ctx, status, limit)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*entity.Alert)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, bool, uint64) error); ok {
-		r1 = returnFunc(ctx, flag, limit)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, entity.AlertStatus, uint64) error); ok {
+		r1 = returnFunc(ctx, status, limit)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -3467,21 +3473,21 @@ type MockStorage_GetAlertsByNotification_Call struct {
 
 // GetAlertsByNotification is a helper method to define mock.On call
 //   - ctx context.Context
-//   - flag bool
+//   - status entity.AlertStatus
 //   - limit uint64
-func (_e *MockStorage_Expecter) GetAlertsByNotification(ctx any, flag any, limit any) *MockStorage_GetAlertsByNotification_Call {
-	return &MockStorage_GetAlertsByNotification_Call{Call: _e.mock.On("GetAlertsByNotification", ctx, flag, limit)}
+func (_e *MockStorage_Expecter) GetAlertsByNotification(ctx any, status any, limit any) *MockStorage_GetAlertsByNotification_Call {
+	return &MockStorage_GetAlertsByNotification_Call{Call: _e.mock.On("GetAlertsByNotification", ctx, status, limit)}
 }
 
-func (_c *MockStorage_GetAlertsByNotification_Call) Run(run func(ctx context.Context, flag bool, limit uint64)) *MockStorage_GetAlertsByNotification_Call {
+func (_c *MockStorage_GetAlertsByNotification_Call) Run(run func(ctx context.Context, status entity.AlertStatus, limit uint64)) *MockStorage_GetAlertsByNotification_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 bool
+		var arg1 entity.AlertStatus
 		if args[1] != nil {
-			arg1 = args[1].(bool)
+			arg1 = args[1].(entity.AlertStatus)
 		}
 		var arg2 uint64
 		if args[2] != nil {
@@ -3501,7 +3507,7 @@ func (_c *MockStorage_GetAlertsByNotification_Call) Return(alerts []*entity.Aler
 	return _c
 }
 
-func (_c *MockStorage_GetAlertsByNotification_Call) RunAndReturn(run func(ctx context.Context, flag bool, limit uint64) ([]*entity.Alert, error)) *MockStorage_GetAlertsByNotification_Call {
+func (_c *MockStorage_GetAlertsByNotification_Call) RunAndReturn(run func(ctx context.Context, status entity.AlertStatus, limit uint64) ([]*entity.Alert, error)) *MockStorage_GetAlertsByNotification_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -4477,16 +4483,16 @@ func (_c *MockStorage_GetTargetsByType_Call) RunAndReturn(run func(ctx context.C
 }
 
 // MarkAlertsNotified provides a mock function for the type MockStorage
-func (_mock *MockStorage) MarkAlertsNotified(ctx context.Context, id []int) error {
-	ret := _mock.Called(ctx, id)
+func (_mock *MockStorage) MarkAlertsNotified(ctx context.Context, id []int, status entity.AlertStatus) error {
+	ret := _mock.Called(ctx, id, status)
 
 	if len(ret) == 0 {
 		panic("no return value specified for MarkAlertsNotified")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, []int) error); ok {
-		r0 = returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []int, entity.AlertStatus) error); ok {
+		r0 = returnFunc(ctx, id, status)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -4501,11 +4507,12 @@ type MockStorage_MarkAlertsNotified_Call struct {
 // MarkAlertsNotified is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id []int
-func (_e *MockStorage_Expecter) MarkAlertsNotified(ctx any, id any) *MockStorage_MarkAlertsNotified_Call {
-	return &MockStorage_MarkAlertsNotified_Call{Call: _e.mock.On("MarkAlertsNotified", ctx, id)}
+//   - status entity.AlertStatus
+func (_e *MockStorage_Expecter) MarkAlertsNotified(ctx any, id any, status any) *MockStorage_MarkAlertsNotified_Call {
+	return &MockStorage_MarkAlertsNotified_Call{Call: _e.mock.On("MarkAlertsNotified", ctx, id, status)}
 }
 
-func (_c *MockStorage_MarkAlertsNotified_Call) Run(run func(ctx context.Context, id []int)) *MockStorage_MarkAlertsNotified_Call {
+func (_c *MockStorage_MarkAlertsNotified_Call) Run(run func(ctx context.Context, id []int, status entity.AlertStatus)) *MockStorage_MarkAlertsNotified_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -4515,9 +4522,14 @@ func (_c *MockStorage_MarkAlertsNotified_Call) Run(run func(ctx context.Context,
 		if args[1] != nil {
 			arg1 = args[1].([]int)
 		}
+		var arg2 entity.AlertStatus
+		if args[2] != nil {
+			arg2 = args[2].(entity.AlertStatus)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -4528,7 +4540,7 @@ func (_c *MockStorage_MarkAlertsNotified_Call) Return(err error) *MockStorage_Ma
 	return _c
 }
 
-func (_c *MockStorage_MarkAlertsNotified_Call) RunAndReturn(run func(ctx context.Context, id []int) error) *MockStorage_MarkAlertsNotified_Call {
+func (_c *MockStorage_MarkAlertsNotified_Call) RunAndReturn(run func(ctx context.Context, id []int, status entity.AlertStatus) error) *MockStorage_MarkAlertsNotified_Call {
 	_c.Call.Return(run)
 	return _c
 }

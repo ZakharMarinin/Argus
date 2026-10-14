@@ -8,13 +8,23 @@ definitions:
         type: string
       id:
         type: integer
-      notified:
-        type: boolean
       severity:
         $ref: '#/definitions/entity.Severity'
+      status:
+        $ref: '#/definitions/entity.AlertStatus'
       target_id:
         type: string
     type: object
+  entity.AlertStatus:
+    enum:
+    - sent
+    - cooldown
+    - not_sent
+    type: string
+    x-enum-varnames:
+    - AlertStatusSent
+    - AlertStatusCooldown
+    - AlertStatusNotSent
   entity.ContainerEvent:
     properties:
       created_at:
@@ -156,10 +166,14 @@ paths:
         in: query
         name: severity
         type: integer
-      - description: Whether the alert was sent
+      - description: 'Status filter: sent, cooldown, not_sent'
+        enum:
+        - sent
+        - cooldown
+        - not_sent
         in: query
-        name: notified
-        type: boolean
+        name: status
+        type: string
       - description: Not earlier than this moment, RFC 3339
         in: query
         name: since

@@ -30,7 +30,7 @@ func New(log *slog.Logger) func(next http.Handler) http.Handler {
 
 				entry.Info("request completed",
 					slog.Int("status", ww.Status()),
-					slog.Int("bites", ww.BytesWritten()),
+					slog.Int("bytes", ww.BytesWritten()),
 					slog.String("duration", duration.String()),
 				)
 			}()

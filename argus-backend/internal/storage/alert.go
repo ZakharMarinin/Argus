@@ -21,11 +21,11 @@ func (ar *AlertRepository) CreateAlert(ctx context.Context, alert *entity.Alert)
 
 	err := insertReturning(ctx, ar.db,
 		"alerts",
-		[]string{"target_id", "severity", "details", "notificated", "created_at"},
-		[]any{alert.TargetID, alert.Severity, alert.Details, alert.Notified, alert.CreatedAt},
-		"RETURNING id, target_id, severity, details, notificated, created_at",
+		[]string{"target_id", "severity", "details", "status", "created_at"},
+		[]any{alert.TargetID, alert.Severity, alert.Details, alert.Status, alert.CreatedAt},
+		"RETURNING id, target_id, severity, details, status, created_at",
 		&created.ID, &created.TargetID, &created.Severity,
-		&created.Details, &created.Notified, &created.CreatedAt,
+		&created.Details, &created.Status, &created.CreatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -58,12 +58,12 @@ func (ar *AlertRepository) DeleteAlert(ctx context.Context, id int) (int, error)
 	return id, nil
 }
 
-func (ar *AlertRepository) MarkAlertsNotified(ctx context.Context, ids []int) error {
+func (ar *AlertRepository) MarkAlertsNotified(ctx context.Context, ids []int, status entity.AlertStatus) error {
 	const op = "Storage.AlertRepository.MarkAlertsNotified"
 
 	query, args, err := sq.
 		Update("alerts").
-		Set("notificated", true).
+		Set("status", status).
 		Where(sq.Eq{"id": ids}).
 		PlaceholderFormat(sq.Dollar).
 		ToSql()
@@ -90,10 +90,10 @@ func (ar *AlertRepository) GetAlert(ctx context.Context, id int) (*entity.Alert,
 
 	err := getByID(ctx, ar.db,
 		"alerts",
-		[]string{"id", "target_id", "severity", "details", "notificated", "created_at"},
+		[]string{"id", "target_id", "severity", "details", "status", "created_at"},
 		id,
 		entity.ErrAlertNotFound,
-		&alert.ID, &alert.TargetID, &alert.Severity, &alert.Details, &alert.Notified, &alert.CreatedAt,
+		&alert.ID, &alert.TargetID, &alert.Severity, &alert.Details, &alert.Status, &alert.CreatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -104,7 +104,7 @@ func (ar *AlertRepository) GetAlert(ctx context.Context, id int) (*entity.Alert,
 
 func (ar *AlertRepository) getAlertsConstructor(limit uint64) sq.SelectBuilder {
 	builder := sq.
-		Select("id", "target_id", "severity", "details", "notificated", "created_at").
+		Select("id", "target_id", "severity", "details", "status", "created_at").
 		From("alerts").
 		OrderBy("id ASC").
 		Limit(limit).
@@ -113,12 +113,12 @@ func (ar *AlertRepository) getAlertsConstructor(limit uint64) sq.SelectBuilder {
 	return builder
 }
 
-func (ar *AlertRepository) GetAlertsByNotification(ctx context.Context, flag bool, limit uint64) ([]*entity.Alert, error) {
+func (ar *AlertRepository) GetAlertsByNotification(ctx context.Context, status entity.AlertStatus, limit uint64) ([]*entity.Alert, error) {
 	const op = "Storage.AlertRepository.GetAlertsByNotification"
 
 	query, args, err := ar.
 		getAlertsConstructor(limit).
-		Where(sq.Eq{"notificated": flag}).
+		Where(sq.Eq{"status": status}).
 		ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -137,12 +137,12 @@ func (ar *AlertRepository) FindAlerts(ctx context.Context, f entity.ListFilter) 
 
 	alerts, total, err := findPage(ctx, ar.db,
 		"alerts",
-		[]string{"id", "target_id", "severity", "details", "notificated", "created_at"},
+		[]string{"id", "target_id", "severity", "details", "status", "created_at"},
 		f,
 		func(rows pgx.Rows) (*entity.Alert, error) {
 			var a entity.Alert
 
-			err := rows.Scan(&a.ID, &a.TargetID, &a.Severity, &a.Details, &a.Notified, &a.CreatedAt)
+			err := rows.Scan(&a.ID, &a.TargetID, &a.Severity, &a.Details, &a.Status, &a.CreatedAt)
 
 			return &a, err
 		},
@@ -168,7 +168,7 @@ func (ar *AlertRepository) getAlertsQuery(ctx context.Context, query string, arg
 
 		err := rows.Scan(
 			&alert.ID, &alert.TargetID, &alert.Severity,
-			&alert.Details, &alert.Notified, &alert.CreatedAt,
+			&alert.Details, &alert.Status, &alert.CreatedAt,
 		)
 		if err != nil {
 			return nil, err

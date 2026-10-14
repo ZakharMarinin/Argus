@@ -71,9 +71,9 @@ func TestUseCase_AlertDelegation(t *testing.T) {
 			call: func(ctx context.Context, uc *usecase.UseCase) (any, error) { return uc.GetAlert(ctx, 7) },
 		},
 		{
-			method: "GetAlertsByNotification", args: []any{false, uint64(50)}, want: []*entity.Alert{{ID: 7}}, zero: []*entity.Alert(nil),
+			method: "GetAlertsByNotification", args: []any{entity.AlertStatusNotSent, uint64(50)}, want: []*entity.Alert{{ID: 7}}, zero: []*entity.Alert(nil),
 			call: func(ctx context.Context, uc *usecase.UseCase) (any, error) {
-				return uc.GetAlertsByNotification(ctx, false, 50)
+				return uc.GetAlertsByNotification(ctx, entity.AlertStatusNotSent, 50)
 			},
 		},
 	})
@@ -85,12 +85,13 @@ func TestUseCase_MarkAlertsNotified(t *testing.T) {
 	cases := []struct {
 		name     string
 		alerts   []*entity.Alert
+		status   entity.AlertStatus
 		wantIDs  []int
 		storeErr error
 	}{
-		{name: "passes ids in order", alerts: []*entity.Alert{{ID: 3}, {ID: 1}, {ID: 2}}, wantIDs: []int{3, 1, 2}},
-		{name: "no alerts", alerts: nil, wantIDs: []int{}},
-		{name: "storage error is wrapped", alerts: []*entity.Alert{{ID: 1}}, wantIDs: []int{1}, storeErr: assert.AnError},
+		{name: "passes ids in order", alerts: []*entity.Alert{{ID: 3}, {ID: 1}, {ID: 2}}, status: entity.AlertStatus("sent"), wantIDs: []int{3, 1, 2}},
+		{name: "no alerts", status: entity.AlertStatus("sent"), alerts: nil, wantIDs: []int{}},
+		{name: "storage error is wrapped", alerts: []*entity.Alert{{ID: 1}}, wantIDs: []int{1}, status: entity.AlertStatus("sent"), storeErr: assert.AnError},
 	}
 
 	for _, tc := range cases {
@@ -98,9 +99,9 @@ func TestUseCase_MarkAlertsNotified(t *testing.T) {
 			t.Parallel()
 
 			db := mocks.NewMockStorage(t)
-			db.On("MarkAlertsNotified", mock.Anything, tc.wantIDs).Return(tc.storeErr).Once()
+			db.On("MarkAlertsNotified", mock.Anything, tc.wantIDs, tc.status).Return(tc.storeErr).Once()
 
-			err := usecase.NewUseCase(db).MarkAlertsNotified(t.Context(), tc.alerts)
+			err := usecase.NewUseCase(db).MarkAlertsNotified(t.Context(), tc.alerts, tc.status)
 
 			if tc.storeErr != nil {
 				require.ErrorIs(t, err, tc.storeErr)

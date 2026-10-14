@@ -24,4 +24,3 @@ func TestCheckDowngrade(t *testing.T) {
 		})
 	}
 }
-

@@ -90,6 +90,30 @@ func TestPagesRenderWithData(t *testing.T) {
 	}
 }
 
+// TestAlertHistoryShowsDeliveryStatus: cooldown is rendered as a suppression,
+// distinct from "sent to Telegram", and an unknown status shows up as is.
+func TestAlertHistoryShowsDeliveryStatus(t *testing.T) {
+	uc := filledUseCase()
+	uc.alerts = append(uc.alerts,
+		entity.Alert{ID: 3, TargetLabel: "SMTP relay", TargetKind: entity.KindProbe, Severity: "critical",
+			Message: "still down", Status: entity.AlertStatusCooldown, CreatedAt: testNow.Add(-3 * time.Minute)},
+		entity.Alert{ID: 4, TargetLabel: "SMTP relay", TargetKind: entity.KindProbe, Severity: "info",
+			Message: "odd one", Status: "queued", CreatedAt: testNow.Add(-4 * time.Minute)},
+	)
+
+	body := get(t, newServer(t, uc), "/history/alerts").Body.String()
+	for _, want := range []string{
+		`<span class="alert-row__state alert-row__state--sent">sent to Telegram</span>`,
+		`<span class="alert-row__state alert-row__state--cooldown">suppressed (cooldown)</span>`,
+		`<span class="alert-row__state">not sent</span>`,
+		`<span class="alert-row__state">queued</span>`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("output is missing %s", want)
+		}
+	}
+}
+
 // TestEmptyDatabaseShowsEmptyStates is the main check of this task.
 //
 // On an empty database the dashboard must honestly say there is no data. Any

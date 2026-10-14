@@ -43,7 +43,7 @@
     <span class="pill">{{.Severity}}</span>
     <div class="alert-row__when">
       <span class="alert-row__time">{{.Time}}</span>
-      <span class="alert-row__state">{{.State}}</span>
+      <span class="alert-row__state{{with .StateClass}} {{.}}{{end}}">{{.State}}</span>
     </div>
   </article>
   {{else}}

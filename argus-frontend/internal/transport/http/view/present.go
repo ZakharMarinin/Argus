@@ -558,14 +558,23 @@ func alertType(kind entity.Kind) string {
 	}
 }
 
-// telegramState shows the only lifecycle indicator an alert has:
-// whether the message reached Telegram.
-func telegramState(sent bool) string {
-	if sent {
-		return "sent to Telegram"
+// deliveryState shows the only lifecycle indicator an alert has: what
+// happened to its message. Cooldown is a deliberate suppression, not a
+// failure, so it gets its own quiet look instead of an error colour. A value
+// the dashboard doesn't know yet is shown as is rather than guessed at.
+func deliveryState(status string) (label, class string) {
+	switch status {
+	case entity.AlertStatusSent:
+		return "sent to Telegram", "alert-row__state--sent"
+	case entity.AlertStatusCooldown:
+		return "suppressed (cooldown)", "alert-row__state--cooldown"
+	case entity.AlertStatusNotSent:
+		return "not sent", ""
+	case "":
+		return "delivery unknown", ""
+	default:
+		return status, ""
 	}
-
-	return "not sent"
 }
 
 // ---------------------------------------------------------------------------

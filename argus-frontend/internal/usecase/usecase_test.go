@@ -51,6 +51,7 @@ type alertJSON struct {
 	TargetID  string    `json:"target_id,omitempty"`
 	Severity  int       `json:"severity"`
 	Details   string    `json:"details"`
+	Status    string    `json:"status,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -320,6 +321,38 @@ func TestHistoryAlertsFiltersByKindAndLabels(t *testing.T) {
 	}
 	if page.Total != 1 || len(page.Items) != 1 || page.Items[0].TargetLabel != "api" || page.Items[0].Severity != entity.SeverityCritical {
 		t.Errorf("page = %+v", page)
+	}
+}
+
+// TestHistoryAlertsKeepsDeliveryStatus: alert.status reaches the dashboard
+// as the backend sent it, including a value the dashboard doesn't know.
+func TestHistoryAlertsKeepsDeliveryStatus(t *testing.T) {
+	want := map[string]string{
+		"a": entity.AlertStatusSent,
+		"b": entity.AlertStatusCooldown,
+		"c": entity.AlertStatusNotSent,
+		"d": "queued",
+	}
+
+	fb := fakeBackend{targets: []targetJSON{{ID: "t1", Name: "api", TargetType: "probe", Status: "up"}}}
+	for i, details := range []string{"a", "b", "c", "d"} {
+		fb.alerts = append(fb.alerts, alertJSON{
+			ID: i + 1, TargetID: "t1", Details: details, Status: want[details],
+			CreatedAt: now.Add(-time.Duration(i+1) * time.Minute),
+		})
+	}
+
+	page, err := newUseCase(t, fb).HistoryAlerts(context.Background(), entity.HistoryQuery{Page: 1})
+	if err != nil {
+		t.Fatalf("HistoryAlerts: %v", err)
+	}
+	if len(page.Items) != len(want) {
+		t.Fatalf("got %d alerts, want %d", len(page.Items), len(want))
+	}
+	for _, a := range page.Items {
+		if a.Status != want[a.Message] {
+			t.Errorf("alert %q: Status = %q, want %q", a.Message, a.Status, want[a.Message])
+		}
 	}
 }
 

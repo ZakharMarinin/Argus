@@ -125,18 +125,27 @@ const (
 //
 // An alert has neither a type nor a lifecycle: the type is derived from the
 // kind of target, and instead of an "active/closed" status there is only the
-// fact of delivery to Telegram (Notified). None of this is made up: exactly
-// what was recorded is shown.
+// delivery status (Status). None of this is made up: exactly what was
+// recorded is shown.
 type Alert struct {
-	ID             int64
-	TargetID       string
-	TargetLabel    string
-	TargetKind     Kind
-	Severity       string // one of the Severity* values
-	Message        string
-	SentToTelegram bool
-	CreatedAt      time.Time
+	ID          int64
+	TargetID    string
+	TargetLabel string
+	TargetKind  Kind
+	Severity    string // one of the Severity* values
+	Message     string
+	// Status is the backend value as is: one of the AlertStatus* values, or
+	// one the dashboard doesn't know yet if the backend adds it.
+	Status    string
+	CreatedAt time.Time
 }
+
+// Alert delivery statuses, as the backend reports them in alert.status.
+const (
+	AlertStatusSent     = "sent"     // delivered to Telegram
+	AlertStatusCooldown = "cooldown" // suppressed: an alert for the target went out recently
+	AlertStatusNotSent  = "not_sent" // not delivered
+)
 
 // AlertCounts holds alert counters for the last 24 hours.
 // Critical combines SeverityCritical and SeverityError, both "urgent, look

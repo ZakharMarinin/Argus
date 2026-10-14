@@ -161,6 +161,138 @@ func TestFormatMessage(t *testing.T) {
 	})
 }
 
+func TestSplit(t *testing.T) {
+	t.Parallel()
+
+	targetID := uuid.New()
+	otherID := uuid.New()
+	now := time.Now()
+
+	cases := []struct {
+		name          string
+		n             *notification
+		now           time.Time
+		lastSent      map[alertKey]time.Time
+		expectedSend  []*entity.Alert
+		expectedMuted []*entity.Alert
+	}{
+		{
+			name: "only dups test",
+			n: &notification{Alerts: []*entity.Alert{
+				{ID: 1, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 2, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 3, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 4, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 5, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+			}},
+			now: time.Now(),
+			expectedSend: []*entity.Alert{
+				{ID: 1, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+			},
+			expectedMuted: []*entity.Alert{
+				{ID: 2, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 3, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 4, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 5, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+			},
+		},
+		{
+			name: "dups + some unique test",
+			n: &notification{Alerts: []*entity.Alert{
+				{ID: 1, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 2, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 3, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 4, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 5, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 6, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "unique"},
+			}},
+			now: time.Now(),
+			expectedSend: []*entity.Alert{
+				{ID: 1, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 6, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "unique"},
+			},
+			expectedMuted: []*entity.Alert{
+				{ID: 2, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 3, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 4, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 5, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+			},
+		},
+		{
+			name: "cooldown not expired mutes the alert",
+			n: &notification{Alerts: []*entity.Alert{
+				{ID: 1, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+			}},
+			now:      now,
+			lastSent: map[alertKey]time.Time{{targetID, "dup"}: now.Add(-time.Minute)},
+			expectedMuted: []*entity.Alert{
+				{ID: 1, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+			},
+		},
+		{
+			name: "cooldown expired sends the alert",
+			n: &notification{Alerts: []*entity.Alert{
+				{ID: 1, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+			}},
+			now:      now,
+			lastSent: map[alertKey]time.Time{{targetID, "dup"}: now.Add(-10 * time.Minute)},
+			expectedSend: []*entity.Alert{
+				{ID: 1, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+			},
+		},
+		{
+			name: "dups in one tick under active cooldown are all muted",
+			n: &notification{Alerts: []*entity.Alert{
+				{ID: 1, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 2, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 3, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "other"},
+			}},
+			now:      now,
+			lastSent: map[alertKey]time.Time{{targetID, "dup"}: now.Add(-time.Minute)},
+			expectedSend: []*entity.Alert{
+				{ID: 3, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "other"},
+			},
+			expectedMuted: []*entity.Alert{
+				{ID: 1, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 2, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+			},
+		},
+		{
+			name: "same details on another target are not dups",
+			n: &notification{Alerts: []*entity.Alert{
+				{ID: 1, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 2, TargetID: &otherID, Severity: entity.SeverityCritical, Details: "dup"},
+			}},
+			now: now,
+			expectedSend: []*entity.Alert{
+				{ID: 1, TargetID: &targetID, Severity: entity.SeverityCritical, Details: "dup"},
+				{ID: 2, TargetID: &otherID, Severity: entity.SeverityCritical, Details: "dup"},
+			},
+		},
+		{
+			name: "no alerts",
+			n:    &notification{},
+			now:  now,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			a := &Alerter{
+				cfg:      &config.Config{Telegram: config.Telegram{Cooldown: 5 * time.Minute}},
+				lastSent: tc.lastSent,
+			}
+
+			send, muted := a.split(tc.n, tc.now)
+
+			require.Equal(t, tc.expectedSend, send)
+			require.Equal(t, tc.expectedMuted, muted)
+		})
+	}
+}
+
 func TestTruncateCountsUTF16(t *testing.T) {
 	got := truncate(strings.Repeat("😱", telegramMessageLimit), telegramMessageLimit)
 

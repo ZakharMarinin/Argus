@@ -151,6 +151,7 @@ func (s *Sampler) raise(ctx context.Context, name string, pct float64, level str
 
 	_, err := s.uc.CreateAlert(ctx, &entity.Alert{
 		Severity: severity,
+		Status:   entity.AlertStatusNotSent,
 		Details:  fmt.Sprintf("%s usage is %.0f%% (%s above %.0f%%)", name, pct, level, threshold),
 	})
 	if err != nil {

@@ -19,7 +19,7 @@ type fakeUseCase struct {
 	gotIDs  []uuid.UUID
 }
 
-func (f *fakeUseCase) GetAlertsByNotification(_ context.Context, _ bool, _ uint64) ([]*entity.Alert, error) {
+func (f *fakeUseCase) GetAlertsByNotification(_ context.Context, _ entity.AlertStatus, _ uint64) ([]*entity.Alert, error) {
 	return nil, nil
 }
 
@@ -29,7 +29,7 @@ func (f *fakeUseCase) GetTargetsByIDs(_ context.Context, ids []uuid.UUID) ([]*en
 	return f.targets, nil
 }
 
-func (f *fakeUseCase) MarkAlertsNotified(_ context.Context, _ []*entity.Alert) error {
+func (f *fakeUseCase) MarkAlertsNotified(_ context.Context, _ []*entity.Alert, _ entity.AlertStatus) error {
 	return nil
 }
 
@@ -118,7 +118,7 @@ func TestFormatMessage(t *testing.T) {
 			{Severity: entity.SeverityCritical, Details: "oom"},
 		}}, 0)
 
-		require.True(t, strings.HasPrefix(msg, "[CRITICAL] api-gateway - down"))
+		require.True(t, strings.HasPrefix(msg, "api-gateway - down"))
 		require.Contains(t, msg, "[WARNING] slow")
 		require.Contains(t, msg, "[CRITICAL] oom")
 		require.NotContains(t, msg, "suppressed")
@@ -134,7 +134,7 @@ func TestFormatMessage(t *testing.T) {
 
 		msg := formatMessage(&notification{Name: target.Name, Status: target.Status, Alerts: alerts}, 4)
 
-		require.True(t, strings.HasPrefix(msg, "[CRITICAL] api-gateway - down"))
+		require.True(t, strings.HasPrefix(msg, "api-gateway - down"))
 		require.Contains(t, msg, "12 alerts: CRITICAL ×1, ERROR ×11")
 		require.Contains(t, msg, "latest: oom")
 		require.Contains(t, msg, "+4 suppressed")
@@ -146,7 +146,7 @@ func TestFormatMessage(t *testing.T) {
 			{Severity: entity.SeverityWarning, Details: "Disk usage is 93% (warning above 90%)"},
 		}}, 0)
 
-		require.True(t, strings.HasPrefix(msg, "[WARNING] Host · vps-01 - n/a"))
+		require.True(t, strings.HasPrefix(msg, "Host · vps-01 - n/a"))
 	})
 
 	t.Run("long details are cut, other alerts kept", func(t *testing.T) {

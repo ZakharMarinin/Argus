@@ -33,9 +33,9 @@ type notification struct {
 }
 
 type UseCase interface {
-	GetAlertsByNotification(ctx context.Context, flag bool, limit uint64) ([]*entity.Alert, error)
+	GetAlertsByNotification(ctx context.Context, status entity.AlertStatus, limit uint64) ([]*entity.Alert, error)
 	GetTargetsByIDs(ctx context.Context, ids []uuid.UUID) ([]*entity.Target, error)
-	MarkAlertsNotified(ctx context.Context, alerts []*entity.Alert) error
+	MarkAlertsNotified(ctx context.Context, alerts []*entity.Alert, status entity.AlertStatus) error
 }
 
 type alertKey struct {
@@ -100,7 +100,7 @@ func (a *Alerter) StopBot() {
 func formatMessage(n *notification, suppressed int) string {
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "[%s] %s - %s\n", maxSeverity(n.Alerts), n.Name, n.Status)
+	fmt.Fprintf(&b, "%s - %s\n", n.Name, n.Status)
 
 	if len(n.Alerts) <= maxListedAlerts {
 		for _, alert := range n.Alerts {
@@ -116,15 +116,6 @@ func formatMessage(n *notification, suppressed int) string {
 	}
 
 	return truncate(b.String(), telegramMessageLimit)
-}
-
-func maxSeverity(alerts []*entity.Alert) entity.Severity {
-	top := entity.SeverityDebug
-	for _, alert := range alerts {
-		top = min(top, alert.Severity)
-	}
-
-	return top
 }
 
 func severityCounts(alerts []*entity.Alert) string {
@@ -208,7 +199,7 @@ func (a *Alerter) AlertWorker(ctx context.Context) {
 		return
 	}
 
-	alerts, err := a.uc.GetAlertsByNotification(ctx, false, alertsPerTick)
+	alerts, err := a.uc.GetAlertsByNotification(ctx, entity.AlertStatusNotSent, alertsPerTick)
 	if err != nil {
 		log.Error("failed to get alerts", "error", err)
 
@@ -240,16 +231,17 @@ func (a *Alerter) AlertWorker(ctx context.Context) {
 func (a *Alerter) notify(ctx context.Context, log *slog.Logger, n *notification, now time.Time) bool {
 	send, muted := a.split(n, now)
 
-	if len(send) == 0 {
-		err := a.uc.MarkAlertsNotified(ctx, muted)
+	if len(muted) > 0 {
+		err := a.uc.MarkAlertsNotified(ctx, muted, entity.AlertStatusCooldown)
 		if err != nil {
 			log.Error("failed to mark alerts notified", "error", err)
 
 			return true
 		}
-
 		a.suppressed[n.Key] += len(muted)
+	}
 
+	if len(send) == 0 {
 		return true
 	}
 
@@ -276,7 +268,7 @@ func (a *Alerter) notify(ctx context.Context, log *slog.Logger, n *notification,
 
 	delete(a.suppressed, n.Key)
 
-	err = a.uc.MarkAlertsNotified(ctx, n.Alerts)
+	err = a.uc.MarkAlertsNotified(ctx, send, entity.AlertStatusSent)
 	if err != nil {
 		log.Error("failed to mark alerts notified", "error", err)
 	}

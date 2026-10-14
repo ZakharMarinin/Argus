@@ -64,15 +64,15 @@ func (h *Handler) CreateAlert(w http.ResponseWriter, r *http.Request) {
 // @Description  Returns alerts; filters can be combined. The total number of matching records is in the X-Total-Count header
 // @Tags         alerts
 // @Produce      json
-// @Param        target_id query    []string false "Target ID, can be repeated" collectionFormat(multi)
-// @Param        host      query    bool     false "Only host alerts (no target)"
-// @Param        severity  query    int      false "Severity"
-// @Param        notified  query    bool     false "Whether the alert was sent"
-// @Param        since     query    string   false "Not earlier than this moment, RFC 3339"
-// @Param        order     query    string   false "Order by id" Enums(asc, desc)
-// @Param        limit     query    int      false "Limit"
-// @Param        skip      query    int      false "How many records to skip"
-// @Param        offset    query    int      false "Only records with an id greater than this"
+// @Param        target_id query    []string 			false "Target ID, can be repeated" collectionFormat(multi)
+// @Param        host      query    bool     			false "Only host alerts (no target)"
+// @Param        severity  query    int      			false "Severity"
+// @Param        status    query    entity.AlertStatus  false "Status filter: sent, cooldown, not_sent"
+// @Param        since     query    string   			false "Not earlier than this moment, RFC 3339"
+// @Param        order     query    string   			false "Order by id" Enums(asc, desc)
+// @Param        limit     query    int      			false "Limit"
+// @Param        skip      query    int      			false "How many records to skip"
+// @Param        offset    query    int      			false "Only records with an id greater than this"
 // @Success      200  {array}  entity.Alert
 // @Header       200  {integer} X-Total-Count "Number of records matching the filter"
 // @Failure      400  {object} response.ErrorResponse
@@ -89,15 +89,15 @@ func (h *Handler) GetListAlerts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if raw := r.URL.Query().Get("notified"); raw != "" {
-		notified, err := strconv.ParseBool(raw)
-		if err != nil {
+	if raw := r.URL.Query().Get("status"); raw != "" {
+		ok := entity.AlertStatus(raw).Valid()
+		if !ok {
 			response.JSONError(w, r, http.StatusBadRequest, "invalid arguments")
 
 			return
 		}
-
-		f.Notified = &notified
+		status := entity.AlertStatus(raw)
+		f.Status = &status
 	}
 
 	alerts, total, err := h.uc.FindAlerts(ctx, f)

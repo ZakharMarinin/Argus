@@ -159,6 +159,63 @@ type Overview struct {
 	Chart      Chart
 	Logs       LogPulse
 	Recent     RecentPanel
+
+	// Blocks is the default arrangement of the overview board. The person can
+	// reorder, resize and hide blocks; that choice lives in their browser
+	// (localStorage, like the theme), and the server only renders the default.
+	Blocks []Block
+}
+
+// Block widths in columns of the 12-column overview board. Four steps are
+// enough to build any row and few enough to pick from at a glance.
+const (
+	BlockThird     = 4
+	BlockHalf      = 6
+	BlockTwoThirds = 8
+	BlockFull      = 12
+)
+
+// BlockSizes is the size switcher of a block, narrowest first.
+func BlockSizes() []BlockSize {
+	return []BlockSize{
+		{Cols: BlockThird, Label: "1/3", Name: "One third"},
+		{Cols: BlockHalf, Label: "1/2", Name: "Half"},
+		{Cols: BlockTwoThirds, Label: "2/3", Name: "Two thirds"},
+		{Cols: BlockFull, Label: "Full", Name: "Full width"},
+	}
+}
+
+// BlockSize is one option of the size switcher.
+type BlockSize struct {
+	Cols  int
+	Label string
+	Name  string // accessible name: "2/3" alone is read out as "two slash three"
+}
+
+// Block is one movable block of the overview board.
+type Block struct {
+	ID    string // stable key: the saved layout refers to blocks by it
+	Title string
+	Size  int // default width in board columns
+	// Pinned blocks can be moved and resized but not hidden: without the
+	// overall state the overview no longer answers "is something broken?".
+	Pinned bool
+	Sizes  []BlockSize
+}
+
+// OverviewBlocks is the default board, triage first: the state and what just
+// happened, then what exactly is broken, and the 24-hour trends last.
+func OverviewBlocks() []Block {
+	sizes := BlockSizes()
+
+	return []Block{
+		{ID: "summary", Title: "Overall status", Size: BlockThird, Pinned: true, Sizes: sizes},
+		{ID: "recent", Title: "Recent activity", Size: BlockTwoThirds, Sizes: sizes},
+		{ID: "targets", Title: "Uptime targets", Size: BlockFull, Sizes: sizes},
+		{ID: "containers", Title: "Containers", Size: BlockFull, Sizes: sizes},
+		{ID: "latency", Title: "Latency and uptime", Size: BlockTwoThirds, Sizes: sizes},
+		{ID: "logs", Title: "Log matches", Size: BlockThird, Sizes: sizes},
+	}
 }
 
 // Health is the overall state line.

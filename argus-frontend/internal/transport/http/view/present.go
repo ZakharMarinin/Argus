@@ -93,6 +93,7 @@ func (p Presenter) Overview(targets []entity.TargetSummary, counts entity.AlertC
 			Note:       p.containerNote(containers),
 			Containers: p.containers(containers, logCounts(logs.Matches)),
 		},
+		Blocks: OverviewBlocks(),
 	}
 }
 
@@ -396,7 +397,27 @@ func (p Presenter) targets(probes []entity.TargetSummary) []Target {
 		out = append(out, target)
 	}
 
+	// Same rule as the container grid: what needs attention comes first, so
+	// that a down target isn't somewhere in the middle of an alphabetical list.
+	// The sort is stable: within one status the backend's order stays.
+	sort.SliceStable(out, func(i, j int) bool { return attention(out[i].Status) > attention(out[j].Status) })
+
 	return out
+}
+
+func attention(s Status) int {
+	switch s {
+	case StatusDown:
+		return 3
+	case StatusWarn:
+		return 2
+	case StatusIdle:
+		return 1
+	case StatusUp:
+		return 0
+	default:
+		return 0
+	}
 }
 
 func warnAwareLabel(status Status, base string) string {

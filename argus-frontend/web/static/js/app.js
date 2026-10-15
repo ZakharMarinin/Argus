@@ -1,15 +1,18 @@
 /*
  * Argus dashboard: the client-side layer.
  *
- * There are five things here and nothing more:
+ * There are six things here and nothing more:
  *   1. pausing htmx polling and the data age counter;
  *   2. the chart, which lives apart from partial polling;
  *   3. the theme switcher;
  *   4. small local interactions (the modal, copying a snippet);
- *   5. liveliness of the match feed: new rows, expanded rows, the counter.
+ *   5. liveliness of the match feed: new rows, expanded rows, the counter;
+ *   6. the overview board: the person's own order and widths of the blocks.
  *
  * Data is brought to the page by htmx. There is no application state in JS:
- * everything visible on screen came from the server.
+ * every number on screen came from the server. The only things kept here are
+ * presentation choices (theme, open groups, the overview layout), and they
+ * live in localStorage.
  */
 (function () {
   'use strict';
@@ -29,10 +32,14 @@
   // we only hold back timer polling, which has no triggeringEvent.
   var paused = false;
 
+  // A block is being dragged: a swap would change its height under the
+  // pointer, so the timer polls wait for the drop.
+  var holdPolls = false;
+
   document.addEventListener('htmx:beforeRequest', function (evt) {
     var cfg = evt.detail && evt.detail.requestConfig;
     var isPoll = !cfg || !cfg.triggeringEvent;
-    if (paused && isPoll) evt.preventDefault();
+    if ((paused || holdPolls) && isPoll) evt.preventDefault();
   });
 
   // Change highlighting. A partial is swapped every 10 seconds whether or not
@@ -489,4 +496,597 @@
     open.open = false;
     open.querySelector('summary').focus();
   });
+  /* -------------------------------------------------- Overview board --- */
+
+  // The person arranges the overview: order, width and hidden blocks. The
+  // server always renders the default arrangement; the saved one lives in
+  // localStorage next to the theme and is applied right here, before paint
+  // (app.js is deferred, see the <details> note above).
+  //
+  // Only presentation is stored, never data: block ids, widths in grid
+  // columns, and which blocks are hidden.
+
+  var LAYOUT_KEY = 'argus:layout';
+  var LAYOUT_VERSION = 1;
+
+  // How far the pointer has to travel before a press on the handle becomes a
+  // drag. Less than this is a click or a shaky hand.
+  var DRAG_THRESHOLD_PX = 4;
+
+  // Auto-scroll while dragging near the top or bottom of the window.
+  var SCROLL_EDGE_PX = 72;
+  var SCROLL_MAX_PX = 18;
+
+  var board = document.getElementById('board');
+  if (board) initBoard(board);
+
+  function initBoard(board) {
+    var editbar = board.querySelector('[data-layout-bar]');
+    var tray = board.querySelector('[data-layout-tray]');
+    var note = board.querySelector('[data-layout-note]');
+    var noteText = board.querySelector('[data-layout-note-text]');
+    var live = board.querySelector('[data-layout-live]');
+    var resetButton = board.querySelector('[data-layout-reset]');
+    var customize = document.querySelector('.page-head [data-layout-edit]');
+
+    var editing = false;
+    var drag = null;  // pointer drag in progress
+    var grab = null;  // keyboard "pick up" in progress
+    var moving = false;  // our own DOM move, which blurs the focused handle
+
+    function all() {
+      return Array.prototype.slice.call(board.querySelectorAll(':scope > [data-block]'));
+    }
+
+    function shown() {
+      return all().filter(function (b) { return !b.hasAttribute('data-hidden'); });
+    }
+
+    function find(id) {
+      return board.querySelector(':scope > [data-block="' + id + '"]');
+    }
+
+    function sizesOf(block) {
+      return Array.prototype.map.call(block.querySelectorAll('[data-layout-size]'), function (b) {
+        return b.dataset.layoutSize;
+      });
+    }
+
+    function titleOf(block) {
+      return block.dataset.title;
+    }
+
+    var defaults = all().map(function (b) {
+      return { id: b.dataset.block, size: b.dataset.defaultSize };
+    });
+
+    /* --- reading and writing the arrangement --- */
+
+    function current() {
+      var size = {};
+      var hidden = [];
+      all().forEach(function (b) {
+        size[b.dataset.block] = b.dataset.size;
+        if (b.hasAttribute('data-hidden')) hidden.push(b.dataset.block);
+      });
+
+      return {
+        v: LAYOUT_VERSION,
+        order: all().map(function (b) { return b.dataset.block; }),
+        size: size,
+        hidden: hidden
+      };
+    }
+
+    function isDefault(layout) {
+      if (layout.hidden.length) return false;
+
+      return defaults.every(function (d, i) {
+        return layout.order[i] === d.id && layout.size[d.id] === d.size;
+      });
+    }
+
+    function load() {
+      try {
+        var saved = JSON.parse(localStorage.getItem(LAYOUT_KEY));
+        if (saved && saved.v === LAYOUT_VERSION && Array.isArray(saved.order)) return saved;
+      } catch (e) { /* private mode or a broken value: the default stays */ }
+
+      return null;
+    }
+
+    function save() {
+      var layout = current();
+      try {
+        // A layout equal to the default isn't stored: whoever never changed
+        // anything keeps getting the default, even when it changes.
+        if (isDefault(layout)) localStorage.removeItem(LAYOUT_KEY);
+        else localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
+      } catch (e) { /* the change simply won't survive a reload */ }
+    }
+
+    // apply puts the blocks into the given arrangement. The saved layout is
+    // only a wish: blocks the server no longer renders are dropped, and a
+    // block it added later lands at its default place instead of vanishing.
+    function apply(layout) {
+      var ids = defaults.map(function (d) { return d.id; });
+      var order = (layout ? layout.order : ids).filter(function (id, i, list) {
+        return ids.indexOf(id) >= 0 && list.indexOf(id) === i;
+      });
+      ids.forEach(function (id, i) {
+        if (order.indexOf(id) < 0) order.splice(Math.min(i, order.length), 0, id);
+      });
+
+      order.forEach(function (id) { board.appendChild(find(id)); });
+
+      defaults.forEach(function (d) {
+        var block = find(d.id);
+        var size = layout && layout.size ? String(layout.size[d.id]) : d.size;
+        block.dataset.size = sizesOf(block).indexOf(size) >= 0 ? size : d.size;
+
+        var hide = !!layout && Array.isArray(layout.hidden) && layout.hidden.indexOf(d.id) >= 0;
+        block.toggleAttribute('data-hidden', hide && !block.hasAttribute('data-pinned'));
+      });
+
+      sync();
+    }
+
+    /* --- the controls follow the arrangement --- */
+
+    function sync() {
+      var hidden = all().filter(function (b) { return b.hasAttribute('data-hidden'); });
+
+      all().forEach(function (block) {
+        block.querySelectorAll('[data-layout-size]').forEach(function (button) {
+          button.setAttribute('aria-pressed', String(button.dataset.layoutSize === block.dataset.size));
+        });
+      });
+
+      board.querySelectorAll('[data-layout-show]').forEach(function (button) {
+        button.hidden = !find(button.dataset.layoutShow).hasAttribute('data-hidden');
+      });
+      tray.hidden = hidden.length === 0;
+
+      note.hidden = editing || hidden.length === 0;
+      noteText.textContent = 'Hidden on this overview: ' + hidden.map(titleOf).join(', ') + '.';
+
+      resetButton.disabled = isDefault(current());
+    }
+
+    function say(text) {
+      live.textContent = text;
+    }
+
+    function position(block) {
+      var list = shown();
+
+      return 'position ' + (list.indexOf(block) + 1) + ' of ' + list.length;
+    }
+
+    /* --- motion --- */
+
+    // flip animates the blocks from where they were to where a DOM change
+    // put them, so a reorder reads as movement instead of a jump.
+    function flip(change) {
+      if (REDUCED_MOTION) {
+        change();
+
+        return;
+      }
+
+      var els = Array.prototype.slice.call(board.querySelectorAll(':scope > [data-block], :scope > .block-placeholder'))
+        .filter(function (el) { return !el.classList.contains('is-dragging'); });
+      var before = new Map();
+      els.forEach(function (el) {
+        before.set(el, el.getBoundingClientRect());
+        el.getAnimations().forEach(function (a) { a.cancel(); });
+      });
+
+      change();
+
+      els.forEach(function (el) {
+        var a = before.get(el);
+        var b = el.getBoundingClientRect();
+        var dx = a.left - b.left;
+        var dy = a.top - b.top;
+        if (!b.width || (Math.abs(dx) < 1 && Math.abs(dy) < 1)) return;
+        el.animate(
+          [{ transform: 'translate(' + dx + 'px, ' + dy + 'px)' }, { transform: 'none' }],
+          { duration: 240, easing: 'cubic-bezier(.16, 1, .3, 1)' }
+        );
+      });
+    }
+
+    /* --- edit mode --- */
+
+    function setEditing(on) {
+      if (editing === on) return;
+      if (!on) {
+        if (grab) drop();
+        if (drag) finishDrag(true);
+      }
+
+      editing = on;
+      board.toggleAttribute('data-editing', on);
+      editbar.hidden = !on;
+      if (customize) customize.setAttribute('aria-pressed', String(on));
+
+      // While arranging, the content is a preview: links and buttons inside
+      // must not catch clicks or focus.
+      all().forEach(function (block) {
+        block.querySelector('.block__body').inert = on;
+      });
+
+      sync();
+
+      if (on) {
+        var first = shown()[0];
+        if (first) first.querySelector('[data-layout-handle]').focus();
+      } else if (customize) {
+        customize.focus();
+      }
+    }
+
+    if (customize) customize.hidden = false;
+    document.querySelectorAll('[data-layout-edit]').forEach(function (button) {
+      button.addEventListener('click', function () { setEditing(!editing); });
+    });
+
+    board.querySelector('[data-layout-done]').addEventListener('click', function () {
+      setEditing(false);
+    });
+
+    resetButton.addEventListener('click', function () {
+      flip(function () {
+        try { localStorage.removeItem(LAYOUT_KEY); } catch (e) { /* nothing to remove */ }
+        apply(null);
+      });
+      board.querySelector('[data-layout-done]').focus();
+      say('Overview layout reset to default.');
+    });
+
+    /* --- width and visibility --- */
+
+    board.addEventListener('click', function (evt) {
+      if (!editing || !evt.target.closest) return;
+      var block = evt.target.closest('[data-block]');
+
+      var size = evt.target.closest('[data-layout-size]');
+      if (size && block) {
+        flip(function () { block.dataset.size = size.dataset.layoutSize; });
+        save();
+        sync();
+        say(titleOf(block) + ': ' + size.getAttribute('aria-label').toLowerCase() + '.');
+
+        return;
+      }
+
+      var hide = evt.target.closest('[data-layout-hide]');
+      if (hide && block) {
+        var list = shown();
+        var next = list[list.indexOf(block) + 1] || list[list.indexOf(block) - 1];
+        flip(function () { block.setAttribute('data-hidden', ''); });
+        save();
+        sync();
+        if (next) next.querySelector('[data-layout-handle]').focus();
+        say(titleOf(block) + ' hidden. It can be brought back from the bar at the top.');
+
+        return;
+      }
+
+      var show = evt.target.closest('[data-layout-show]');
+      if (show) {
+        var target = find(show.dataset.layoutShow);
+        flip(function () { target.removeAttribute('data-hidden'); });
+        save();
+        sync();
+        target.querySelector('[data-layout-handle]').focus();
+        say(titleOf(target) + ' is shown again, ' + position(target) + '.');
+      }
+    });
+
+    /* --- keyboard: pick up, move, put down --- */
+
+    function pick(block) {
+      grab = { block: block, order: current().order };
+      block.classList.add('is-grabbed');
+      say(titleOf(block) + ' picked up, ' + position(block) +
+        '. Arrow keys move it, Space drops it, Escape cancels.');
+    }
+
+    function drop() {
+      var block = grab.block;
+      grab = null;
+      block.classList.remove('is-grabbed');
+      save();
+      sync();
+      say(titleOf(block) + ' dropped at ' + position(block) + '.');
+    }
+
+    function cancelGrab() {
+      var block = grab.block;
+      var order = grab.order;
+      grab = null;
+      block.classList.remove('is-grabbed');
+      refocus(block, function () {
+        flip(function () { order.forEach(function (id) { board.appendChild(find(id)); }); });
+      });
+      say('Move cancelled. ' + titleOf(block) + ' is back at ' + position(block) + '.');
+    }
+
+    // Moving a focused element in the DOM takes focus away from it; the
+    // handle gets it back, and the blur in between isn't a "drop".
+    function refocus(block, change) {
+      moving = true;
+      change();
+      block.querySelector('[data-layout-handle]').focus();
+      moving = false;
+    }
+
+    function shift(block, delta) {
+      var list = shown();
+      var to = list.indexOf(block) + delta;
+      if (to < 0 || to >= list.length) {
+        say(titleOf(block) + ' is already ' + (to < 0 ? 'first' : 'last') + '.');
+
+        return;
+      }
+
+      refocus(block, function () {
+        flip(function () {
+          board.insertBefore(block, delta < 0 ? list[to] : list[to].nextSibling);
+        });
+      });
+      say(titleOf(block) + ', ' + position(block) + '.');
+    }
+
+    board.addEventListener('keydown', function (evt) {
+      var handle = editing && evt.target.closest && evt.target.closest('[data-layout-handle]');
+      if (!handle || drag) return;
+      var block = handle.closest('[data-block]');
+
+      if (evt.key === ' ' || evt.key === 'Enter') {
+        evt.preventDefault();
+        if (grab && grab.block === block) drop();
+        else {
+          if (grab) drop();
+          pick(block);
+        }
+
+        return;
+      }
+
+      if (!grab || grab.block !== block) return;
+
+      var step = { ArrowUp: -1, ArrowLeft: -1, ArrowDown: 1, ArrowRight: 1 }[evt.key];
+      if (step) {
+        evt.preventDefault();
+        shift(block, step);
+      } else if (evt.key === 'Home' || evt.key === 'End') {
+        evt.preventDefault();
+        var list = shown();
+        shift(block, evt.key === 'Home' ? -list.indexOf(block) : list.length - 1 - list.indexOf(block));
+      } else if (evt.key === 'Escape') {
+        evt.preventDefault();
+        cancelGrab();
+      }
+    });
+
+    // Tabbing away with a block in hand puts it down where it is.
+    board.addEventListener('focusout', function (evt) {
+      if (grab && !moving && evt.target === grab.block.querySelector('[data-layout-handle]')) drop();
+    });
+
+    /* --- pointer: drag by the handle --- */
+
+    board.addEventListener('pointerdown', function (evt) {
+      var handle = editing && !drag && evt.button === 0 && evt.target.closest &&
+        evt.target.closest('[data-layout-handle]');
+      if (!handle) return;
+      if (grab) drop();
+
+      drag = {
+        block: handle.closest('[data-block]'),
+        handle: handle,
+        pointer: evt.pointerId,
+        x0: evt.clientX,
+        y0: evt.clientY,
+        x: evt.clientX,
+        y: evt.clientY,
+        started: false
+      };
+      handle.setPointerCapture(evt.pointerId);
+    });
+
+    board.addEventListener('pointermove', function (evt) {
+      if (!drag || drag.settling || evt.pointerId !== drag.pointer) return;
+      drag.x = evt.clientX;
+      drag.y = evt.clientY;
+
+      if (!drag.started) {
+        if (Math.hypot(drag.x - drag.x0, drag.y - drag.y0) < DRAG_THRESHOLD_PX) return;
+        startDrag();
+      }
+
+      follow();
+      place();
+    });
+
+    board.addEventListener('pointerup', function (evt) {
+      if (!drag || drag.settling || evt.pointerId !== drag.pointer) return;
+      if (drag.started) finishDrag(true);
+      else drag = null;
+    });
+
+    board.addEventListener('pointercancel', function (evt) {
+      if (!drag || drag.settling || evt.pointerId !== drag.pointer) return;
+      if (drag.started) finishDrag(false);
+      else drag = null;
+    });
+
+    function startDrag() {
+      var block = drag.block;
+      var rect = block.getBoundingClientRect();
+
+      drag.started = true;
+      drag.dx = drag.x0 - rect.left;
+      drag.dy = drag.y0 - rect.top;
+      drag.from = current().order;
+
+      // The placeholder takes the block's cell, with the same width and
+      // height, so nothing around it jumps when the block lifts off.
+      var holder = document.createElement('div');
+      holder.className = 'block-placeholder';
+      holder.dataset.size = block.dataset.size;
+      holder.style.height = rect.height + 'px';
+      holder.setAttribute('aria-hidden', 'true');
+      board.insertBefore(holder, block);
+      drag.holder = holder;
+
+      block.style.width = rect.width + 'px';
+      block.style.height = rect.height + 'px';
+      block.style.left = rect.left + 'px';
+      block.style.top = rect.top + 'px';
+      block.classList.add('is-dragging');
+      document.documentElement.classList.add('is-dragging-block');
+
+      // `position: fixed` is relative to the window unless an ancestor
+      // says otherwise; measure instead of assuming.
+      var placed = block.getBoundingClientRect();
+      drag.left = rect.left + (rect.left - placed.left);
+      drag.top = rect.top + (rect.top - placed.top);
+      block.style.left = drag.left + 'px';
+      block.style.top = drag.top + 'px';
+      drag.base = { left: rect.left, top: rect.top };
+
+      holdPolls = true;
+      drag.raf = requestAnimationFrame(scrollTick);
+    }
+
+    function follow() {
+      var x = drag.x - drag.dx - drag.base.left;
+      var y = drag.y - drag.dy - drag.base.top;
+      drag.block.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+    }
+
+    function nextShown(el) {
+      var n = el.nextElementSibling;
+      while (n && (n === drag.block || n.hasAttribute('data-hidden'))) n = n.nextElementSibling;
+
+      return n;
+    }
+
+    // place moves the placeholder under the pointer. A wide block is split
+    // into top and bottom halves, a narrow one into left and right: that is
+    // the direction its neighbours sit in. Over the placeholder itself
+    // nothing happens, which is what keeps it from flickering back and forth.
+    function place() {
+      var boardRect = board.getBoundingClientRect();
+      var others = shown().filter(function (b) { return b !== drag.block; });
+      var ref;
+
+      for (var i = 0; i < others.length; i++) {
+        var r = others[i].getBoundingClientRect();
+        if (drag.x < r.left || drag.x > r.right || drag.y < r.top || drag.y > r.bottom) continue;
+        var wide = r.width > boardRect.width * 0.66;
+        var before = wide ? drag.y < r.top + r.height / 2 : drag.x < r.left + r.width / 2;
+        ref = before ? others[i] : nextShown(others[i]);
+        break;
+      }
+
+      if (ref === undefined) {
+        var last = others[others.length - 1];
+        if (!last || drag.y <= last.getBoundingClientRect().bottom) return;
+        ref = null;
+      }
+
+      if (nextShown(drag.holder) === ref) return;
+      flip(function () { board.insertBefore(drag.holder, ref); });
+    }
+
+    function scrollTick() {
+      if (!drag || !drag.started || drag.settling) return;
+      var v = 0;
+      if (drag.y < SCROLL_EDGE_PX) v = -(SCROLL_EDGE_PX - drag.y) / SCROLL_EDGE_PX * SCROLL_MAX_PX;
+      else if (drag.y > window.innerHeight - SCROLL_EDGE_PX) {
+        v = (drag.y - window.innerHeight + SCROLL_EDGE_PX) / SCROLL_EDGE_PX * SCROLL_MAX_PX;
+      }
+      if (v) {
+        window.scrollBy(0, v);
+        place();
+      }
+      drag.raf = requestAnimationFrame(scrollTick);
+    }
+
+    // finishDrag lands the block in the placeholder's cell, or, when the
+    // drag was cancelled, back in its own.
+    function finishDrag(commit) {
+      var d = drag;
+      d.settling = true;
+      cancelAnimationFrame(d.raf);
+      if (d.handle.hasPointerCapture(d.pointer)) d.handle.releasePointerCapture(d.pointer);
+
+      if (!commit) {
+        flip(function () { board.insertBefore(d.holder, d.block); });
+      }
+
+      var target = d.holder.getBoundingClientRect();
+      var x = target.left - d.base.left;
+      var y = target.top - d.base.top;
+
+      function land() {
+        board.insertBefore(d.block, d.holder);
+        d.holder.remove();
+        d.block.classList.remove('is-dragging', 'is-settling');
+        ['width', 'height', 'left', 'top', 'transform'].forEach(function (p) { d.block.style[p] = ''; });
+        document.documentElement.classList.remove('is-dragging-block');
+        holdPolls = false;
+        drag = null;
+
+        var moved = current().order.join() !== d.from.join();
+        if (commit && moved) {
+          save();
+          say(titleOf(d.block) + ' moved to ' + position(d.block) + '.');
+        }
+        sync();
+      }
+
+      if (REDUCED_MOTION) {
+        land();
+
+        return;
+      }
+
+      d.block.classList.add('is-settling');
+      d.block.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+      var done = false;
+      function once() {
+        if (done) return;
+        done = true;
+        land();
+      }
+      d.block.addEventListener('transitionend', once, { once: true });
+      setTimeout(once, 300);
+    }
+
+    // Escape: drop a dragged block back where it came from; otherwise leave
+    // edit mode. A keyboard grab handles its own Escape above.
+    document.addEventListener('keydown', function (evt) {
+      if (evt.key !== 'Escape' || evt.defaultPrevented || !editing) return;
+      if (drag && drag.started && !drag.settling) {
+        finishDrag(false);
+
+        return;
+      }
+      if (!drag) setEditing(false);
+    });
+
+    // Another tab changed the layout: follow it, unless this one is busy.
+    window.addEventListener('storage', function (evt) {
+      if (evt.key !== LAYOUT_KEY || drag || grab) return;
+      flip(function () { apply(load()); });
+    });
+
+    apply(load());
+  }
 })();

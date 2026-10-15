@@ -204,6 +204,13 @@ code { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .skip-link:focus { left: 0; }
 
 [x-cloak] { display: none !important; }
+/* The attribute has to win over component display rules: JS toggles it on
+   flex and grid elements (board controls, the Customize button). */
+[hidden] { display: none !important; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
 .pixel { image-rendering: pixelated; }
 img { max-width: 100%; display: block; }
 
@@ -410,7 +417,7 @@ img { max-width: 100%; display: block; }
   display: inline-flex; align-items: center; gap: 6px;
   font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-pill); padding: 6px 12px 6px 9px; cursor: pointer;
+  border-radius: var(--radius-pill); padding: 6px 12px 6px 9px; cursor: pointer; white-space: nowrap;
   transition: border-color .16s ease, color .16s ease;
 }
 .status-chip:hover { border-color: var(--border-strong); color: var(--ink); }
@@ -422,7 +429,7 @@ img { max-width: 100%; display: block; }
 
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
-  font-family: var(--font-sans); font-size: 13.5px; font-weight: 700;
+  font-family: var(--font-sans); font-size: 13.5px; font-weight: 700; white-space: nowrap;
   padding: 9px 18px; border-radius: var(--radius-pill); cursor: pointer; border: 1px solid transparent;
   transition: transform .12s ease, background .12s ease;
 }
@@ -432,10 +439,202 @@ img { max-width: 100%; display: block; }
 .btn--ghost { background: transparent; border-color: var(--border); color: var(--ink); }
 .btn--ghost:hover { border-color: var(--border-strong); }
 .btn__plus { font-size: 16px; line-height: 1; }
+.btn__icon { width: 15px; height: 15px; flex-shrink: 0; }
+.btn--customize[aria-pressed="true"] { background: var(--accent-tint); border-color: var(--accent); color: var(--accent-ink); }
+:root[data-theme="dark"] .btn--customize[aria-pressed="true"] { color: var(--accent); }
 
-/* --- 7. Summary row (dark / dark / accent) ----------------------------------- */
+/* --- 7. Overview board ----------------------------------------------------------
+   The overview is a 12-column board of blocks the person arranges themselves.
+   A block is a stable wrapper with its order and width; the partial inside
+   keeps swapping itself on every poll and knows nothing about the board.
+   No `grid-auto-flow: dense`: the order on screen must be the DOM order, or
+   keyboard focus and screen readers would walk the blocks in a different
+   sequence than the eye does. */
 
-.cards-3 { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.board {
+  --gap: 18px;
+  display: grid; grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--gap); align-items: stretch;
+  container: board / inline-size;
+}
+
+.block {
+  grid-column: span 12; min-width: 0;
+  display: flex; flex-direction: column;
+  /* Components below ask the block how wide it is, not the window:
+     a third of a wide screen is as narrow as a phone. */
+  container-type: inline-size;
+}
+.block[data-hidden] { display: none; }
+.block__body { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.block__body > * { flex: 1; }
+
+/* Widths are honoured where they fit. On a medium board every partial width
+   becomes a half, on a narrow one everything is full width: a third of 500px
+   holds nothing readable. */
+.block-placeholder { grid-column: span 12; }
+@container board (min-width: 900px) {
+  :is(.block, .block-placeholder)[data-size="4"] { grid-column: span 4; }
+  :is(.block, .block-placeholder)[data-size="6"] { grid-column: span 6; }
+  :is(.block, .block-placeholder)[data-size="8"] { grid-column: span 8; }
+}
+@container board (min-width: 600px) and (max-width: 899.98px) {
+  :is(.block, .block-placeholder):is([data-size="4"], [data-size="6"], [data-size="8"]) { grid-column: span 6; }
+}
+
+/* Quiet note in normal mode: a hidden block must not disappear without a trace. */
+.board__note {
+  grid-column: 1 / -1; margin: -6px 0 0;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 12.5px; color: var(--ink-faint);
+}
+.board__note-link {
+  padding: 0; border: 0; background: none; cursor: pointer;
+  font: inherit; font-weight: 600; color: var(--accent-deep);
+}
+.board__note-link:hover { text-decoration: underline; }
+:root[data-theme="dark"] .board__note-link { color: var(--accent); }
+
+/* --- Edit mode --- */
+
+.board__editbar {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 14px 20px; flex-wrap: wrap;
+  padding: 14px 16px 14px 18px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent), var(--shadow-card);
+  animation: fade-up .22s var(--ease);
+  position: sticky; top: 12px; z-index: 20;
+}
+.board__editbar-text { flex: 1 1 320px; min-width: 0; }
+.board__editbar-title { font-size: 15px; }
+.board__editbar-help { margin: 2px 0 0; font-size: 12.5px; color: var(--ink-soft); }
+.board__editbar-actions { display: flex; gap: 8px; margin-left: auto; }
+.board__narrow { display: none; }
+@container board (max-width: 899.98px) {
+  .board__narrow { display: inline; color: var(--accent-deep); }
+}
+
+.board__hidden { flex: 1 1 100%; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; order: 3; }
+.board__hidden-label { font-size: 12px; color: var(--ink-faint); margin-right: 2px; }
+.board__show {
+  display: inline-flex; align-items: center; gap: 5px;
+  font: 600 12.5px var(--font-sans); color: var(--ink-soft); cursor: pointer;
+  padding: 5px 11px; border-radius: var(--radius-pill);
+  background: transparent; border: 1px dashed var(--border-strong);
+  transition: border-color .16s ease, color .16s ease, background .16s ease;
+}
+.board__show:hover { color: var(--ink); border-style: solid; border-color: var(--accent); background: var(--accent-tint); }
+
+/* The grid itself shows through while arranging: faint column stripes, so
+   "a third" and "a half" are something you can see, not guess. The tile is
+   one column plus one gap wide; the coloured part stops where the gap starts. */
+.board[data-editing] {
+  background-image: linear-gradient(to right,
+    color-mix(in srgb, var(--accent) 7%, transparent) 0 calc(100% - var(--gap)),
+    transparent calc(100% - var(--gap)));
+  background-size: calc((100% + var(--gap)) / 12) 100%;
+  border-radius: var(--radius);
+}
+
+.block__bar { display: none; }
+.board[data-editing] .block {
+  padding: 8px; border-radius: calc(var(--radius) + 6px);
+  background: color-mix(in srgb, var(--paper) 82%, transparent);
+  border: 1px dashed var(--border-strong);
+  transition: border-color .16s ease, background .16s ease;
+}
+.board[data-editing] .block:hover { border-color: var(--accent); }
+.board[data-editing] .block__bar { display: flex; align-items: center; gap: 6px; padding: 0 0 8px; }
+
+/* While arranging, the content is a preview: clipped, faded, and out of
+   the tab order (app.js sets `inert`). The board fits on a screen, and a
+   tall target list doesn't turn one drag into a long scroll. */
+.board[data-editing] .block__body {
+  max-height: 240px; overflow: hidden; pointer-events: none; user-select: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent);
+  mask-image: linear-gradient(to bottom, #000 70%, transparent);
+}
+
+.block__handle {
+  flex: 1 1 auto; min-width: 0;
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 7px 10px; border-radius: var(--radius-sm);
+  background: transparent; border: 1px solid transparent;
+  font: 700 13.5px var(--font-sans); color: var(--ink); text-align: left;
+  cursor: grab; touch-action: none;
+  transition: background .16s ease, border-color .16s ease;
+}
+.block__handle:hover { background: var(--surface); border-color: var(--border); }
+.block__handle:active { cursor: grabbing; }
+.block__grip { width: 8px; height: 14px; fill: var(--ink-faint); flex-shrink: 0; }
+.block__handle:hover .block__grip { fill: var(--accent); }
+.block__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.block__sizes {
+  display: inline-flex; gap: 2px; padding: 3px; flex-shrink: 0;
+  border-radius: var(--radius-pill); background: var(--surface-sunken);
+}
+.block__size {
+  min-width: 34px; height: 26px; padding: 0 9px;
+  border: 0; border-radius: var(--radius-pill); background: transparent; cursor: pointer;
+  font: 500 12px var(--font-mono); color: var(--ink-soft);
+  transition: background .12s ease, color .12s ease;
+}
+.block__size:hover { color: var(--ink); background: var(--surface); }
+.block__size[aria-pressed="true"] { background: var(--emphasis-bg); color: var(--emphasis-fg); }
+/* On a narrow board the widths aren't applied, so the switch would lie. */
+@container board (max-width: 599.98px) { .block__sizes { display: none; } }
+
+.block__hide {
+  width: 32px; height: 32px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1px solid transparent; background: transparent;
+  color: var(--ink-faint); cursor: pointer;
+  transition: color .12s ease, background .12s ease, border-color .12s ease;
+}
+.block__hide svg { width: 16px; height: 16px; }
+.block__hide:hover { color: var(--ink); background: var(--surface); border-color: var(--border); }
+.block__pinned {
+  flex-shrink: 0; padding: 0 6px;
+  font: 500 11px var(--font-mono); color: var(--ink-faint); white-space: nowrap;
+}
+@container (max-width: 380px) {
+  .block__pinned { display: none; }
+  .block__size { min-width: 28px; padding: 0 6px; }
+}
+
+/* Dragging. The block leaves the grid and follows the pointer; the dashed
+   placeholder holds its place and shows where it will land. */
+.block-placeholder {
+  min-width: 0; border-radius: calc(var(--radius) + 6px);
+  border: 2px dashed var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.block.is-dragging {
+  position: fixed; z-index: 60; margin: 0; pointer-events: none;
+  background: var(--paper); border-style: solid; border-color: var(--accent);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, .04), 0 32px 60px -22px rgba(0, 0, 0, .55);
+  will-change: transform;
+}
+.block.is-dragging .block__handle { cursor: grabbing; background: var(--surface); border-color: var(--border); }
+.block.is-settling { transition: transform .22s var(--ease); }
+html.is-dragging-block, html.is-dragging-block * { cursor: grabbing !important; user-select: none; }
+
+/* Keyboard grab: the same "lifted" look without leaving the grid. */
+.board[data-editing] .block.is-grabbed {
+  border-style: solid; border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--paper));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.block.is-grabbed .block__handle { background: var(--accent-tint); border-color: var(--accent); color: var(--accent-ink); }
+:root[data-theme="dark"] .block.is-grabbed .block__handle { color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .block.is-dragging { box-shadow: 0 0 0 2px var(--accent); }
+}
+
+/* --- 7a. Cards ----------------------------------------------------------------- */
 
 .card {
   padding: 20px 22px;
@@ -556,6 +755,10 @@ img { max-width: 100%; display: block; }
    block ended up opposite the gap between the lines. Move it to the middle of the name line. */
 .target-row__name { font-weight: 700; font-size: 14px; }
 .target-row__url { font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The id column aligns its lines to the start, so a line is as wide as its
+   text: without a cap the ellipsis never kicks in and a long URL runs under the pill. */
+.target-row__id > * { max-width: 100%; }
+.target-row__name { overflow-wrap: anywhere; }
 
 /* Status tag. A solid fill in a saturated colour shouted louder than the data
    itself, so here it is a thin border, a muted backing and coloured text: the
@@ -957,23 +1160,63 @@ a.log-row__target:hover { color: var(--accent-deep); text-decoration: underline;
 }
 .target-form__foot { display: flex; justify-content: flex-end; }
 
-/* --- 16. Responsive ------------------------------------------------------------ */
+/* --- 15a. Components inside a board block -------------------------------------
+   They answer to the block's width (container queries), not the window's.
+   They come after the component rules on purpose: same specificity, so the
+   later rule wins. */
 
-@media (max-width: 1180px) {
-  .cards-3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .logs-card { grid-column: span 2; }
+/* Summary and logs tiles: three across when there's room, otherwise a list
+   of "label ... value" lines, which never wraps a number onto two lines. */
+@container (max-width: 460px) {
+  .tiles { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .tile { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 12px; }
+  .tile__label { order: -1; margin: 0; font-size: 12px; }
+  .tile__value { font-size: 15px; white-space: nowrap; text-align: right; }
 }
 
-@media (max-width: 1000px) {
-  .cards-3 { grid-template-columns: minmax(0, 1fr); }
-  .logs-card { grid-column: auto; }
-  .recent-row { grid-template-columns: 14px 118px minmax(0, 1fr) 64px; }
-  .recent-row__text { grid-column: 2 / -1; }
-  .detail-top { grid-template-columns: minmax(0, 1fr); }
-  /* The check strip illustrates the uptime figure next to it; when the row
-     no longer fits, it goes first, not the data itself. */
+/* Target rows. The check strip only illustrates the uptime figure next to
+   it, so it goes first; then the numbers move under the name. */
+@container (max-width: 760px) {
   .target-row { grid-template-columns: minmax(0, 1fr) auto auto auto; }
-  .strip { display: none; }
+  .target-row .strip { display: none; }
+}
+@container (max-width: 520px) {
+  .target-row { grid-template-columns: minmax(0, 1fr) auto auto; row-gap: 8px; }
+  .target-row__stats { grid-column: 1 / -1; grid-row: 2; }
+  .target-row__delete { grid-row: 1; grid-column: 3; }
+}
+
+/* Recent activity: the message drops to its own line, then the time
+   moves under the target. */
+@container (max-width: 640px) {
+  .recent-row { grid-template-columns: 14px 104px minmax(0, 1fr) 64px; }
+  .recent-row__text { grid-column: 2 / -1; }
+}
+@container (max-width: 420px) {
+  .recent-row { grid-template-columns: 14px minmax(0, 1fr) 64px; row-gap: 2px; }
+  .recent-row__time { grid-column: 2; grid-row: 2; }
+  .recent-row__target { grid-column: 2; grid-row: 1; }
+  .recent-row__kind { grid-column: 3; grid-row: 1; }
+  .recent-row__text { grid-column: 2 / -1; grid-row: 3; }
+}
+
+/* Next to a tall block the log card stretches too; the hourly bars stop
+   growing at a readable height instead of turning into a wall. */
+.block__body .log-bars { max-height: 150px; }
+
+/* The chart card shares a row with taller blocks: the plot takes the
+   height instead of leaving an empty band under the axes. */
+.block__body > .card:has(> .chart-box) { display: flex; flex-direction: column; }
+.block__body .chart-box { flex: 1 1 auto; min-height: 230px; }
+
+/* A full-width chart can afford to be taller. */
+@container (min-width: 900px) { .block__body .chart-box { min-height: 280px; } }
+@container (max-width: 420px) { .block__body .chart-box { min-height: 200px; } }
+
+/* --- 16. Responsive ------------------------------------------------------------ */
+
+@media (max-width: 1000px) {
+  .detail-top { grid-template-columns: minmax(0, 1fr); }
   /* The outage cause goes first: it is duplicated by the tooltip on the bar and
      by the status itself, while time and duration are the actual data. */
   .incident-row { grid-template-columns: minmax(0, 1fr) auto auto; }
@@ -1002,21 +1245,20 @@ a.log-row__target:hover { color: var(--accent-deep); text-decoration: underline;
 
 @media (max-width: 640px) {
   .page-head { flex-direction: column; }
+  /* Three actions don't fit a phone in a row: Customize keeps its icon,
+     and the name stays for screen readers. */
+  .btn--customize { padding: 9px 12px; }
+  .btn--customize .btn__label {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
   .card, .card--roomy { padding: 16px; }
-  .target-row { grid-template-columns: minmax(0, 1fr) auto auto; row-gap: 8px; }
-  .target-row__stats { grid-column: 1 / -1; grid-row: 2; }
-  .target-row__delete { grid-row: 1; grid-column: 3; }
   .alert-row, .incident-row { margin: 0; }
   .incident-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 10px; }
   .incident-row__stats { grid-column: 1 / -1; }
   .alert-row { grid-template-columns: 36px minmax(0, 1fr); }
   .alert-row .pill { grid-column: 2; justify-self: start; }
   .alert-row__when { grid-column: 2; display: flex; gap: 8px; text-align: left; }
-  .recent-row { grid-template-columns: 14px minmax(0, 1fr) 64px; }
-  .recent-row__time { grid-column: 2; grid-row: 1; }
-  .recent-row__target { grid-column: 2; grid-row: 2; }
-  .recent-row__kind { grid-column: 3; grid-row: 1; }
-  .tiles, .meta-grid, #detail-meta { grid-template-columns: 1fr; }
+  .meta-grid, #detail-meta { grid-template-columns: 1fr; }
   .log-row__head { grid-template-columns: 14px minmax(0, 1fr) auto; grid-template-areas: "dot msg pill" ". target when"; }
   .log-row__head .dot { grid-area: dot; }
   .log-row__msg { grid-area: msg; }

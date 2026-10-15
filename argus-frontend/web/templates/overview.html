@@ -1,16 +1,27 @@
 {{define "content" -}}
 {{with .Content}}
-<div class="stack page-enter">
+{{/* The board. Each block is a stable wrapper: the partial inside keeps
+     swapping itself every 10 seconds, while the wrapper carries the person's
+     order and width. The server renders the default arrangement; app.js
+     applies the one saved in localStorage before the first paint. */}}
+<div class="board page-enter" id="board">
 
-  <div class="cards-3">
-    {{template "summary" .Health}}
-    {{template "chart-card" .Chart}}
-    {{template "logs-card" .Logs}}
+  {{template "board-editbar" .Blocks}}
+
+  {{range .Blocks}}
+  <div class="block" data-block="{{.ID}}" data-size="{{.Size}}" data-default-size="{{.Size}}" data-title="{{.Title}}"{{if .Pinned}} data-pinned{{end}}>
+    {{template "block-bar" .}}
+    <div class="block__body">
+      {{- if eq .ID "summary"}}{{template "summary" $.Content.Health}}
+      {{- else if eq .ID "recent"}}{{template "recent" $.Content.Recent}}
+      {{- else if eq .ID "targets"}}{{template "targets" $.Content.Targets}}
+      {{- else if eq .ID "containers"}}{{template "containers" $.Content.Containers}}
+      {{- else if eq .ID "latency"}}{{template "chart-card" $.Content.Chart}}
+      {{- else if eq .ID "logs"}}{{template "logs-card" $.Content.Logs}}
+      {{- end}}
+    </div>
   </div>
-
-  {{template "targets" .Targets}}
-  {{template "containers" .Containers}}
-  {{template "recent" .Recent}}
+  {{end}}
 
 </div>
 {{end}}

@@ -171,6 +171,29 @@ ignores these parameters and would return the oldest records as the newest, so
 such a response is an "argus-backend is outdated" error (500 and a log line),
 not a quiet lie.
 
+## Arranging the overview
+
+The overview is a board of six blocks on a 12-column grid. **Customize** in the
+page header turns on edit mode: a block is dragged by its name, its width is
+one of 1/3, 1/2, 2/3 or full, and any block except the overall status can be
+hidden (that one answers "is something broken?", so it stays). The same works
+from the keyboard: focus a block's name, press Space, move it with the arrow
+keys, Home or End, and drop it with Space or Enter; Esc cancels. Every move is
+announced to screen readers.
+
+The layout is a presentation choice, like the theme, so it is kept in this
+browser's `localStorage` (`argus:layout`) and never reaches argus-backend. The
+server always renders the default arrangement (`view.OverviewBlocks`), and
+`app.js` applies the saved one before the first paint. A block that is new to
+the saved layout appears at its default position, and an unknown one is
+dropped. Hidden blocks are named in a note above the board, so nothing
+disappears without a trace. Widths take effect from 900 px of board width;
+narrower, blocks go two or one per row.
+
+Without JS the board simply shows the default arrangement and offers nothing to
+arrange. Polling pauses while a block is being dragged, so a swap can't pull
+the block from under the cursor.
+
 ## Theme
 
 By default the dashboard follows the system theme. The button in the sidebar

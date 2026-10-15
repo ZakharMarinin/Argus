@@ -190,12 +190,19 @@ dropped. Hidden blocks are named in a note above the board, so nothing
 disappears without a trace. Widths take effect from 900 px of board width;
 narrower, blocks go two or one per row.
 
-Every block is as tall as its own content: a short block next to a long one
-doesn't stretch, and the next block moves up into the space under it, keeping
-the reading order. The containers block can be folded: the containers that are
-down, crashing or noisy in the logs stay in view, and the quiet ones go into a
-folder that names them and opens with a click. Whether it is folded is saved
-with the layout.
+Blocks are laid out in rows, and a row is always filled: when the blocks in it
+don't add up to the full width, they share the rest by their widths, so two
+1/3 blocks become two halves and a lone 1/2 block takes the whole row. There
+are no holes to the side of a block, whatever the arrangement. Every block is
+as tall as its own content, so a short block next to a long one leaves space
+under it rather than stretching.
+
+The containers block shows two full rows of its cards (three cards when they
+go in a single column), the containers that are down, crashing or noisy in the
+logs first. The rest go into the last card, which counts them by status and
+names them; "Show all" opens them, and whether the block is opened is saved
+with the layout. However many containers the host runs, the overview doesn't
+turn into a wall of them.
 
 Without JS the board simply shows the default arrangement and offers nothing to
 arrange. Polling pauses while a block is being dragged, so a swap can't pull

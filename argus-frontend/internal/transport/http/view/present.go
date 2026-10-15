@@ -474,13 +474,12 @@ func (p Presenter) containers(containers []entity.TargetSummary, logs map[string
 		}
 
 		out = append(out, Container{
-			Name:      c.Label,
-			Note:      p.containerCardNote(*stats),
-			Href:      "/containers/" + url.PathEscape(c.Label),
-			Status:    status,
-			Label:     label,
-			Dark:      status == StatusDown,
-			Attention: rank[c.Label] > 0,
+			Name:   c.Label,
+			Note:   p.containerCardNote(*stats),
+			Href:   "/containers/" + url.PathEscape(c.Label),
+			Status: status,
+			Label:  label,
+			Dark:   status == StatusDown,
 			Metrics: []Metric{
 				{Label: "crashes, 15m", Value: fmt.Sprint(stats.Crashes), Status: nonZero(stats.Crashes)},
 				{Label: "log matches, 24h", Value: fmt.Sprint(logs[c.ID]), Status: countStatus(logs[c.ID], logStatus)},

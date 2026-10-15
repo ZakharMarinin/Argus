@@ -447,25 +447,31 @@ img { max-width: 100%; display: block; }
    The overview is a 12-column board of blocks the person arranges themselves.
    A block is a stable wrapper with its order and width; the partial inside
    keeps swapping itself on every poll and knows nothing about the board.
-   No `grid-auto-flow: dense`: the order on screen must be the DOM order, or
-   keyboard focus and screen readers would walk the blocks in a different
-   sequence than the eye does.
+   The order on screen is the DOM order, so keyboard focus and screen
+   readers walk the blocks in the sequence the eye does.
 
-   A block is as tall as its content and never stretches to a neighbour. With
-   JS the board is packed like masonry: rows are 1px, app.js gives each block
-   a row span equal to its height, so the next block slides up under a short
-   one instead of waiting for the tallest block in the row. */
+   Blocks are laid out in rows that always fill the board: a width is a
+   share, and whatever a row has left over is shared out between its blocks
+   by those shares (1/3 + 1/3 becomes 1/2 + 1/2, a lone 1/2 becomes full).
+   So there is never an empty corner, whatever the person picks. A block is
+   as tall as its content and never stretches to a neighbour. */
 
 .board {
   --gap: 18px;
-  display: grid; grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--gap); align-items: start;
+  display: flex; flex-wrap: wrap; align-items: flex-start;
+  gap: var(--gap);
   container: board / inline-size;
 }
-.board[data-packed] { grid-auto-rows: 1px; row-gap: 0; }
+.board > * { flex: 0 0 100%; min-width: 0; }
 
+/* --n is the share in twelfths. The basis is that many columns of a
+   12-column grid, minus half a pixel so rounding never pushes a full row
+   onto two lines; flex-grow by the same share hands out the rest. */
+:is(.block, .block-placeholder) {
+  --n: 12;
+  flex: var(--n) 1 calc((100% + var(--gap)) * var(--n) / 12 - var(--gap) - .5px);
+}
 .block {
-  grid-column: span 12; min-width: 0;
   display: flex; flex-direction: column;
   /* Components below ask the block how wide it is, not the window:
      a third of a wide screen is as narrow as a phone. */
@@ -478,19 +484,18 @@ img { max-width: 100%; display: block; }
 /* Widths are honoured where they fit. On a medium board every partial width
    becomes a half, on a narrow one everything is full width: a third of 500px
    holds nothing readable. */
-.block-placeholder { grid-column: span 12; }
 @container board (min-width: 900px) {
-  :is(.block, .block-placeholder)[data-size="4"] { grid-column: span 4; }
-  :is(.block, .block-placeholder)[data-size="6"] { grid-column: span 6; }
-  :is(.block, .block-placeholder)[data-size="8"] { grid-column: span 8; }
+  :is(.block, .block-placeholder)[data-size="4"] { --n: 4; }
+  :is(.block, .block-placeholder)[data-size="6"] { --n: 6; }
+  :is(.block, .block-placeholder)[data-size="8"] { --n: 8; }
 }
 @container board (min-width: 600px) and (max-width: 899.98px) {
-  :is(.block, .block-placeholder):is([data-size="4"], [data-size="6"], [data-size="8"]) { grid-column: span 6; }
+  :is(.block, .block-placeholder):is([data-size="4"], [data-size="6"], [data-size="8"]) { --n: 6; }
 }
 
 /* Quiet note in normal mode: a hidden block must not disappear without a trace. */
 .board__note {
-  grid-column: 1 / -1; margin: -6px 0 0;
+  margin: -6px 0 0;
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   font-size: 12.5px; color: var(--ink-faint);
 }
@@ -504,7 +509,6 @@ img { max-width: 100%; display: block; }
 /* --- Edit mode --- */
 
 .board__editbar {
-  grid-column: 1 / -1;
   display: flex; align-items: center; gap: 14px 20px; flex-wrap: wrap;
   padding: 14px 16px 14px 18px; border-radius: var(--radius);
   background: var(--surface); border: 1px solid var(--accent);
@@ -595,7 +599,7 @@ img { max-width: 100%; display: block; }
   .block__size { min-width: 28px; padding: 0 6px; }
 }
 
-/* Dragging. The block leaves the grid and follows the pointer; the dashed
+/* Dragging. The block leaves the board and follows the pointer; the dashed
    placeholder holds its place and shows where it will land. */
 .block-placeholder {
   min-width: 0; border-radius: calc(var(--radius) + 6px);
@@ -629,7 +633,7 @@ html.is-dragging-block, html.is-dragging-block * { cursor: grabbing !important; 
 
 @media (prefers-reduced-motion: reduce) {
   .block.is-dragging { box-shadow: 0 0 0 2px var(--accent); }
-  .block.is-unfolding .ctn-card--quiet, .ctn-folder::after { animation: none; transition: none; }
+  .ctn-card.is-revealed, .ctn-stack { animation: none; transition: none; }
 }
 
 /* --- 7a. Cards ----------------------------------------------------------------- */
@@ -838,62 +842,50 @@ html.is-dragging-block, html.is-dragging-block * { cursor: grabbing !important; 
 .ctn-card__foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }
 .ctn-card__note { font-size: 12px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* Folded containers block: the cards that need attention stay out, the quiet
-   ones go into a folder. app.js sets data-folded on the block wrapper, which
-   outlives the partial's swaps; without JS nothing folds. */
-.block[data-folded] .ctn-card--quiet { display: none; }
-
+/* A folded containers block shows as many cards as its width allows (app.js
+   decides, it knows the width) and stacks the rest into one card. Cards are
+   sorted with trouble first, so what is hidden is the calmest. */
 .fold-toggle {
-  display: none; align-items: center; gap: 6px; margin-left: 12px;
+  display: inline-flex; align-items: center; gap: 6px; margin-left: 12px;
   padding: 4px 10px; border-radius: var(--radius-pill);
   border: 1px solid var(--border); background: transparent; cursor: pointer;
   font: 600 12px var(--font-sans); color: var(--ink-soft);
   transition: color .12s ease, border-color .12s ease, background .12s ease;
 }
 .fold-toggle:hover { color: var(--ink); border-color: var(--border-strong); background: var(--surface); }
-.fold-toggle svg { width: 13px; height: 13px; transition: transform .2s var(--ease); }
-.board[data-packed] .fold-toggle { display: inline-flex; }
-.fold-toggle__open, .block[data-folded] .fold-toggle__fold { display: none; }
-.block[data-folded] .fold-toggle__open { display: inline; }
-.block[data-folded] .fold-toggle svg { transform: rotate(-90deg); }
+.fold-toggle svg { width: 13px; height: 13px; transform: rotate(180deg); transition: transform .2s var(--ease); }
+.fold-toggle[aria-expanded="false"] svg { transform: none; }
 
-/* The folder is a card with a tab, and the edge of a sheet peeking out of
-   it; on hover the sheet rises, as if the folder is about to open. */
-.ctn-folder {
-  display: none; position: relative;
-  flex-direction: column; align-items: flex-start; gap: 10px;
-  margin-top: 12px; padding: 16px; min-height: 150px;
-  border-radius: 0 var(--radius) var(--radius) var(--radius);
-  border: 1px solid var(--border-strong); background: var(--surface-sunken);
+/* The stack: a card with the edges of two more under it, as many as it
+   holds in miniature. Same slot and height as its neighbours. */
+.ctn-stack {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
+  margin-bottom: 8px; padding: 16px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--surface);
+  box-shadow:
+    0 4px 0 -3px var(--surface), 0 4px 0 -2px var(--border),
+    0 8px 0 -6px var(--surface), 0 8px 0 -5px var(--border);
   font: inherit; color: var(--ink); text-align: left; cursor: pointer;
-  transition: border-color .2s ease;
+  transition: transform .25s var(--ease), box-shadow .25s var(--ease), border-color .2s ease;
 }
-.block[data-folded] .ctn-folder { display: flex; }
-.ctn-folder::before {
-  content: ""; position: absolute; left: -1px; top: -12px; width: 42%; height: 12px;
-  border: 1px solid var(--border-strong); border-bottom: 0;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0; background: var(--surface-sunken);
+.ctn-stack:hover, .ctn-stack:focus-visible {
+  border-color: var(--border-strong); transform: translateY(-2px);
+  box-shadow:
+    0 7px 0 -3px var(--surface), 0 7px 0 -2px var(--border-strong),
+    0 13px 0 -6px var(--surface), 0 13px 0 -5px var(--border);
 }
-.ctn-folder::after {
-  content: ""; position: absolute; left: calc(42% + 8px); right: 12px; top: -8px; height: 8px;
-  border: 1px solid var(--border-strong); border-bottom: 0;
-  border-radius: 6px 6px 0 0; background: var(--surface);
-  transition: top .25s var(--ease), height .25s var(--ease);
-}
-.ctn-folder:hover, .ctn-folder:focus-visible { border-color: var(--accent); }
-.ctn-folder:hover::after, .ctn-folder:focus-visible::after { top: -14px; height: 14px; }
-.ctn-folder__count { display: flex; align-items: baseline; gap: 8px; font-weight: 700; font-size: 14.5px; }
-.ctn-folder__number { font: 600 28px/1 var(--font-mono); }
-.ctn-folder__note { font-size: 12px; color: var(--ink-soft); }
-.ctn-folder__names {
+.ctn-stack__count { display: flex; align-items: baseline; gap: 8px; font-size: 14.5px; font-weight: 700; }
+.ctn-stack__number { font: 600 28px/1 var(--font-mono); letter-spacing: -.02em; }
+.ctn-stack__states { display: flex; flex-wrap: wrap; gap: 6px; }
+.ctn-stack__names {
   margin-top: auto; font-size: 12px; color: var(--ink-faint);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.ctn-folder__open { font-size: 12px; font-weight: 600; color: var(--accent-deep); }
-:root[data-theme="dark"] .ctn-folder__open { color: var(--accent); }
+.ctn-stack__open { font-size: 12px; font-weight: 600; color: var(--accent-deep); }
+:root[data-theme="dark"] .ctn-stack__open { color: var(--accent); }
 
-/* Cards the folder just let out arrive with it; later swaps don't replay this. */
-.block.is-unfolding .ctn-card--quiet { animation: fade-up .3s var(--ease) both; }
+/* Cards the stack just let out arrive from it. */
+.ctn-card.is-revealed { animation: fade-up .3s var(--ease) both; }
 
 /* --- 11. Chart card ---------------------------------------------------------- */
 

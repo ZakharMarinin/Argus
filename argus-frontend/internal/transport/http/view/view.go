@@ -9,7 +9,6 @@ package view
 import (
 	"fmt"
 	"html/template"
-	"strings"
 )
 
 // Status is a target's state in dashboard terms. The value goes into a CSS class
@@ -317,43 +316,8 @@ type Container struct {
 	Label  string // up | warn | down | no data
 	// Dark raises the card onto a dark panel: containers that definitely
 	// need attention (not responding), not just a warning.
-	Dark bool
-	// Attention: down, crashing or noisy in the logs. Such a card is never
-	// folded away; the folder holds only the quiet ones.
-	Attention bool
-	Metrics   []Metric
-}
-
-// Folded is what the folder holds when the containers block is folded.
-func (l ContainerList) Folded() []Container {
-	var out []Container
-	for _, c := range l.Containers {
-		if !c.Attention {
-			out = append(out, c)
-		}
-	}
-
-	return out
-}
-
-// FoldedNote counts the folded containers by state, "3 up, 1 no data": the
-// folder must not pass a container without data off as a running one.
-func (l ContainerList) FoldedNote() string {
-	var order []string
-	count := map[string]int{}
-	for _, c := range l.Folded() {
-		if count[c.Label] == 0 {
-			order = append(order, c.Label)
-		}
-		count[c.Label]++
-	}
-
-	parts := make([]string, 0, len(order))
-	for _, label := range order {
-		parts = append(parts, fmt.Sprintf("%d %s", count[label], label))
-	}
-
-	return strings.Join(parts, ", ")
+	Dark    bool
+	Metrics []Metric
 }
 
 // Metric is a value like restarts/last-event on a container card.

@@ -4,17 +4,16 @@
          aria-label="Containers">
   <div class="card__head card__head--spaced">
     <h2 class="card__title">Containers</h2>
-    {{if or .Note .Folded}}
+    {{if .Containers}}
     <p class="card__note">
       {{- .Note -}}
-      {{/* Shown by app.js on the overview board; folding is remembered there. */}}
-      {{if .Folded}}
-      <button type="button" class="fold-toggle" data-fold-toggle aria-controls="containers-grid" aria-expanded="true">
+      {{/* app.js shows it when the block has more containers than its width
+           fits; without JS every card is simply shown. */}}
+      <button type="button" class="fold-toggle" data-fold-toggle aria-controls="containers-grid" aria-expanded="true" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-        <span class="fold-toggle__fold">Fold</span><span class="fold-toggle__open">Show all</span>
+        <span data-fold-label>Show fewer</span>
       </button>
-      {{end}}
     </p>
     {{end}}
   </div>
@@ -22,7 +21,7 @@
   {{if .Containers}}
   <div class="containers-grid" id="containers-grid">
     {{range .Containers}}
-    <a class="ctn-card{{if .Dark}} ctn-card--dark{{end}}{{if not .Attention}} ctn-card--quiet{{end}}" href="{{.Href}}">
+    <a class="ctn-card{{if .Dark}} ctn-card--dark{{end}}" href="{{.Href}}">
       <div class="ctn-card__head">
         <div class="ctn-card__name">{{.Name}}</div>
       </div>
@@ -43,17 +42,13 @@
     </a>
     {{end}}
 
-    {{with .Folded}}
-    <button type="button" class="ctn-folder" data-fold-open aria-controls="containers-grid" aria-expanded="false">
-      <span class="ctn-folder__count">
-        <span class="ctn-folder__number">{{len .}}</span>
-        {{if lt (len .) (len $.Containers)}}more {{end}}{{if eq (len .) 1}}container{{else}}containers{{end}}
-      </span>
-      <span class="ctn-folder__note">{{$.FoldedNote}}</span>
-      <span class="ctn-folder__names">{{range $i, $c := .}}{{if $i}}, {{end}}{{$c.Name}}{{end}}</span>
-      <span class="ctn-folder__open">Show all</span>
+    {{/* The rest of a folded block, filled in by app.js from the cards it hides. */}}
+    <button type="button" class="ctn-stack" data-fold-open aria-controls="containers-grid" aria-expanded="false" hidden>
+      <span class="ctn-stack__count"><span class="ctn-stack__number" data-stack-count></span> more</span>
+      <span class="ctn-stack__states" data-stack-states></span>
+      <span class="ctn-stack__names" data-stack-names></span>
+      <span class="ctn-stack__open">Show all</span>
     </button>
-    {{end}}
   </div>
   {{else}}
   <div class="card">

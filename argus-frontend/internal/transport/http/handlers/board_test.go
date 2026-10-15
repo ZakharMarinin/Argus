@@ -111,3 +111,40 @@ func TestUptimeTargetsNeedingAttentionComeFirst(t *testing.T) {
 		t.Errorf("order %s", got)
 	}
 }
+
+// TestFolderHoldsOnlyQuietContainers: folding the containers block must never
+// hide one that is down, crashing or noisy in the logs.
+func TestFolderHoldsOnlyQuietContainers(t *testing.T) {
+	p := view.Presenter{Now: func() time.Time { return testNow }}
+	targets := []entity.TargetSummary{
+		{ID: "1", Label: "calm", Kind: entity.KindContainer, Status: entity.StatusUp, Container: &entity.ContainerStats{}},
+		{ID: "2", Label: "noisy", Kind: entity.KindContainer, Status: entity.StatusUp, Container: &entity.ContainerStats{}},
+		{ID: "3", Label: "down", Kind: entity.KindContainer, Status: entity.StatusDown, Container: &entity.ContainerStats{}},
+		{ID: "4", Label: "quiet", Kind: entity.KindContainer, Status: entity.StatusUp, Container: &entity.ContainerStats{}},
+	}
+	noisy := []entity.LogMatch{{TargetID: "2"}, {TargetID: "2"}, {TargetID: "2"}}
+	report := entity.LogMatchReport{Matches: noisy}
+
+	list := p.Overview(targets, entity.AlertCounts{}, report).Containers
+
+	folded := make([]string, 0, len(list.Folded()))
+	for _, c := range list.Folded() {
+		folded = append(folded, c.Name)
+	}
+
+	if strings.Join(folded, ",") != "calm,quiet" {
+		t.Errorf("folded %v, wanted calm,quiet", folded)
+	}
+
+	if list.FoldedNote() != "2 up" {
+		t.Errorf("note %q", list.FoldedNote())
+	}
+
+	// Everything needs attention: there is nothing to fold away.
+	for _, id := range []string{"1", "4"} {
+		report.Matches = append(report.Matches, entity.LogMatch{TargetID: id}, entity.LogMatch{TargetID: id}, entity.LogMatch{TargetID: id})
+	}
+	if n := len(p.Overview(targets, entity.AlertCounts{}, report).Containers.Folded()); n != 0 {
+		t.Errorf("%d containers folded, all need attention", n)
+	}
+}

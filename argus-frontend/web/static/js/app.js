@@ -504,7 +504,7 @@
   // (app.js is deferred, see the <details> note above).
   //
   // Only presentation is stored, never data: block ids, widths in grid
-  // columns, and which blocks are hidden.
+  // columns, and which blocks are hidden or folded.
 
   var LAYOUT_KEY = 'argus:layout';
   var LAYOUT_VERSION = 1;
@@ -565,21 +565,24 @@
     function current() {
       var size = {};
       var hidden = [];
+      var folded = [];
       all().forEach(function (b) {
         size[b.dataset.block] = b.dataset.size;
         if (b.hasAttribute('data-hidden')) hidden.push(b.dataset.block);
+        if (b.hasAttribute('data-folded')) folded.push(b.dataset.block);
       });
 
       return {
         v: LAYOUT_VERSION,
         order: all().map(function (b) { return b.dataset.block; }),
         size: size,
-        hidden: hidden
+        hidden: hidden,
+        folded: folded
       };
     }
 
     function isDefault(layout) {
-      if (layout.hidden.length) return false;
+      if (layout.hidden.length || layout.folded.length) return false;
 
       return defaults.every(function (d, i) {
         return layout.order[i] === d.id && layout.size[d.id] === d.size;
@@ -626,6 +629,7 @@
 
         var hide = !!layout && Array.isArray(layout.hidden) && layout.hidden.indexOf(d.id) >= 0;
         block.toggleAttribute('data-hidden', hide && !block.hasAttribute('data-pinned'));
+        block.toggleAttribute('data-folded', !!layout && Array.isArray(layout.folded) && layout.folded.indexOf(d.id) >= 0);
       });
 
       sync();
@@ -642,6 +646,12 @@
         });
       });
 
+      // The fold toggle lives in a partial that swaps itself back to the
+      // server's markup; its state comes from the block wrapper.
+      board.querySelectorAll('[data-fold-toggle]').forEach(function (button) {
+        button.setAttribute('aria-expanded', String(!button.closest('[data-block]').hasAttribute('data-folded')));
+      });
+
       board.querySelectorAll('[data-layout-show]').forEach(function (button) {
         button.hidden = !find(button.dataset.layoutShow).hasAttribute('data-hidden');
       });
@@ -652,6 +662,21 @@
 
       resetButton.disabled = isDefault(current());
     }
+
+    /* --- packing --- */
+
+    // Masonry: each child of the board spans as many 1px rows as it is tall
+    // (see the board CSS), so a block neither stretches to its neighbour nor
+    // leaves a hole under itself. It is redone whenever a block changes height:
+    // a poll brought more rows, a width changed, a folder opened.
+    var gap = parseFloat(getComputedStyle(board).rowGap) || 0;
+    var packer = new ResizeObserver(function (entries) {
+      entries.forEach(function (e) {
+        e.target.style.gridRowEnd = 'span ' + Math.max(1, Math.ceil(e.borderBoxSize[0].blockSize + gap));
+      });
+    });
+    Array.prototype.forEach.call(board.children, function (el) { packer.observe(el); });
+    board.setAttribute('data-packed', '');
 
     function say(text) {
       live.textContent = text;
@@ -941,10 +966,11 @@
       holder.style.height = rect.height + 'px';
       holder.setAttribute('aria-hidden', 'true');
       board.insertBefore(holder, block);
+      packer.observe(holder);
       drag.holder = holder;
 
+      // Only the width is fixed: in hand the block shrinks to a preview.
       block.style.width = rect.width + 'px';
-      block.style.height = rect.height + 'px';
       block.style.left = rect.left + 'px';
       block.style.top = rect.top + 'px';
       block.classList.add('is-dragging');
@@ -994,9 +1020,11 @@
         break;
       }
 
+      // Below every block: to the end. In a packed board the last block
+      // isn't necessarily the lowest one.
       if (ref === undefined) {
-        var last = others[others.length - 1];
-        if (!last || drag.y <= last.getBoundingClientRect().bottom) return;
+        var bottom = Math.max.apply(null, others.map(function (b) { return b.getBoundingClientRect().bottom; }));
+        if (!others.length || drag.y <= bottom) return;
         ref = null;
       }
 
@@ -1036,9 +1064,10 @@
 
       function land() {
         board.insertBefore(d.block, d.holder);
+        packer.unobserve(d.holder);
         d.holder.remove();
         d.block.classList.remove('is-dragging', 'is-settling');
-        ['width', 'height', 'left', 'top', 'transform'].forEach(function (p) { d.block.style[p] = ''; });
+        ['width', 'left', 'top', 'transform'].forEach(function (p) { d.block.style[p] = ''; });
         document.documentElement.classList.remove('is-dragging-block');
         holdPolls = false;
         drag = null;
@@ -1080,6 +1109,40 @@
       }
       if (!drag) setEditing(false);
     });
+
+    /* --- folding (outside edit mode too: it's a way of reading) --- */
+
+    board.addEventListener('click', function (evt) {
+      var button = !editing && evt.target.closest && evt.target.closest('[data-fold-toggle], [data-fold-open]');
+      if (!button) return;
+      var block = button.closest('[data-block]');
+      var fold = button.hasAttribute('data-fold-toggle') && !block.hasAttribute('data-folded');
+
+      block.toggleAttribute('data-folded', fold);
+      save();
+      sync();
+
+      if (fold) {
+        say(titleOf(block) + ' folded. Containers that need attention stay in view.');
+
+        return;
+      }
+
+      // The folder button is gone: focus goes to the first card it let out.
+      if (!REDUCED_MOTION) {
+        block.classList.add('is-unfolding');
+        setTimeout(function () { block.classList.remove('is-unfolding'); }, 400);
+      }
+      if (button.hasAttribute('data-fold-open')) {
+        var first = block.querySelector('.ctn-card--quiet');
+        if (first) first.focus();
+      }
+      say(titleOf(block) + ' shows all containers.');
+    });
+
+    // A partial on the board swapped itself (outerHTML: the event comes from
+    // the new markup, the old target is already detached).
+    board.addEventListener('htmx:afterSettle', sync);
 
     // Another tab changed the layout: follow it, unless this one is busy.
     window.addEventListener('storage', function (evt) {

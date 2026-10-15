@@ -190,6 +190,13 @@ dropped. Hidden blocks are named in a note above the board, so nothing
 disappears without a trace. Widths take effect from 900 px of board width;
 narrower, blocks go two or one per row.
 
+Every block is as tall as its own content: a short block next to a long one
+doesn't stretch, and the next block moves up into the space under it, keeping
+the reading order. The containers block can be folded: the containers that are
+down, crashing or noisy in the logs stay in view, and the quiet ones go into a
+folder that names them and opens with a click. Whether it is folded is saved
+with the layout.
+
 Without JS the board simply shows the default arrangement and offers nothing to
 arrange. Polling pauses while a block is being dragged, so a swap can't pull
 the block from under the cursor.

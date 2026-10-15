@@ -4,13 +4,25 @@
          aria-label="Containers">
   <div class="card__head card__head--spaced">
     <h2 class="card__title">Containers</h2>
-    {{with .Note}}<p class="card__note">{{.}}</p>{{end}}
+    {{if or .Note .Folded}}
+    <p class="card__note">
+      {{- .Note -}}
+      {{/* Shown by app.js on the overview board; folding is remembered there. */}}
+      {{if .Folded}}
+      <button type="button" class="fold-toggle" data-fold-toggle aria-controls="containers-grid" aria-expanded="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        <span class="fold-toggle__fold">Fold</span><span class="fold-toggle__open">Show all</span>
+      </button>
+      {{end}}
+    </p>
+    {{end}}
   </div>
 
   {{if .Containers}}
-  <div class="containers-grid">
+  <div class="containers-grid" id="containers-grid">
     {{range .Containers}}
-    <a class="ctn-card{{if .Dark}} ctn-card--dark{{end}}" href="{{.Href}}">
+    <a class="ctn-card{{if .Dark}} ctn-card--dark{{end}}{{if not .Attention}} ctn-card--quiet{{end}}" href="{{.Href}}">
       <div class="ctn-card__head">
         <div class="ctn-card__name">{{.Name}}</div>
       </div>
@@ -29,6 +41,18 @@
         <span class="ctn-card__note">{{.Note}}</span>
       </div>
     </a>
+    {{end}}
+
+    {{with .Folded}}
+    <button type="button" class="ctn-folder" data-fold-open aria-controls="containers-grid" aria-expanded="false">
+      <span class="ctn-folder__count">
+        <span class="ctn-folder__number">{{len .}}</span>
+        {{if lt (len .) (len $.Containers)}}more {{end}}{{if eq (len .) 1}}container{{else}}containers{{end}}
+      </span>
+      <span class="ctn-folder__note">{{$.FoldedNote}}</span>
+      <span class="ctn-folder__names">{{range $i, $c := .}}{{if $i}}, {{end}}{{$c.Name}}{{end}}</span>
+      <span class="ctn-folder__open">Show all</span>
+    </button>
     {{end}}
   </div>
   {{else}}

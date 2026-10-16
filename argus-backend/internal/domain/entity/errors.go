@@ -14,8 +14,6 @@ var (
 	ErrNotFound      = errors.New("not found")
 	ErrAlreadyExists = errors.New("already exists")
 
-	ErrNoEvent = errors.New("no event")
-
 	ErrInvalidSeverity  = errors.New("invalid severity")
 	ErrInvalidEventType = errors.New("invalid event type")
 )

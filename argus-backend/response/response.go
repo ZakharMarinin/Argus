@@ -3,6 +3,7 @@ package response
 import (
 	"argus-collector/internal/domain/entity"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/render"
@@ -18,7 +19,7 @@ func JSONError(w http.ResponseWriter, r *http.Request, status int, msg string) {
 	render.JSON(w, r, ErrorResponse{Error: msg})
 }
 
-func HandleError(w http.ResponseWriter, r *http.Request, err error) {
+func HandleError(w http.ResponseWriter, r *http.Request, log *slog.Logger, err error) {
 	if v, ok := errors.AsType[*entity.ValidationError](err); ok {
 		JSONError(w, r, http.StatusBadRequest, v.Reason)
 
@@ -39,6 +40,7 @@ func HandleError(w http.ResponseWriter, r *http.Request, err error) {
 		JSONError(w, r, http.StatusBadRequest, entity.ErrInvalidEventType.Error())
 
 	default:
+		log.Error("server error: ", "error", err)
 		JSONError(w, r, http.StatusInternalServerError, "internal server error")
 	}
 }

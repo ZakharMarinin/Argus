@@ -41,7 +41,7 @@ func (h *Handler) GetListLogMatches(w http.ResponseWriter, r *http.Request) {
 
 	logMatches, total, err := h.uc.FindLogMatches(ctx, f)
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}
@@ -74,7 +74,7 @@ func (h *Handler) GetLogMatch(w http.ResponseWriter, r *http.Request) {
 
 	logMatch, err := h.uc.GetLogMatch(ctx, id)
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}
@@ -105,7 +105,7 @@ func (h *Handler) DeleteLogMatch(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.uc.DeleteLogMatch(ctx, id)
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}

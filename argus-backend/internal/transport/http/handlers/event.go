@@ -57,7 +57,7 @@ func (h *Handler) GetListEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}
@@ -89,7 +89,7 @@ func (h *Handler) GetEvent(w http.ResponseWriter, r *http.Request) {
 
 	event, err := h.uc.GetEvent(ctx, id)
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}
@@ -120,7 +120,7 @@ func (h *Handler) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.uc.DeleteEvent(ctx, id)
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}

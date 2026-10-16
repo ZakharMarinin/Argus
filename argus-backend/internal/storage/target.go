@@ -9,6 +9,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -63,9 +64,7 @@ func (tr *TargetRepository) UpdateTargetStatus(ctx context.Context, id uuid.UUID
 		&updatedTarget.Status, &updatedTarget.CreatedAt, &updatedTarget.UpdatedAt,
 	)
 	if err != nil {
-		var pgErr *pgconn.PgError
-
-		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("%s: %w", op, entity.ErrNotFound)
 		}
 

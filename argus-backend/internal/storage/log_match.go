@@ -3,11 +3,13 @@ package storage
 import (
 	"argus-collector/internal/domain/entity"
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -28,6 +30,11 @@ func (lmr *LogMatchRepository) SaveLogMatch(ctx context.Context, logMatch *entit
 		&saved.ID, &saved.TargetID, &saved.Severity, &saved.Message, &saved.CreatedAt,
 	)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			return nil, fmt.Errorf("%s: %w", op, entity.ErrNotFound)
+		}
+		
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 

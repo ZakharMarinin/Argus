@@ -49,7 +49,7 @@ func (h *Handler) CreateTarget(w http.ResponseWriter, r *http.Request) {
 
 	created, err := h.uc.CreateTarget(ctx, &target)
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}
@@ -93,7 +93,7 @@ func (h *Handler) GetListTargets(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}
@@ -125,7 +125,7 @@ func (h *Handler) GetTarget(w http.ResponseWriter, r *http.Request) {
 
 	target, err := h.uc.GetTarget(ctx, id)
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}
@@ -156,7 +156,7 @@ func (h *Handler) DeleteTarget(w http.ResponseWriter, r *http.Request) {
 
 	err = h.uc.DeleteTarget(ctx, id)
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}
@@ -208,7 +208,7 @@ func (h *Handler) UpdateTargetStatus(w http.ResponseWriter, r *http.Request) {
 
 	updated, err := h.uc.UpdateTargetStatus(ctx, id, req.Status)
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}

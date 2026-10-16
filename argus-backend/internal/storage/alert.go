@@ -52,7 +52,7 @@ func (ar *AlertRepository) DeleteAlert(ctx context.Context, id int) (int, error)
 	}
 
 	if result.RowsAffected() == 0 {
-		return 0, fmt.Errorf("%s: %w", op, entity.ErrAlertNotFound)
+		return 0, fmt.Errorf("%s: %w", op, entity.ErrNotFound)
 	}
 
 	return id, nil
@@ -77,7 +77,7 @@ func (ar *AlertRepository) MarkAlertsNotified(ctx context.Context, ids []int, st
 	}
 
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("%s: %w", op, entity.ErrAlertNotFound)
+		return fmt.Errorf("%s: %w", op, entity.ErrNotFound)
 	}
 
 	return nil
@@ -92,7 +92,7 @@ func (ar *AlertRepository) GetAlert(ctx context.Context, id int) (*entity.Alert,
 		"alerts",
 		[]string{"id", "target_id", "severity", "details", "status", "created_at"},
 		id,
-		entity.ErrAlertNotFound,
+		entity.ErrNotFound,
 		&alert.ID, &alert.TargetID, &alert.Severity, &alert.Details, &alert.Status, &alert.CreatedAt,
 	)
 	if err != nil {

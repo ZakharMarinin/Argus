@@ -31,7 +31,7 @@ func (er *EventRepository) CreateEvent(ctx context.Context, event *entity.Contai
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("%s: %w", op, entity.ErrContainerEventAlreadyExists)
+			return nil, fmt.Errorf("%s: %w", op, entity.ErrAlreadyExists)
 		}
 
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -58,7 +58,7 @@ func (er *EventRepository) DeleteEvent(ctx context.Context, id int) (int, error)
 	}
 
 	if result.RowsAffected() == 0 {
-		return 0, fmt.Errorf("%s: %w", op, entity.ErrContainerEventNotFound)
+		return 0, fmt.Errorf("%s: %w", op, entity.ErrNotFound)
 	}
 
 	return id, nil
@@ -93,7 +93,7 @@ func (er *EventRepository) GetEvent(ctx context.Context, id int) (*entity.Contai
 		"events",
 		[]string{"id", "target_id", "event", "details", "event_time"},
 		id,
-		entity.ErrContainerEventNotFound,
+		entity.ErrNotFound,
 		&event.ID, &event.TargetID, &event.Event, &event.Details, &event.CreatedAt,
 	)
 	if err != nil {

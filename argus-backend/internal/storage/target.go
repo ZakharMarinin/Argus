@@ -33,7 +33,7 @@ func (tr *TargetRepository) CreateTarget(ctx context.Context, target *entity.Tar
 		var pgErr *pgconn.PgError
 
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return nil, fmt.Errorf("%s: %w", op, entity.ErrTargetAlreadyExists)
+			return nil, fmt.Errorf("%s: %w", op, entity.ErrAlreadyExists)
 		}
 
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -66,7 +66,7 @@ func (tr *TargetRepository) UpdateTargetStatus(ctx context.Context, id uuid.UUID
 		var pgErr *pgconn.PgError
 
 		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
-			return nil, fmt.Errorf("%s: %w", op, entity.ErrTargetNotFound)
+			return nil, fmt.Errorf("%s: %w", op, entity.ErrNotFound)
 		}
 
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -92,7 +92,7 @@ func (tr *TargetRepository) DeleteTarget(ctx context.Context, id uuid.UUID) erro
 	}
 
 	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("%s: %w", op, entity.ErrTargetNotFound)
+		return fmt.Errorf("%s: %w", op, entity.ErrNotFound)
 	}
 
 	return nil
@@ -107,7 +107,7 @@ func (tr *TargetRepository) GetTarget(ctx context.Context, id uuid.UUID) (*entit
 		"targets",
 		[]string{"id", "source", "name", "type", "status", "created_at", "updated_at"},
 		id,
-		entity.ErrTargetNotFound,
+		entity.ErrNotFound,
 		&target.ID, &target.Source, &target.Name, &target.TargetType, &target.Status, &target.CreatedAt, &target.UpdatedAt,
 	)
 	if err != nil {

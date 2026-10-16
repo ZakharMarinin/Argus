@@ -26,20 +26,17 @@ func HandleError(w http.ResponseWriter, r *http.Request, err error) {
 	}
 
 	switch {
-	case errors.Is(err, entity.ErrTargetNotFound),
-		errors.Is(err, entity.ErrContainerEventNotFound),
-		errors.Is(err, entity.ErrProbeNotFound),
-		errors.Is(err, entity.ErrAlertNotFound),
-		errors.Is(err, entity.ErrLogMatchNotFound):
-		JSONError(w, r, http.StatusNotFound, err.Error())
+	case errors.Is(err, entity.ErrNotFound):
+		JSONError(w, r, http.StatusNotFound, entity.ErrNotFound.Error())
 
-	case errors.Is(err, entity.ErrTargetAlreadyExists),
-		errors.Is(err, entity.ErrContainerEventAlreadyExists):
-		JSONError(w, r, http.StatusConflict, err.Error())
+	case errors.Is(err, entity.ErrAlreadyExists):
+		JSONError(w, r, http.StatusConflict, entity.ErrAlreadyExists.Error())
 
-	case errors.Is(err, entity.ErrInvalidSeverity),
-		errors.Is(err, entity.ErrInvalidEventType):
-		JSONError(w, r, http.StatusBadRequest, err.Error())
+	case errors.Is(err, entity.ErrInvalidSeverity):
+		JSONError(w, r, http.StatusBadRequest, entity.ErrInvalidSeverity.Error())
+
+	case errors.Is(err, entity.ErrInvalidEventType):
+		JSONError(w, r, http.StatusBadRequest, entity.ErrInvalidEventType.Error())
 
 	default:
 		JSONError(w, r, http.StatusInternalServerError, "internal server error")

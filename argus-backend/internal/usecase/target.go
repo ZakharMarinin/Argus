@@ -24,57 +24,29 @@ func (uc *UseCase) CreateTarget(ctx context.Context, target *entity.Target) (*en
 }
 
 func (uc *UseCase) UpdateTargetStatus(ctx context.Context, id uuid.UUID, status string) (*entity.Target, error) {
-	const op = "UseCase.UpdateTargetStatus"
-
-	updated, err := uc.db.UpdateTargetStatus(ctx, id, status)
-
-	return updated, wrapErr(op, err)
+	return uc.db.UpdateTargetStatus(ctx, id, status)
 }
 
 func (uc *UseCase) DeleteTarget(ctx context.Context, id uuid.UUID) error {
-	const op = "UseCase.DeleteTarget"
-
-	err := uc.db.DeleteTarget(ctx, id)
-
-	return wrapErr(op, err)
+	return uc.db.DeleteTarget(ctx, id)
 }
 
 func (uc *UseCase) GetTarget(ctx context.Context, id uuid.UUID) (*entity.Target, error) {
-	const op = "UseCase.GetTarget"
-
-	target, err := uc.db.GetTarget(ctx, id)
-
-	return target, wrapErr(op, err)
+	return uc.db.GetTarget(ctx, id)
 }
 
 func (uc *UseCase) GetTargetsByIDs(ctx context.Context, ids []uuid.UUID) ([]*entity.Target, error) {
-	const op = "UseCase.GetTargetsByIDs"
-
-	targets, err := uc.db.GetTargetsByIDs(ctx, ids)
-
-	return targets, wrapErr(op, err)
+	return uc.db.GetTargetsByIDs(ctx, ids)
 }
 
 func (uc *UseCase) GetTargetsByType(ctx context.Context, targetType string) ([]*entity.Target, error) {
-	const op = "UseCase.GetTargetsByType"
-
-	targets, err := uc.db.GetTargetsByType(ctx, targetType)
-
-	return targets, wrapErr(op, err)
+	return uc.db.GetTargetsByType(ctx, targetType)
 }
 
 func (uc *UseCase) GetTargetsByStatus(ctx context.Context, status string) ([]*entity.Target, error) {
-	const op = "UseCase.GetTargetsByStatus"
-
-	targets, err := uc.db.GetTargetsByStatus(ctx, status)
-
-	return targets, wrapErr(op, err)
+	return uc.db.GetTargetsByStatus(ctx, status)
 }
 
 func (uc *UseCase) GetAllTargets(ctx context.Context, limit, offset uint64) ([]*entity.Target, error) {
-	const op = "UseCase.GetAllTargets"
-
-	targets, err := uc.db.GetAllTargets(ctx, limit, offset)
-
-	return targets, wrapErr(op, err)
+	return uc.db.GetAllTargets(ctx, limit, offset)
 }

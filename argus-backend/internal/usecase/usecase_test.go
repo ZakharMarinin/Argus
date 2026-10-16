@@ -57,12 +57,11 @@ func assertDelegates(t *testing.T, cases []delegation) {
 				require.Equal(t, tc.want, got)
 			})
 
-			t.Run("wraps storage error", func(t *testing.T) {
+			t.Run("returns storage error as is", func(t *testing.T) {
 				t.Parallel()
 
 				_, err := tc.run(t, assert.AnError)
-				require.ErrorIs(t, err, assert.AnError)
-				require.EqualError(t, err, "UseCase."+tc.method+": "+assert.AnError.Error())
+				require.Equal(t, assert.AnError, err)
 			})
 		})
 	}

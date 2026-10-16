@@ -1,16 +1,16 @@
 package app
 
 import (
-	"argus-collector/internal/alerter"
 	"argus-collector/internal/config"
-	"argus-collector/internal/host"
-	"argus-collector/internal/matcher"
-	"argus-collector/internal/prober"
 	"argus-collector/internal/storage"
 	"argus-collector/internal/transport/http/handlers"
 	"argus-collector/internal/transport/http/router"
 	"argus-collector/internal/usecase"
-	"argus-collector/internal/watcher"
+	"argus-collector/internal/workers/alerter"
+	"argus-collector/internal/workers/host"
+	"argus-collector/internal/workers/matcher"
+	"argus-collector/internal/workers/prober"
+	"argus-collector/internal/workers/watcher"
 	"context"
 	"fmt"
 	"log/slog"

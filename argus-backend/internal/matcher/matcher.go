@@ -289,7 +289,7 @@ func (m *Matcher) targetByName(ctx context.Context, name string) (*entity.Target
 		}
 	}
 
-	return nil, entity.ErrTargetNotFound
+	return nil, entity.ErrNotFound
 }
 
 func (m *Matcher) RunMatcher(ctx context.Context) {

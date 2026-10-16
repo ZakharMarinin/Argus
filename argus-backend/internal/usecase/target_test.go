@@ -28,7 +28,7 @@ func TestUseCase_CreateTarget(t *testing.T) {
 		{name: "probe", in: &entity.Target{Source: "https://api.local/health", Name: "api", TargetType: entity.TargetTypeProbe}},
 		{name: "container", in: &entity.Target{Source: "web", Name: "web", TargetType: entity.TargetTypeContainer}},
 		{name: "client cannot pick id or status", in: &entity.Target{ID: clientID, Status: "up", Source: "http://api.local", Name: "api", TargetType: entity.TargetTypeProbe}},
-		{name: "duplicate keeps its sentinel for 409", in: &entity.Target{Source: "web", Name: "web", TargetType: entity.TargetTypeContainer}, storeErr: entity.ErrTargetAlreadyExists},
+		{name: "duplicate keeps its sentinel for 409", in: &entity.Target{Source: "web", Name: "web", TargetType: entity.TargetTypeContainer}, storeErr: entity.ErrAlreadyExists},
 		{name: "blank name", in: &entity.Target{Source: "https://api.local", Name: " ", TargetType: entity.TargetTypeProbe}, wantValidation: true},
 		{name: "probe without scheme", in: &entity.Target{Source: "api.local/health", Name: "api", TargetType: entity.TargetTypeProbe}, wantValidation: true},
 		{name: "probe with other scheme", in: &entity.Target{Source: "ftp://api.local", Name: "api", TargetType: entity.TargetTypeProbe}, wantValidation: true},

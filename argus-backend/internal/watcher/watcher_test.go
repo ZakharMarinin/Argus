@@ -152,9 +152,9 @@ func TestCreateEvent(t *testing.T) {
 			name: "an event already stored by a replay raises nothing", status: statusDown,
 			messages: []events.Message{dockerEvent(events.ActionDie, t0, "exitCode", "1")},
 			expect: func(m *mocks.MockStorage, _ uuid.UUID) {
-				m.On("CreateEvent", mock.Anything, mock.Anything).Return(nil, entity.ErrContainerEventAlreadyExists).Once()
+				m.On("CreateEvent", mock.Anything, mock.Anything).Return(nil, entity.ErrAlreadyExists).Once()
 			},
-			wantErr: entity.ErrContainerEventAlreadyExists,
+			wantErr: entity.ErrAlreadyExists,
 		},
 	}
 
@@ -329,7 +329,7 @@ func TestStartListeningResyncsAfterReconnect(t *testing.T) {
 	startedDuringGap := &entity.Target{ID: uuid.New(), Source: "web", Status: statusUp}
 
 	uc := mocks.NewMockStorage(t)
-	uc.On("CreateTarget", mock.Anything, mock.Anything).Return(nil, entity.ErrTargetAlreadyExists).Once()
+	uc.On("CreateTarget", mock.Anything, mock.Anything).Return(nil, entity.ErrAlreadyExists).Once()
 	uc.On("GetTargetsByType", mock.Anything, watcherTargetType).
 		Return([]*entity.Target{diedDuringGap, startedDuringGap}, nil).Once()
 	uc.On("UpdateTargetStatus", mock.Anything, diedDuringGap.ID, statusDown).Return(diedDuringGap, nil).Once()
@@ -468,7 +468,7 @@ func TestRegisterFromLabels(t *testing.T) {
 			name:   "already registered is not an error",
 			labels: map[string]string{labelMonitor: "true", labelProbeURL: probeURL},
 			expect: func(m *mocks.MockStorage) {
-				m.On("CreateTarget", mock.Anything, mock.Anything).Return(nil, entity.ErrTargetAlreadyExists).Twice()
+				m.On("CreateTarget", mock.Anything, mock.Anything).Return(nil, entity.ErrAlreadyExists).Twice()
 			},
 		},
 		{

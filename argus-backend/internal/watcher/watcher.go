@@ -282,7 +282,7 @@ func (w *Watcher) registerFromLabels(ctx context.Context, name string, labels ma
 		TargetType: watcherTargetType,
 		Status:     "unknown",
 	})
-	if err != nil && !errors.Is(err, entity.ErrTargetAlreadyExists) {
+	if err != nil && !errors.Is(err, entity.ErrAlreadyExists) {
 		return err
 	}
 
@@ -297,7 +297,7 @@ func (w *Watcher) registerFromLabels(ctx context.Context, name string, labels ma
 		TargetType: probeTargetType,
 		Status:     "unknown",
 	})
-	if err != nil && !errors.Is(err, entity.ErrTargetAlreadyExists) {
+	if err != nil && !errors.Is(err, entity.ErrAlreadyExists) {
 		return err
 	}
 

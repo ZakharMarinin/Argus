@@ -29,7 +29,7 @@ func TestUseCase_CreateEvent(t *testing.T) {
 	}{
 		{name: "keeps the time Docker reported", event: entity.ContainerDie, createdAt: dockerTime},
 		{name: "stamps now when unset", event: entity.ContainerStart},
-		{name: "storage error is wrapped", event: entity.ContainerOOM, createdAt: dockerTime, storeErr: entity.ErrContainerEventAlreadyExists, wantErr: entity.ErrContainerEventAlreadyExists},
+		{name: "storage error is wrapped", event: entity.ContainerOOM, createdAt: dockerTime, storeErr: entity.ErrAlreadyExists, wantErr: entity.ErrAlreadyExists},
 		{name: "unsubscribed event type is rejected", event: "stop", wantErr: entity.ErrInvalidEventType},
 	}
 

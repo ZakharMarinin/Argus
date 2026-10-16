@@ -52,7 +52,7 @@ func (lmr *LogMatchRepository) DeleteLogMatch(ctx context.Context, id int) (int,
 	}
 
 	if result.RowsAffected() == 0 {
-		return 0, fmt.Errorf("%s: %w", op, entity.ErrLogMatchNotFound)
+		return 0, fmt.Errorf("%s: %w", op, entity.ErrNotFound)
 	}
 
 	return id, nil
@@ -87,7 +87,7 @@ func (lmr *LogMatchRepository) GetLogMatch(ctx context.Context, id int) (*entity
 		"log_matches",
 		[]string{"id", "target_id", "severity", "message", "created_at"},
 		id,
-		entity.ErrLogMatchNotFound,
+		entity.ErrNotFound,
 		&logMatch.ID, &logMatch.TargetID, &logMatch.Severity, &logMatch.Message, &logMatch.CreatedAt,
 	)
 	if err != nil {

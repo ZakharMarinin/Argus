@@ -100,7 +100,7 @@ func (pr *ProbeRepository) DeleteProbe(ctx context.Context, id int) (int, error)
 	}
 
 	if result.RowsAffected() == 0 {
-		return 0, fmt.Errorf("%s: %w", op, entity.ErrProbeNotFound)
+		return 0, fmt.Errorf("%s: %w", op, entity.ErrNotFound)
 	}
 
 	return id, nil
@@ -134,7 +134,7 @@ func (pr *ProbeRepository) GetProbe(ctx context.Context, id int) (*entity.Probe,
 		"probes",
 		[]string{"id", "target_id", "success", "latency", "created_at"},
 		id,
-		entity.ErrProbeNotFound,
+		entity.ErrNotFound,
 		&probe.ID, &probe.TargetID, &probe.Success, &probe.Latency, &probe.CreatedAt,
 	)
 	if err != nil {

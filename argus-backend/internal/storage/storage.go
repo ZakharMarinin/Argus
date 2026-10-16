@@ -24,12 +24,12 @@ type Storage struct {
 func NewStorage(ctx context.Context, cfg *config.Config) (*Storage, error) {
 	const op = "storage.NewStorage"
 
-	poolConfig, err := pgxpool.ParseConfig(cfg.Postgres)
+	pool, err := getConfig(&cfg.Postgres)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	db, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	db, err := pgxpool.NewWithConfig(ctx, pool)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -120,6 +120,17 @@ func listWhere(b sq.SelectBuilder, f entity.ListFilter) sq.SelectBuilder {
 	}
 
 	return b
+}
+
+func getConfig(cfg *config.Postgres) (*pgxpool.Config, error) {
+	poolConfig, err := pgxpool.ParseConfig(cfg.Addr)
+	if err != nil {
+		return nil, err
+	}
+
+	poolConfig.ConnConfig.ConnectTimeout = cfg.ConnectionTimeout
+
+	return poolConfig, nil
 }
 
 func findPage[T any](

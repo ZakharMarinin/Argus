@@ -1,24 +1,27 @@
 package storage
 
 import (
+	"argus-collector/internal/config"
 	"argus-collector/migrations"
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 
+	"github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 	"github.com/pressly/goose/v3/lock"
 )
 
-func Migrate(ctx context.Context, dsn string, log *slog.Logger) error {
+func Migrate(ctx context.Context, cfg *config.Postgres, log *slog.Logger) error {
 	const op = "storage.Migrate"
 
-	db, err := sql.Open("pgx", dsn)
+	poolConfig, err := getConfig(cfg)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
+	
+	db := stdlib.OpenDB(*poolConfig.ConnConfig)
 	defer func() { _ = db.Close() }()
 
 	locker, err := lock.NewPostgresSessionLocker()

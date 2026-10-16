@@ -229,7 +229,7 @@ func (m *Matcher) startMatching(ctx context.Context, source string, id uuid.UUID
 		var err error
 
 		last, err = m.follow(ctx, source, id, last)
-		if err != nil {
+		if err != nil && ctx.Err() == nil {
 			log.Error("log stream failed", "error", err)
 		}
 

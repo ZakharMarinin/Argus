@@ -10,12 +10,12 @@ import (
 )
 
 func Router(log *slog.Logger, r *chi.Mux, h *handlers.Handler) {
-	r.Use(middleware.New(log))
-
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 	r.Get("/healthz", h.Healthz)
 
 	r.Route("/v1/api", func(r chi.Router) {
+		r.Use(middleware.New(log))
+		
 		r.Get("/host", h.GetHost)
 
 		r.Route("/targets", func(r chi.Router) {

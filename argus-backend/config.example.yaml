@@ -33,3 +33,5 @@ host:
   consecutive: 3
 heartbeat:
   interval: 1m
+postgres:
+  connection_timeout: 5s

@@ -14,7 +14,7 @@ import (
 type Config struct {
 	Env       string    `yaml:"env"`
 	Server    Server    `yaml:"http_server"`
-	Postgres  string    `yaml:"postgres"`
+	Postgres  Postgres  `yaml:"postgres"`
 	Prober    Prober    `yaml:"prober"`
 	Telegram  Telegram  `yaml:"telegram"`
 	Matcher   Matcher   `yaml:"matcher"`
@@ -22,6 +22,11 @@ type Config struct {
 	Watcher   Watcher   `yaml:"watcher"`
 	Host      Host      `yaml:"host"`
 	Heartbeat Heartbeat `yaml:"heartbeat"`
+}
+
+type Postgres struct {
+	Addr              string        `yaml:"addr"`
+	ConnectionTimeout time.Duration `yaml:"connection_timeout"`
 }
 
 type Heartbeat struct {
@@ -90,7 +95,7 @@ func MustParseConfig() *Config {
 		log.Fatalf("cannot read config: %v", err)
 	}
 
-	cfg.Postgres = os.Getenv("POSTGRES_URL")
+	cfg.Postgres.Addr = os.Getenv("POSTGRES_URL")
 	cfg.Telegram.BotToken = os.Getenv("BOT_TOKEN")
 	cfg.Heartbeat.URL = os.Getenv("HEARTBEAT_URL")
 
@@ -110,7 +115,7 @@ func MustParseConfig() *Config {
 }
 
 func (c *Config) ValidateConfig() error {
-	if c.Postgres == "" {
+	if c.Postgres.Addr == "" {
 		return errors.New("no postgress addr")
 	}
 
@@ -139,5 +144,9 @@ func (c *Config) ValidateConfig() error {
 		return errors.New("host: interval must be positive, consecutive >= 1, and 0 < warning < critical <= 100")
 	}
 
+	if c.Postgres.ConnectionTimeout <= 0 {
+		c.Postgres.ConnectionTimeout = 5 * time.Second
+	}
+	
 	return nil
 }

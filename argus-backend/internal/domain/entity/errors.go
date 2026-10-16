@@ -13,7 +13,4 @@ func (e *ValidationError) Error() string {
 var (
 	ErrNotFound      = errors.New("not found")
 	ErrAlreadyExists = errors.New("already exists")
-<<<<<<< HEAD
-=======
->>>>>>> hanlders-response
 )

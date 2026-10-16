@@ -34,11 +34,7 @@ func HandleError(w http.ResponseWriter, r *http.Request, log *slog.Logger, err e
 		JSONError(w, r, http.StatusConflict, entity.ErrAlreadyExists.Error())
 
 	default:
-<<<<<<< HEAD
 		log.Error("server error: ", "error", err)
-=======
-		
->>>>>>> hanlders-response
 		JSONError(w, r, http.StatusInternalServerError, "internal server error")
 	}
 }

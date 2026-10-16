@@ -49,7 +49,7 @@ func (h *Handler) CreateAlert(w http.ResponseWriter, r *http.Request) {
 
 	created, err := h.uc.CreateAlert(ctx, &alert)
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}
@@ -102,7 +102,7 @@ func (h *Handler) GetListAlerts(w http.ResponseWriter, r *http.Request) {
 
 	alerts, total, err := h.uc.FindAlerts(ctx, f)
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}
@@ -135,7 +135,7 @@ func (h *Handler) GetAlert(w http.ResponseWriter, r *http.Request) {
 
 	alert, err := h.uc.GetAlert(ctx, id)
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}
@@ -166,7 +166,7 @@ func (h *Handler) DeleteAlert(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.uc.DeleteAlert(ctx, id)
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}

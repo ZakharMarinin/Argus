@@ -66,7 +66,7 @@ func (h *Handler) GetListProbes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}
@@ -98,7 +98,7 @@ func (h *Handler) GetProbe(w http.ResponseWriter, r *http.Request) {
 
 	probe, err := h.uc.GetProbe(ctx, id)
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}
@@ -129,7 +129,7 @@ func (h *Handler) DeleteProbe(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.uc.DeleteProbe(ctx, id)
 	if err != nil {
-		response.HandleError(w, r, err)
+		response.HandleError(w, r, h.log, err)
 
 		return
 	}

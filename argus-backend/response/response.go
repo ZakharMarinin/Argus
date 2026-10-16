@@ -32,13 +32,8 @@ func HandleError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, entity.ErrAlreadyExists):
 		JSONError(w, r, http.StatusConflict, entity.ErrAlreadyExists.Error())
 
-	case errors.Is(err, entity.ErrInvalidSeverity):
-		JSONError(w, r, http.StatusBadRequest, entity.ErrInvalidSeverity.Error())
-
-	case errors.Is(err, entity.ErrInvalidEventType):
-		JSONError(w, r, http.StatusBadRequest, entity.ErrInvalidEventType.Error())
-
 	default:
+		
 		JSONError(w, r, http.StatusInternalServerError, "internal server error")
 	}
 }

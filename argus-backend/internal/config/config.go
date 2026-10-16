@@ -79,16 +79,13 @@ type Telegram struct {
 }
 
 func MustParseConfig() *Config {
-	err := godotenv.Load()
-	if err != nil {
-		log.Printf("no .env file found, relying on environment variables: %v", err)
-	}
+	_ = godotenv.Load()
 
 	cfgPath := os.Getenv("CONFIG_PATH")
 
 	cfg := Config{}
 
-	err = cleanenv.ReadConfig(cfgPath, &cfg)
+	err := cleanenv.ReadConfig(cfgPath, &cfg)
 	if err != nil {
 		log.Fatalf("cannot read config: %v", err)
 	}

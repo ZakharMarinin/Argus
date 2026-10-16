@@ -33,14 +33,12 @@ func HandleError(w http.ResponseWriter, r *http.Request, log *slog.Logger, err e
 	case errors.Is(err, entity.ErrAlreadyExists):
 		JSONError(w, r, http.StatusConflict, entity.ErrAlreadyExists.Error())
 
-	case errors.Is(err, entity.ErrInvalidSeverity):
-		JSONError(w, r, http.StatusBadRequest, entity.ErrInvalidSeverity.Error())
-
-	case errors.Is(err, entity.ErrInvalidEventType):
-		JSONError(w, r, http.StatusBadRequest, entity.ErrInvalidEventType.Error())
-
 	default:
+<<<<<<< HEAD
 		log.Error("server error: ", "error", err)
+=======
+		
+>>>>>>> hanlders-response
 		JSONError(w, r, http.StatusInternalServerError, "internal server error")
 	}
 }

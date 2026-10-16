@@ -26,11 +26,13 @@ func TestUseCase_CreateEvent(t *testing.T) {
 		createdAt time.Time
 		storeErr  error
 		wantErr   error
+
+		wantValidation bool
 	}{
 		{name: "keeps the time Docker reported", event: entity.ContainerDie, createdAt: dockerTime},
 		{name: "stamps now when unset", event: entity.ContainerStart},
 		{name: "storage error is wrapped", event: entity.ContainerOOM, createdAt: dockerTime, storeErr: entity.ErrAlreadyExists, wantErr: entity.ErrAlreadyExists},
-		{name: "unsubscribed event type is rejected", event: "stop", wantErr: entity.ErrInvalidEventType},
+		{name: "unsubscribed event type is rejected", event: "stop", wantValidation: true},
 	}
 
 	for _, tc := range cases {
@@ -40,12 +42,20 @@ func TestUseCase_CreateEvent(t *testing.T) {
 			db := mocks.NewMockStorage(t)
 			event := &entity.ContainerEvent{Event: tc.event, CreatedAt: tc.createdAt}
 
-			if tc.wantErr != entity.ErrInvalidEventType {
+			if !tc.wantValidation {
 				db.On("CreateEvent", mock.Anything, event).Return(event, tc.storeErr).Once()
 			}
 
 			before := time.Now()
 			got, err := usecase.NewUseCase(db).CreateEvent(t.Context(), event)
+
+			if tc.wantValidation {
+				var verr *entity.ValidationError
+				require.ErrorAs(t, err, &verr)
+				require.Equal(t, "invalid event type", verr.Reason)
+
+				return
+			}
 
 			if tc.wantErr != nil {
 				require.ErrorIs(t, err, tc.wantErr)

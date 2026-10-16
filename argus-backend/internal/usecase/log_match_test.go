@@ -23,10 +23,12 @@ func TestUseCase_SaveLogMatch(t *testing.T) {
 		severity entity.Severity
 		storeErr error
 		wantErr  error
+
+		wantValidation bool
 	}{
 		{name: "valid severity is stored", severity: entity.SeverityError},
 		{name: "storage error is wrapped", severity: entity.SeverityCritical, storeErr: assert.AnError, wantErr: assert.AnError},
-		{name: "severity past debug is rejected", severity: entity.SeverityDebug + 1, wantErr: entity.ErrInvalidSeverity},
+		{name: "severity past debug is rejected", severity: entity.SeverityDebug + 1, wantValidation: true},
 	}
 
 	for _, tc := range cases {
@@ -36,11 +38,19 @@ func TestUseCase_SaveLogMatch(t *testing.T) {
 			db := mocks.NewMockStorage(t)
 			logMatch := &entity.LogMatch{Severity: tc.severity, Message: "panic: boom"}
 
-			if tc.wantErr != entity.ErrInvalidSeverity {
+			if !tc.wantValidation {
 				db.On("SaveLogMatch", mock.Anything, logMatch).Return(logMatch, tc.storeErr).Once()
 			}
 
 			got, err := usecase.NewUseCase(db).SaveLogMatch(t.Context(), logMatch)
+
+			if tc.wantValidation {
+				var verr *entity.ValidationError
+				require.ErrorAs(t, err, &verr)
+				require.Equal(t, "invalid severity", verr.Reason)
+
+				return
+			}
 
 			if tc.wantErr != nil {
 				require.ErrorIs(t, err, tc.wantErr)

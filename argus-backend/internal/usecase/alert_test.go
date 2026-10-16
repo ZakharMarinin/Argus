@@ -23,11 +23,13 @@ func TestUseCase_CreateAlert(t *testing.T) {
 		severity entity.Severity
 		storeErr error
 		wantErr  error
+
+		wantValidation bool
 	}{
 		{name: "valid severity is stored", severity: entity.SeverityWarning},
 		{name: "storage error is wrapped", severity: entity.SeverityCritical, storeErr: assert.AnError, wantErr: assert.AnError},
-		{name: "severity past debug is rejected", severity: entity.SeverityDebug + 1, wantErr: entity.ErrInvalidSeverity},
-		{name: "negative severity is rejected", severity: -1, wantErr: entity.ErrInvalidSeverity},
+		{name: "severity past debug is rejected", severity: entity.SeverityDebug + 1, wantValidation: true},
+		{name: "negative severity is rejected", severity: -1, wantValidation: true},
 	}
 
 	for _, tc := range cases {
@@ -37,12 +39,20 @@ func TestUseCase_CreateAlert(t *testing.T) {
 			db := mocks.NewMockStorage(t)
 			alert := &entity.Alert{Severity: tc.severity, Details: "disk full", CreatedAt: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)}
 
-			if tc.wantErr != entity.ErrInvalidSeverity {
+			if !tc.wantValidation {
 				db.On("CreateAlert", mock.Anything, alert).Return(alert, tc.storeErr).Once()
 			}
 
 			before := time.Now()
 			got, err := usecase.NewUseCase(db).CreateAlert(t.Context(), alert)
+
+			if tc.wantValidation {
+				var verr *entity.ValidationError
+				require.ErrorAs(t, err, &verr)
+				require.Equal(t, "invalid severity", verr.Reason)
+
+				return
+			}
 
 			if tc.wantErr != nil {
 				require.ErrorIs(t, err, tc.wantErr)
@@ -91,7 +101,7 @@ func TestUseCase_MarkAlertsNotified(t *testing.T) {
 	}{
 		{name: "passes ids in order", alerts: []*entity.Alert{{ID: 3}, {ID: 1}, {ID: 2}}, status: entity.AlertStatus("sent"), wantIDs: []int{3, 1, 2}},
 		{name: "no alerts", status: entity.AlertStatus("sent"), alerts: nil, wantIDs: []int{}},
-		{name: "storage error is wrapped", alerts: []*entity.Alert{{ID: 1}}, wantIDs: []int{1}, status: entity.AlertStatus("sent"), storeErr: assert.AnError},
+		{name: "storage error is returned as is", alerts: []*entity.Alert{{ID: 1}}, wantIDs: []int{1}, status: entity.AlertStatus("sent"), storeErr: assert.AnError},
 	}
 
 	for _, tc := range cases {
@@ -104,8 +114,7 @@ func TestUseCase_MarkAlertsNotified(t *testing.T) {
 			err := usecase.NewUseCase(db).MarkAlertsNotified(t.Context(), tc.alerts, tc.status)
 
 			if tc.storeErr != nil {
-				require.ErrorIs(t, err, tc.storeErr)
-				require.ErrorContains(t, err, "UseCase.MarkAlertsNotified")
+				require.Equal(t, tc.storeErr, err)
 
 				return
 			}

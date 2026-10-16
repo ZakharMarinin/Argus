@@ -68,6 +68,10 @@ func (ar *AlertRepository) DeleteAlert(ctx context.Context, id int) (int, error)
 func (ar *AlertRepository) MarkAlertsNotified(ctx context.Context, ids []int, status entity.AlertStatus) error {
 	const op = "Storage.AlertRepository.MarkAlertsNotified"
 
+	if len(ids) == 0 {
+		return nil
+	}
+
 	query, args, err := sq.
 		Update("alerts").
 		Set("status", status).
